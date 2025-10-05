@@ -33,54 +33,56 @@
             data.addColumn('number', 'Percent Complete');
             data.addColumn('string', 'Dependencies');
 
-            // Project starts on March 9, 2025 (Month is 0-indexed in JavaScript)
-            var startDate = new Date(2025, 2, 9);
-            var projectEnd = new Date(2025, 3, 27); // Week 6 end date
+            // Project starts on October 3, 2025 (Month is 0-indexed in JavaScript, so October is 9)
+            var startDate = new Date(2025, 9, 3);
+            var projectEnd = new Date(2025, 10, 14); // Adjusted for new start date
 
             data.addRows([
-                // Week 0 Tasks
-                ['SignUpUI', 'Sign In/Up UI/UX', 'UI/UX', startDate, new Date(2025, 2, 16), null, 100, null],
+                // Week 0 Tasks - Foundation
+                ['SystemSetup', 'System Setup', 'DevOps', startDate, new Date(2025, 9, 10), null, 0, null],
+                ['SignUpUI', 'Sign In/Up UI/UX', 'UI/UX', startDate, new Date(2025, 9, 10), null, 0, null],
+                ['AIResearch', 'AI Research', 'Research', startDate, new Date(2025, 9, 10), null, 0, null],
 
-                // Week 1 Tasks
-                ['AuthBack', 'Authentication Backend', 'Backend', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, 'SignUpUI'],
-                ['AuthFront', 'Auth Front End', 'Frontend', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, 'AuthBack,SignUpUI'],
-                ['AIResearch', 'AI Research', 'Research', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, null],
-                ['BrowseUI', 'Browse Page UI/UX', 'UI/UX', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, null],
-                ['SystemSetup', 'System Setup', 'DevOps', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, null],
-                ['AdminStart', 'Admin Dashboard', 'Frontend', new Date(2025, 2, 16), projectEnd, null, 60, 'SystemSetup'], // Extended to project end
+                // Week 1 Tasks - Authentication & Core Setup
+                ['AuthBack', 'Authentication Backend', 'Backend', new Date(2025, 9, 10), new Date(2025, 9, 17), null, 0, 'SignUpUI'],
+                ['AuthFront', 'Auth Front End', 'Frontend', new Date(2025, 9, 10), new Date(2025, 9, 17), null, 0, 'AuthBack,SignUpUI'],
+                ['BrowseUI', 'Browse Page UI/UX', 'UI/UX', new Date(2025, 9, 10), new Date(2025, 9, 17), null, 0, null],
+                ['ChatUI', 'Chat Page UI/UX', 'UI/UX', new Date(2025, 9, 10), new Date(2025, 9, 17), null, 0, null],
 
-                // Week 2 Tasks
-                ['BrowseBack', 'Browse Page Backend', 'Backend', new Date(2025, 2, 23), new Date(2025, 2, 30), null, 100, 'BrowseUI'],
-                ['BrowseFront', 'Browse Page Frontend', 'Frontend', new Date(2025, 2, 23), new Date(2025, 2, 30), null, 100, 'BrowseBack'],
-                ['ChatUI', 'Chat Page UI/UX', 'UI/UX', new Date(2025, 2, 23), new Date(2025, 2, 30), null, 100, null],
-                ['ChatBack', 'Chat Backend', 'Backend', new Date(2025, 2, 23), new Date(2025, 3, 6), null, 85, 'AIResearch,AuthBack'], // Now depends on Auth
-                ['AIModel', 'AI Model Development', 'AI', new Date(2025, 2, 23), new Date(2025, 3, 13), null, 70, 'AIResearch'],
-                ['Chatbot', 'Chatbot Development', 'AI', new Date(2025, 2, 23), new Date(2025, 3, 13), null, 60, 'AIModel'],
+                // Week 2 Tasks - Backend Development & AI
+                ['BrowseBack', 'Browse Page Backend', 'Backend', new Date(2025, 9, 17), new Date(2025, 9, 24), null, 0, 'BrowseUI'],
+                ['ChatBack', 'Chat Backend', 'Backend', new Date(2025, 9, 17), new Date(2025, 9, 31), null, 0, 'AIResearch,AuthBack'],
+                ['AIModel', 'AI Model Development', 'AI', new Date(2025, 9, 17), new Date(2025, 10, 7), null, 0, 'AIResearch'],
+                ['Chatbot', 'Chatbot Development', 'AI', new Date(2025, 9, 17), new Date(2025, 10, 7), null, 0, 'AIModel'],
 
-                // Week 3 Tasks
-                ['RequestBack', 'Request/Session Backend', 'Backend', new Date(2025, 2, 30), new Date(2025, 3, 6), null, 100, 'BrowseBack'],
-                ['ChatFront', 'Chat Front End', 'Frontend', new Date(2025, 2, 30), new Date(2025, 3, 6), null, 90, 'ChatUI,ChatBack,AuthFront'], // Now depends on Auth
-                ['ProfileUI', 'Profile UI/UX', 'UI/UX', new Date(2025, 2, 30), new Date(2025, 3, 6), null, 100, null],
+                // Week 3 Tasks - Frontend & Additional Backend
+                ['BrowseFront', 'Browse Page Frontend', 'Frontend', new Date(2025, 9, 17), new Date(2025, 9, 24), null, 0, 'BrowseBack'],
+                ['RequestBack', 'Request/Session Backend', 'Backend', new Date(2025, 9, 24), new Date(2025, 9, 31), null, 0, 'BrowseBack'],
+                ['ChatFront', 'Chat Front End', 'Frontend', new Date(2025, 9, 24), new Date(2025, 9, 31), null, 0, 'ChatUI,ChatBack,AuthFront'],
+                ['ProfileUI', 'Profile UI/UX', 'UI/UX', new Date(2025, 9, 24), new Date(2025, 9, 31), null, 0, null],
 
-                // Week 4 Tasks
-                ['ProfileBack', 'Profile Backend', 'Backend', new Date(2025, 3, 6), new Date(2025, 3, 13), null, 100, 'ProfileUI,RequestBack'],
-                ['ProfileFront', 'Profile Frontend', 'Frontend', new Date(2025, 3, 6), new Date(2025, 3, 13), null, 80, 'ProfileBack'],
-                ['AIPageUI', 'AI Page UI/UX', 'UI/UX', new Date(2025, 3, 6), new Date(2025, 3, 13), null, 100, null],
-                ['TestStart', 'Start Automation Testing', 'QA', new Date(2025, 3, 6), new Date(2025, 3, 13), null, 30, 'AuthFront,BrowseFront'],
+                // Week 4 Tasks - Profile & Testing
+                ['ProfileBack', 'Profile Backend', 'Backend', new Date(2025, 9, 31), new Date(2025, 10, 7), null, 0, 'ProfileUI,RequestBack'],
+                ['ProfileFront', 'Profile Frontend', 'Frontend', new Date(2025, 9, 31), new Date(2025, 10, 7), null, 0, 'ProfileBack'],
+                ['AIPageUI', 'AI Page UI/UX', 'UI/UX', new Date(2025, 9, 31), new Date(2025, 10, 7), null, 0, null],
+                ['TestStart', 'Start Automation Testing', 'QA', new Date(2025, 9, 31), new Date(2025, 10, 7), null, 0, 'AuthFront,BrowseFront'],
 
-                // Week 5 Tasks
-                ['AIPageBack', 'AI Page Backend', 'Backend', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 80, 'AIPageUI,Chatbot'],
-                ['HomeBack', 'Home Page Backend', 'Backend', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 80, 'ProfileBack'],
-                ['BurgerMenu', 'Burger Menu Frontend', 'Frontend', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 90, 'ProfileFront'],
-                ['AIPageFront', 'AI Page Front End', 'Frontend', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 70, 'AIPageBack'],
-                ['HomeUI', 'Homepage UI/UX', 'UI/UX', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 100, null],
-                ['AIAPI', 'AI API', 'API', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 85, 'AIPageBack'],
-                ['ChatbotAPI', 'Chatbot API', 'API', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 85, 'Chatbot'],
+                // Week 5 Tasks - API Integration & Home Page
+                ['AIPageBack', 'AI Page Backend', 'Backend', new Date(2025, 10, 7), new Date(2025, 10, 14), null, 0, 'AIPageUI,Chatbot'],
+                ['HomeBack', 'Home Page Backend', 'Backend', new Date(2025, 10, 7), new Date(2025, 10, 14), null, 0, 'ProfileBack'],
+                ['BurgerMenu', 'Burger Menu Frontend', 'Frontend', new Date(2025, 10, 7), new Date(2025, 10, 14), null, 0, 'ProfileFront'],
+                ['AIPageFront', 'AI Page Front End', 'Frontend', new Date(2025, 10, 7), new Date(2025, 10, 14), null, 0, 'AIPageBack'],
+                ['HomeUI', 'Homepage UI/UX', 'UI/UX', new Date(2025, 10, 7), new Date(2025, 10, 14), null, 100, null],
+                ['AIAPI', 'AI API', 'API', new Date(2025, 10, 7), new Date(2025, 10, 14), null, 85, 'AIPageBack'],
+                ['ChatbotAPI', 'Chatbot API', 'API', new Date(2025, 10, 7), new Date(2025, 10, 14), null, 0, 'Chatbot'],
 
-                // Week 6 & Continuous Improvement Tasks
-                ['HomeFront', 'Home Page Front End', 'Frontend', new Date(2025, 3, 20), new Date(2025, 3, 27), null, 60, 'HomeBack,HomeUI,BurgerMenu'],
-                ['AIOptimize', 'AI Optimization', 'AI', new Date(2025, 3, 20), projectEnd, null, 30, 'AIAPI,ChatbotAPI'], // Continuous to end
-                ['ChatbotOptimize', 'Chatbot Optimization', 'AI', new Date(2025, 3, 20), projectEnd, null, 20, 'ChatbotAPI'] // Continuous to end
+                // Week 6 Tasks - Final Integration & Optimization
+                ['HomeFront', 'Home Page Front End', 'Frontend', new Date(2025, 10, 14), new Date(2025, 10, 21), null, 0, 'HomeBack,HomeUI,BurgerMenu'],
+                ['AIOptimize', 'AI Optimization', 'AI', new Date(2025, 10, 14), projectEnd, null, 0, 'AIAPI,ChatbotAPI'],
+                ['ChatbotOptimize', 'Chatbot Optimization', 'AI', new Date(2025, 10, 14), projectEnd, null, 0, 'ChatbotAPI'],
+                
+                // Admin Dashboard at the bottom as requested
+                ['AdminStart', 'Admin Dashboard', 'Frontend', new Date(2025, 9, 10), projectEnd, null, 0, 'SystemSetup']
             ]);
 
             var options = {
