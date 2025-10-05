@@ -1,121 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <script type="text/javascript">
-    google.charts.load('current', {'packages':['gantt']});
-    google.charts.setOnLoadCallback(drawChart);
-
-    function daysToMilliseconds(days) {
-      return days * 24 * 60 * 60 * 1000;
-    }
-
-    function drawChart() {
-      var data = new google.visualization.DataTable();
-      data.addColumn('string', 'Task ID');
-      data.addColumn('string', 'Task Name');
-      data.addColumn('string', 'Resource');
-      data.addColumn('date', 'Start Date');
-      data.addColumn('date', 'End Date');
-      data.addColumn('number', 'Duration');
-      data.addColumn('number', 'Percent Complete');
-      data.addColumn('string', 'Dependencies');
-
-      data.addRows([
-        // Week 0
-        ['SignInUpUIUX', 'Sign In/Up UI/UX', 'UI/UX',
-         new Date(2024, 7, 5), new Date(2024, 7, 9), null, 100, null],
-
-        // Week 1
-        ['AuthBackend', 'Authentication Backend', 'Backend',
-         new Date(2024, 7, 12), new Date(2024, 7, 16), null, 100, null],
-        ['AuthFrontend', 'Auth Front End', 'Frontend',
-         new Date(2024, 7, 12), new Date(2024, 7, 16), null, 100, null],
-        ['AIResearch', 'AI Research', 'Research',
-         new Date(2024, 7, 12), new Date(2024, 7, 16), null, 100, null],
-        ['BrowseUIUX', 'Browse Page UI/UX', 'UI/UX',
-         new Date(2024, 7, 12), new Date(2024, 7, 16), null, 100, null],
-        ['SystemSetup', 'System Setup', 'Setup',
-         new Date(2024, 7, 12), new Date(2024, 7, 16), null, 100, null],
-        ['AdminDashboardStart', 'Start: Admin Dashboard', 'Frontend',
-         new Date(2024, 7, 12), new Date(2024, 7, 16), null, 20, null],
-
-        // Week 2
-        ['BrowseBackend', 'Browse Page Backend', 'Backend',
-         new Date(2024, 7, 19), new Date(2024, 7, 23), null, 100, 'BrowseUIUX'],
-        ['BrowseFrontend', 'Browse Page Frontend', 'Frontend',
-         new Date(2024, 7, 19), new Date(2024, 7, 23), null, 100, 'BrowseBackend'],
-        ['ChatUIUX', 'Chat Page UI/UX', 'UI/UX',
-         new Date(2024, 7, 19), new Date(2024, 7, 23), null, 100, null],
-        ['ChatBackendStart', 'Start: Chat Backend', 'Backend',
-         new Date(2024, 7, 19), new Date(2024, 7, 23), null, 30, null],
-        ['AIModelStart', 'Start: AI Model', 'AI',
-         new Date(2024, 7, 19), new Date(2024, 7, 23), null, 25, 'AIResearch'],
-        ['ChatbotStart', 'Start: Chatbot', 'AI',
-         new Date(2024, 7, 19), new Date(2024, 7, 23), null, 10, 'AIModelStart'],
-
-        // Week 3
-        ['RequestSessionBackend', 'Request/Session Backend', 'Backend',
-         new Date(2024, 7, 26), new Date(2024, 7, 30), null, 100, null],
-        ['ChatFrontend', 'Chat Front End', 'Frontend',
-         new Date(2024, 7, 26), new Date(2024, 7, 30), null, 100, 'ChatUIUX'],
-        ['ProfileUIUX', 'Profile UI/UX', 'UI/UX',
-         new Date(2024, 7, 26), new Date(2024, 7, 30), null, 100, null],
-        ['ChatBackendEnd', 'End: Chat Backend', 'Backend',
-         new Date(2024, 7, 26), new Date(2024, 7, 30), null, 100, 'ChatBackendStart'],
-
-        // Week 4
-        ['ProfileBackend', 'Profile Backend', 'Backend',
-         new Date(2024, 8, 2), new Date(2024, 8, 6), null, 100, 'ProfileUIUX'],
-        ['ProfileFrontend', 'Profile Frontend', 'Frontend',
-         new Date(2024, 8, 2), new Date(2024, 8, 6), null, 100, 'ProfileBackend'],
-        ['AIPageUIUX', 'AI Page UI/UX', 'UI/UX',
-         new Date(2024, 8, 2), new Date(2024, 8, 6), null, 100, null],
-        ['AIModelEnd', 'End: AI Model Training', 'AI',
-         new Date(2024, 8, 2), new Date(2024, 8, 6), null, 100, 'AIModelStart'],
-        ['ChatbotEnd', 'End: Chatbot', 'AI',
-         new Date(2024, 8, 2), new Date(2024, 8, 6), null, 100, 'ChatbotStart'],
-        ['StartTesting', 'Start: Automation Testing', 'Testing',
-         new Date(2024, 8, 2), new Date(2024, 8, 6), null, 15, null],
-
-        // Week 5
-        ['AIPageBackend', 'AI Page Backend', 'Backend',
-         new Date(2024, 8, 9), new Date(2024, 8, 13), null, 100, 'AIPageUIUX'],
-        ['HomepageBackend', 'Home Page Backend', 'Backend',
-         new Date(2024, 8, 9), new Date(2024, 8, 13), null, 100, null],
-        ['BurgerMenu', 'Burger Menu Frontend', 'Frontend',
-         new Date(2024, 8, 9), new Date(2024, 8, 13), null, 100, null],
-        ['AIPageFrontend', 'AI Page Front End', 'Frontend',
-         new Date(2024, 8, 9), new Date(2024, 8, 13), null, 100, 'AIPageBackend'],
-        ['HomepageUIUX', 'Homepage UI/UX', 'UI/UX',
-         new Date(2024, 8, 9), new Date(2024, 8, 13), null, 100, null],
-        ['AIAPI', 'AI API', 'API',
-         new Date(2024, 8, 9), new Date(2024, 8, 13), null, 80, 'AIModelEnd'],
-        ['ChatbotAPI', 'Chatbot API', 'API',
-         new Date(2024, 8, 9), new Date(2024, 8, 13), null, 80, 'ChatbotEnd'],
-
-        // Week 6
-        ['HomepageFrontend', 'Home Page Front End', 'Frontend',
-         new Date(2024, 8, 16), new Date(2024, 8, 20), null, 70, 'HomepageBackend'],
-        ['AIOptimization', 'Start: AI & Chatbot Optimization', 'AI',
-         new Date(2024, 8, 16), new Date(2024, 8, 20), null, 10, 'AIAPI,ChatbotAPI']
-      ]);
-
-      var options = {
-        height: 600,
-        gantt: {
-          trackHeight: 30,
-          criticalPathEnabled: false
-        }
-      };
-
-      var chart = new google.visualization.Gantt(document.getElementById('chart_div'));
-
-      chart.draw(data, options);
-    }
-  </script>
+    <link rel="stylesheet" href="https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.css">
+    <script src="https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.js"></script>
 </head>
 <body>
-  <div id="chart_div"></div>
+    <div id="gantt_here" style='width:100%; height:100vh;'></div>
+    <script>
+        // Define tasks for the dental web app
+        const tasks = {
+            data: [
+                { id: 1, text: "Project Start", start_date: "2025-03-09", duration: 0, type: "milestone" },
+                { id: 2, text: "Sign In/Up UI/UX", start_date: "2025-03-09", duration: 7, parent: 0 },
+                { id: 3, text: "Authentication Backend", start_date: "2025-03-16", duration: 7, parent: 0 },
+                { id: 4, text: "Auth Frontend", start_date: "2025-03-23", duration: 0, parent: 0 }, // Duration 0, starts when backend is done
+                { id: 5, text: "Browse Page UI/UX", start_date: "2025-03-16", duration: 7, parent: 0 },
+                { id: 6, text: "System Setup & Admin Dashboard", start_date: "2025-03-16", duration: 14, parent: 0 },
+                { id: 7, text: "AI Research", start_date: "2025-03-16", duration: 7, parent: 0 },
+                // ... Add all other tasks for subsequent weeks
+            ],
+            links: [
+                // Auth Frontend depends on Auth Backend and Sign In/Up UI/UX (Finish-to-Start)
+                { id: 1, source: 3, target: 4, type: "0" }, // type "0" = Finish-to-Start
+                { id: 2, source: 2, target: 4, type: "0" },
+                // ... Define all other dependencies
+            ]
+        };
+
+        gantt.init("gantt_here");
+        gantt.parse(tasks); // Load the data into the Gantt chart
+    </script>
 </body>
 </html>
