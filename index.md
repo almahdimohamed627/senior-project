@@ -19,7 +19,7 @@ For visual project tracking, we utilize an interactive Gantt chart that displays
 - Current progress status
 - Milestone deadlines
 
-**Access the Gantt Chart:** [View Interactive Gantt](gantt.html)
+**Access the Gantt Chart:** [View Interactive Gantt](gantt_chart.html)
 
 ### Progress Integration with Issues
 To automatically populate the Gantt chart from GitHub issues, add these date markers to your issue descriptions:cite[4]:
