@@ -9,7 +9,7 @@ This project involves full-stack development of a web application with AI integr
 ## 🔗 Quick Links
 
 - **[View Full README](README.md)** - Detailed project documentation, installation instructions, and usage guidelines
-- **[View Gantt Chart](gantt.html)** - Interactive project timeline and progress tracking
+- **[View Gantt Chart](gantt_chart.html)** - Interactive project timeline and progress tracking
 
 ## 📅 Gantt Chart & Progress Tracking
 
