@@ -35,6 +35,7 @@
 
             // Project starts on March 9, 2025 (Month is 0-indexed in JavaScript)
             var startDate = new Date(2025, 2, 9);
+            var projectEnd = new Date(2025, 3, 27); // Week 6 end date
 
             data.addRows([
                 // Week 0 Tasks
@@ -46,19 +47,19 @@
                 ['AIResearch', 'AI Research', 'Research', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, null],
                 ['BrowseUI', 'Browse Page UI/UX', 'UI/UX', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, null],
                 ['SystemSetup', 'System Setup', 'DevOps', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, null],
-                ['AdminStart', 'Start Admin Dashboard', 'Frontend', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 80, 'SystemSetup'],
+                ['AdminStart', 'Admin Dashboard', 'Frontend', new Date(2025, 2, 16), projectEnd, null, 60, 'SystemSetup'], // Extended to project end
 
                 // Week 2 Tasks
                 ['BrowseBack', 'Browse Page Backend', 'Backend', new Date(2025, 2, 23), new Date(2025, 2, 30), null, 100, 'BrowseUI'],
                 ['BrowseFront', 'Browse Page Frontend', 'Frontend', new Date(2025, 2, 23), new Date(2025, 2, 30), null, 100, 'BrowseBack'],
                 ['ChatUI', 'Chat Page UI/UX', 'UI/UX', new Date(2025, 2, 23), new Date(2025, 2, 30), null, 100, null],
-                ['ChatBack', 'Chat Backend', 'Backend', new Date(2025, 2, 23), new Date(2025, 3, 6), null, 85, 'AIResearch'],
+                ['ChatBack', 'Chat Backend', 'Backend', new Date(2025, 2, 23), new Date(2025, 3, 6), null, 85, 'AIResearch,AuthBack'], // Now depends on Auth
                 ['AIModel', 'AI Model Development', 'AI', new Date(2025, 2, 23), new Date(2025, 3, 13), null, 70, 'AIResearch'],
                 ['Chatbot', 'Chatbot Development', 'AI', new Date(2025, 2, 23), new Date(2025, 3, 13), null, 60, 'AIModel'],
 
                 // Week 3 Tasks
                 ['RequestBack', 'Request/Session Backend', 'Backend', new Date(2025, 2, 30), new Date(2025, 3, 6), null, 100, 'BrowseBack'],
-                ['ChatFront', 'Chat Front End', 'Frontend', new Date(2025, 2, 30), new Date(2025, 3, 6), null, 90, 'ChatUI,ChatBack'],
+                ['ChatFront', 'Chat Front End', 'Frontend', new Date(2025, 2, 30), new Date(2025, 3, 6), null, 90, 'ChatUI,ChatBack,AuthFront'], // Now depends on Auth
                 ['ProfileUI', 'Profile UI/UX', 'UI/UX', new Date(2025, 2, 30), new Date(2025, 3, 6), null, 100, null],
 
                 // Week 4 Tasks
@@ -76,10 +77,10 @@
                 ['AIAPI', 'AI API', 'API', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 85, 'AIPageBack'],
                 ['ChatbotAPI', 'Chatbot API', 'API', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 85, 'Chatbot'],
 
-                // Week 6 Tasks
+                // Week 6 & Continuous Improvement Tasks
                 ['HomeFront', 'Home Page Front End', 'Frontend', new Date(2025, 3, 20), new Date(2025, 3, 27), null, 60, 'HomeBack,HomeUI,BurgerMenu'],
-                ['AIOptimize', 'AI Optimization', 'AI', new Date(2025, 3, 20), new Date(2025, 3, 27), null, 40, 'AIAPI,ChatbotAPI'],
-                ['ChatbotOptimize', 'Chatbot Optimization', 'AI', new Date(2025, 3, 20), new Date(2025, 3, 27), null, 40, 'ChatbotAPI']
+                ['AIOptimize', 'AI Optimization', 'AI', new Date(2025, 3, 20), projectEnd, null, 30, 'AIAPI,ChatbotAPI'], // Continuous to end
+                ['ChatbotOptimize', 'Chatbot Optimization', 'AI', new Date(2025, 3, 20), projectEnd, null, 20, 'ChatbotAPI'] // Continuous to end
             ]);
 
             var options = {
