@@ -1,22 +1,102 @@
-data.addRows([
-  // Week 0
-  ['SignUpUI', 'Sign In/Up UI/UX', 'UI/UX', new Date(2025, 2, 9), new Date(2025, 2, 13), null, 100, null],
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dental Web App Project Timeline</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #chart_div { margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <h1>Dental Web App Development Plan</h1>
+    <div id="chart_div"></div>
 
-  // Week 1
-  ['AuthBack', 'Authentication Backend', 'Backend', new Date(2025, 2, 16), new Date(2025, 2, 20), null, 100, 'SignUpUI'],
-  ['AuthFront', 'Auth Front End', 'Frontend', new Date(2025, 2, 16), new Date(2025, 2, 20), null, 100, 'AuthBack'],
-  ['AIResearch', 'AI Research', 'Research', new Date(2025, 2, 16), new Date(2025, 2, 20), null, 100, null],
-  ['BrowseUI', 'Browse Page UI/UX', 'UI/UX', new Date(2025, 2, 16), new Date(2025, 2, 20), null, 100, null],
-  ['SystemSetup', 'System Setup', 'DevOps', new Date(2025, 2, 16), new Date(2025, 2, 20), null, 100, null],
-  ['AdminDash', 'Admin Dashboard', 'Frontend', new Date(2025, 2, 16), new Date(2025, 2, 20), null, 80, 'SystemSetup'],
+    <script type="text/javascript">
+        google.charts.load('current', {'packages':['gantt']});
+        google.charts.setOnLoadCallback(drawChart);
 
-  // Week 2
-  ['BrowseBack', 'Browse Page Backend', 'Backend', new Date(2025, 2, 23), new Date(2025, 2, 27), null, 100, 'BrowseUI'],
-  ['BrowseFront', 'Browse Page Frontend', 'Frontend', new Date(2025, 2, 23), new Date(2025, 2, 27), null, 100, 'BrowseBack'],
-  ['ChatUI', 'Chat Page UI/UX', 'UI/UX', new Date(2025, 2, 23), new Date(2025, 2, 27), null, 100, null],
-  ['AIModel', 'AI Model Training', 'AI', new Date(2025, 2, 23), new Date(2025, 3, 13), null, 60, 'AIResearch'],
-  ['Chatbot', 'Chatbot Development', 'AI', new Date(2025, 2, 23), new Date(2025, 3, 13), null, 50, 'AIModel'],
-  ['ChatBackend', 'Chat Backend', 'Backend', new Date(2025, 2, 23), new Date(2025, 3, 6), null, 70, 'AIResearch']
+        function daysToMilliseconds(days) {
+            return days * 24 * 60 * 60 * 1000;
+        }
 
-  // ... Continue for Weeks 3-6 using the same logic
-]);
+        function drawChart() {
+            var data = new google.visualization.DataTable();
+            data.addColumn('string', 'Task ID');
+            data.addColumn('string', 'Task Name');
+            data.addColumn('string', 'Resource');
+            data.addColumn('date', 'Start Date');
+            data.addColumn('date', 'End Date');
+            data.addColumn('number', 'Duration');
+            data.addColumn('number', 'Percent Complete');
+            data.addColumn('string', 'Dependencies');
+
+            // Project starts on March 9, 2025 (Month is 0-indexed in JavaScript)
+            var startDate = new Date(2025, 2, 9);
+
+            data.addRows([
+                // Week 0 Tasks
+                ['SignUpUI', 'Sign In/Up UI/UX', 'UI/UX', startDate, new Date(2025, 2, 16), null, 100, null],
+
+                // Week 1 Tasks
+                ['AuthBack', 'Authentication Backend', 'Backend', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, 'SignUpUI'],
+                ['AuthFront', 'Auth Front End', 'Frontend', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, 'AuthBack,SignUpUI'],
+                ['AIResearch', 'AI Research', 'Research', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, null],
+                ['BrowseUI', 'Browse Page UI/UX', 'UI/UX', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, null],
+                ['SystemSetup', 'System Setup', 'DevOps', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 100, null],
+                ['AdminStart', 'Start Admin Dashboard', 'Frontend', new Date(2025, 2, 16), new Date(2025, 2, 23), null, 80, 'SystemSetup'],
+
+                // Week 2 Tasks
+                ['BrowseBack', 'Browse Page Backend', 'Backend', new Date(2025, 2, 23), new Date(2025, 2, 30), null, 100, 'BrowseUI'],
+                ['BrowseFront', 'Browse Page Frontend', 'Frontend', new Date(2025, 2, 23), new Date(2025, 2, 30), null, 100, 'BrowseBack'],
+                ['ChatUI', 'Chat Page UI/UX', 'UI/UX', new Date(2025, 2, 23), new Date(2025, 2, 30), null, 100, null],
+                ['ChatBack', 'Chat Backend', 'Backend', new Date(2025, 2, 23), new Date(2025, 3, 6), null, 85, 'AIResearch'],
+                ['AIModel', 'AI Model Development', 'AI', new Date(2025, 2, 23), new Date(2025, 3, 13), null, 70, 'AIResearch'],
+                ['Chatbot', 'Chatbot Development', 'AI', new Date(2025, 2, 23), new Date(2025, 3, 13), null, 60, 'AIModel'],
+
+                // Week 3 Tasks
+                ['RequestBack', 'Request/Session Backend', 'Backend', new Date(2025, 2, 30), new Date(2025, 3, 6), null, 100, 'BrowseBack'],
+                ['ChatFront', 'Chat Front End', 'Frontend', new Date(2025, 2, 30), new Date(2025, 3, 6), null, 90, 'ChatUI,ChatBack'],
+                ['ProfileUI', 'Profile UI/UX', 'UI/UX', new Date(2025, 2, 30), new Date(2025, 3, 6), null, 100, null],
+
+                // Week 4 Tasks
+                ['ProfileBack', 'Profile Backend', 'Backend', new Date(2025, 3, 6), new Date(2025, 3, 13), null, 100, 'ProfileUI,RequestBack'],
+                ['ProfileFront', 'Profile Frontend', 'Frontend', new Date(2025, 3, 6), new Date(2025, 3, 13), null, 80, 'ProfileBack'],
+                ['AIPageUI', 'AI Page UI/UX', 'UI/UX', new Date(2025, 3, 6), new Date(2025, 3, 13), null, 100, null],
+                ['TestStart', 'Start Automation Testing', 'QA', new Date(2025, 3, 6), new Date(2025, 3, 13), null, 30, 'AuthFront,BrowseFront'],
+
+                // Week 5 Tasks
+                ['AIPageBack', 'AI Page Backend', 'Backend', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 80, 'AIPageUI,Chatbot'],
+                ['HomeBack', 'Home Page Backend', 'Backend', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 80, 'ProfileBack'],
+                ['BurgerMenu', 'Burger Menu Frontend', 'Frontend', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 90, 'ProfileFront'],
+                ['AIPageFront', 'AI Page Front End', 'Frontend', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 70, 'AIPageBack'],
+                ['HomeUI', 'Homepage UI/UX', 'UI/UX', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 100, null],
+                ['AIAPI', 'AI API', 'API', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 85, 'AIPageBack'],
+                ['ChatbotAPI', 'Chatbot API', 'API', new Date(2025, 3, 13), new Date(2025, 3, 20), null, 85, 'Chatbot'],
+
+                // Week 6 Tasks
+                ['HomeFront', 'Home Page Front End', 'Frontend', new Date(2025, 3, 20), new Date(2025, 3, 27), null, 60, 'HomeBack,HomeUI,BurgerMenu'],
+                ['AIOptimize', 'AI Optimization', 'AI', new Date(2025, 3, 20), new Date(2025, 3, 27), null, 40, 'AIAPI,ChatbotAPI'],
+                ['ChatbotOptimize', 'Chatbot Optimization', 'AI', new Date(2025, 3, 20), new Date(2025, 3, 27), null, 40, 'ChatbotAPI']
+            ]);
+
+            var options = {
+                height: 800,
+                gantt: {
+                    trackHeight: 25,
+                    barHeight: 15,
+                    labelStyle: {
+                        fontName: 'Arial',
+                        fontSize: 12
+                    }
+                }
+            };
+
+            var chart = new google.visualization.Gantt(document.getElementById('chart_div'));
+            chart.draw(data, options);
+        }
+    </script>
+</body>
+</html>
