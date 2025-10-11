@@ -11,6 +11,7 @@ use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Jetstream\HasTeams;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use App\Models\DoctorProfile;
 
 class User extends Authenticatable
 {
@@ -67,5 +68,15 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function profile()
+    {
+        if($this->HasRoles('doctor')) {
+        return $this->hasOne(DoctorProfile::class);
+        }
+        else if($this->HasRoles('patient')) {
+        return $this->hasOne(PatientProfile::class);
+        }
     }
 }
