@@ -18,7 +18,11 @@ class RolesAndPermissionsSeeder extends Seeder
         // Create the 'admin' and 'user' roles
         $adminRole = Role::create(['name' => 'admin']);
         $doctorRole = Role::create(['name' => 'doctor']);
+<<<<<<< HEAD
         $patientRole =Role::create(['name' => 'patient']);
+=======
+        $patientRole = Role::create(['name' => 'patient']);
+>>>>>>> authentication
 
         // Assign permissions to roles if needed
         // $adminRole->givePermissionTo('edit articles');
@@ -27,6 +31,10 @@ class RolesAndPermissionsSeeder extends Seeder
         $adminUser = User::factory()->create([
             'name' => 'admin',
             'email' => 'admin@example.com',
+<<<<<<< HEAD
+=======
+            'password' => '12345678'
+>>>>>>> authentication
         ]);
         $adminUser->assignRole($adminRole);
     }
