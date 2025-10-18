@@ -1,47 +1,227 @@
-def call(Map config) {
-    def defaults = [
-        component: '',
-        dockerfile: 'Dockerfile',
-        registry: 'docker.io',
-        testCommand: 'echo "No tests"',
-        buildCommand: 'echo "No build command"'
-    ]
-    config = defaults + config
+pipeline {
+    agent any
     
-    pipeline {
-        stages {
-            stage("Build ${config.component}") {
-                steps {
-                    script {
-                        sh config.buildCommand
+    environment {
+        COMPONENT_NAME = 'fusionAuth'  // Update with your component name
+        DOCKER_REGISTRY = 'almahdimohemd627'  // Update with your registry
+        DOCKER_IMAGE = "${DOCKER_REGISTRY}/${COMPONENT_NAME}:${env.BUILD_TAG}"
+    }
+    
+    parameters {
+        choice(
+            name: 'DEPLOY_ENV',
+            choices: ['dev', 'staging', 'prod'],
+            description: 'Select deployment environment'
+        )
+        booleanParam(
+            name: 'RUN_TESTS',
+            defaultValue: true,
+            description: 'Run tests during build'
+        )
+    }
+    
+    stages {
+        stage('Checkout & Setup') {
+            steps {
+                checkout scm
+                script {
+                    // Load environment variables
+                    if (fileExists('.env')) {
+                        readFile('.env').split('\n').each { line ->
+                            if (line && !line.startsWith('#')) {
+                                def parts = line.split('=', 2)
+                                if (parts.size() == 2) {
+                                    env[parts[0].trim()] = parts[1].trim()
+                                }
+                            }
+                        }
                     }
                 }
             }
-            
-            stage("Test ${config.component}") {
-                steps {
-                    sh config.testCommand
+        }
+        
+        stage('Validate Docker Compose') {
+            steps {
+                sh 'docker-compose config'
+            }
+        }
+        
+        stage('Build Services') {
+            steps {
+                script {
+                    // Build all services defined in docker-compose
+                    sh 'docker-compose build --no-cache'
+                    
+                    // Or build specific service if needed
+                    // sh 'docker-compose build your-service-name'
                 }
             }
-            
-            stage("Dockerize ${config.component}") {
-                steps {
-                    dockerBuildAndPush(config)
+        }
+        
+        stage('Test') {
+            when {
+                expression { params.RUN_TESTS == true }
+            }
+            steps {
+                script {
+                    // Start services for testing
+                    sh 'docker-compose up -d'
+                    
+                    // Wait for services to be ready
+                    sh 'sleep 30'
+                    
+                    // Run tests - adjust based on your component
+                    try {
+                        // Example: Run integration tests
+                        sh '''
+                            docker-compose exec -T your-service npm test || \
+                            docker-compose exec -T your-service python -m pytest || \
+                            docker-compose exec -T your-service ./run-tests.sh
+                        '''
+                    } finally {
+                        // Capture logs even if tests fail
+                        sh 'docker-compose logs --tail=100 > test-logs.txt'
+                        archiveArtifacts artifacts: 'test-logs.txt', allowEmptyArchive: true
+                    }
                 }
+            }
+            post {
+                always {
+                    // Stop services after tests
+                    sh 'docker-compose down'
+                }
+            }
+        }
+        
+        stage('Security Scan') {
+            steps {
+                script {
+                    // Scan built images (requires trivy/clair installed)
+                    sh '''
+                        docker-compose images -q | xargs -I {} docker scan {} --file=Dockerfile
+                    '''
+                }
+            }
+        }
+        
+        stage('Build Docker Images') {
+            steps {
+                script {
+                    // Build and tag images for registry
+                    sh """
+                        docker-compose build
+                        docker tag ${COMPONENT_NAME} ${DOCKER_IMAGE}
+                    """
+                }
+            }
+        }
+        
+        stage('Push to Registry') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                }
+            }
+            steps {
+                script {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'docker-hub-cred',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )]) {
+                        sh """
+                            docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+                            docker push ${DOCKER_IMAGE}
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            when {
+                expression { params.DEPLOY_ENV != 'none' }
+            }
+            steps {
+                script {
+                    switch(params.DEPLOY_ENV) {
+                        case 'dev':
+                            deployToDev()
+                            break
+                        case 'staging':
+                            deployToStaging()
+                            break
+                        case 'prod':
+                            deployToProd()
+                            break
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            // Clean up
+            sh 'docker system prune -f || true'
+            cleanWs()
+        }
+        success {
+            script {
+                currentBuild.description = "✅ ${COMPONENT_NAME} - ${params.DEPLOY_ENV}"
+                slackSend(
+                    color: 'good',
+                    message: "✅ ${COMPONENT_NAME} build #${env.BUILD_NUMBER} succeeded"
+                )
+            }
+        }
+        failure {
+            script {
+                currentBuild.description = "❌ ${COMPONENT_NAME} - Failed"
+                slackSend(
+                    color: 'danger',
+                    message: "❌ ${COMPONENT_NAME} build #${env.BUILD_NUMBER} failed"
+                )
+            }
+        }
+        unstable {
+            script {
+                currentBuild.description = "⚠️ ${COMPONENT_NAME} - Unstable"
             }
         }
     }
 }
 
-def dockerBuildAndPush(config) {
-    def imageName = "${config.registry}/my-project/${config.component}:${env.BUILD_TAG}"
-    
-    docker.build(imageName, "-f ${config.dockerfile} .")
-    
-    if (env.BRANCH_NAME == 'main') {
-        docker.withRegistry("https://${config.registry}", 'docker-credentials') {
-            docker.image(imageName).push()
-            docker.image(imageName).push('latest')
-        }
+// Deployment functions
+def deployToDev() {
+    sh '''
+        docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+    '''
+}
+
+def deployToStaging() {
+    withCredentials([sshUserPrivateKey(
+        credentialsId: 'staging-server',
+        keyFileVariable: 'SSH_KEY',
+        usernameVariable: 'SSH_USER'
+    )]) {
+        sh """
+            scp -i $SSH_KEY docker-compose.yml $SSH_USER@staging-server:/app/
+            ssh -i $SSH_KEY $SSH_USER@staging-server 'cd /app && docker-compose pull && docker-compose up -d'
+        """
+    }
+}
+
+def deployToProd() {
+    withCredentials([sshUserPrivateKey(
+        credentialsId: 'prod-server',
+        keyFileVariable: 'SSH_KEY',
+        usernameVariable: 'SSH_USER'
+    )]) {
+        sh """
+            scp -i $SSH_KEY docker-compose.yml $SSH_USER@prod-server:/app/
+            ssh -i $SSH_KEY $SSH_USER@prod-server 'cd /app && docker-compose pull && docker-compose up -d'
+        """
     }
 }
