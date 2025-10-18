@@ -1,0 +1,47 @@
+def call(Map config) {
+    def defaults = [
+        component: '',
+        dockerfile: 'Dockerfile',
+        registry: 'docker.io',
+        testCommand: 'echo "No tests"',
+        buildCommand: 'echo "No build command"'
+    ]
+    config = defaults + config
+    
+    pipeline {
+        stages {
+            stage("Build ${config.component}") {
+                steps {
+                    script {
+                        sh config.buildCommand
+                    }
+                }
+            }
+            
+            stage("Test ${config.component}") {
+                steps {
+                    sh config.testCommand
+                }
+            }
+            
+            stage("Dockerize ${config.component}") {
+                steps {
+                    dockerBuildAndPush(config)
+                }
+            }
+        }
+    }
+}
+
+def dockerBuildAndPush(config) {
+    def imageName = "${config.registry}/my-project/${config.component}:${env.BUILD_TAG}"
+    
+    docker.build(imageName, "-f ${config.dockerfile} .")
+    
+    if (env.BRANCH_NAME == 'main') {
+        docker.withRegistry("https://${config.registry}", 'docker-credentials') {
+            docker.image(imageName).push()
+            docker.image(imageName).push('latest')
+        }
+    }
+}
