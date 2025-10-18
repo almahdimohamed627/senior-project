@@ -3,7 +3,7 @@ pipeline {
     parameters {
         choice(
             name: 'COMPONENT',
-            choices: ['all', 'backend', 'frontend', 'database'],
+            choices: ['all', 'backend', 'frontend', 'database', 'fusionAuth'],
             description: 'Select component to build'
         )
         booleanParam(
