@@ -298,9 +298,57 @@ def deployComponent(componentName) {
     }
     
     dir("components/${componentName}") {
-        sh """
-            echo "Deploying ${componentName}"
-            # Add your deployment commands here
-        """
+        script {
+            try {
+                // Check if docker-compose.yml exists
+                if (fileExists('docker-compose.yml')) {
+                    echo "🚀 Deploying ${componentName} with Docker Compose"
+                    
+                    sh """
+                        echo "Current directory: \$(pwd)"
+                        echo "Docker Compose file contents:"
+                        ls -la
+                        echo "=== Starting Docker Compose ==="
+                        # Stop existing containers first
+                        docker-compose down || true
+                        # Pull latest images if any
+                        docker-compose pull --ignore-pull-failures || true
+                        # Start the services
+                        docker-compose up -d
+                        # Wait and check status
+                        sleep 15
+                        echo "=== Service Status ==="
+                        docker-compose ps
+                        echo "=== Docker Containers ==="
+                        docker ps --filter "name=${componentName}" || true
+                    """
+                    
+                    // Verify deployment was successful
+                    sh """
+                        # Check if any services are running
+                        if docker-compose ps | grep -q "Up"; then
+                            echo "✅ ${componentName} deployed successfully"
+                        else
+                            echo "❌ ${componentName} deployment failed - no services running"
+                            exit 1
+                        fi
+                    """
+                } else {
+                    echo "⚠️ No docker-compose.yml found for ${componentName}"
+                    sh """
+                        echo "Alternative deployment for ${componentName}"
+                        # Add alternative deployment methods here
+                        if [ -f "deploy.sh" ]; then
+                            chmod +x deploy.sh && ./deploy.sh
+                        elif [ -f "Dockerfile" ]; then
+                            docker run -d --name ${componentName}-${BUILD_NUMBER} ${componentName}:${BUILD_TAG} || true
+                        fi
+                    """
+                }
+            } catch (Exception e) {
+                echo "❌ Deployment failed for ${componentName}: ${e.message}"
+                // Don't fail the entire pipeline if one component deployment fails
+            }
+        }
     }
 }
