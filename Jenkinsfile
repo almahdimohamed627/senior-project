@@ -20,34 +20,39 @@ pipeline {
                     // Dynamically discover components
                     def components = findComponents()
                     env.COMPONENTS = components.join(',')
+                    env.COMPONENTS_LIST = components // Store as list for later use
                 }
             }
         }
         
         stage('Build Components') {
-            parallel {
-                stage('Build Backend') {
-                    when { 
-                        anyOf { 
-                            expression { params.COMPONENT == 'all' || params.COMPONENT == 'backend' }
-                            changeset 'components/backend/**'
+            steps {
+                script {
+                    // Create parallel stages dynamically
+                    def parallelStages = [:]
+                    
+                    env.COMPONENTS_LIST.each { component ->
+                        parallelStages["Build ${component}"] = {
+                            stage("Build ${component}") {
+                                when { 
+                                    anyOf { 
+                                        expression { 
+                                            params.COMPONENT == 'all' || params.COMPONENT == component 
+                                        }
+                                        changeset "components/${component}/**"
+                                    }
+                                }
+                                steps {
+                                    script {
+                                        buildComponent(component)
+                                    }
+                                }
+                            }
                         }
                     }
-                    steps {
-                        buildComponent('backend')
-                    }
-                }
-                
-                stage('Build Frontend') {
-                    when { 
-                        anyOf { 
-                            expression { params.COMPONENT == 'all' || params.COMPONENT == 'frontend' }
-                            changeset 'components/frontend/**'
-                        }
-                    }
-                    steps {
-                        buildComponent('frontend')
-                    }
+                    
+                    // Execute all parallel stages
+                    parallel parallelStages
                 }
             }
         }
@@ -87,17 +92,80 @@ pipeline {
 // Helper functions
 def findComponents() {
     def components = []
-    dir('components') {
-        components = findFiles(glob: '*/Jenkinsfile').collect { 
-            it.path.split('/')[0] 
+    if (fileExists('components')) {
+        dir('components') {
+            def jenkinsfiles = findFiles(glob: '*/Jenkinsfile')
+            components = jenkinsfiles.collect { 
+                it.path.split('/')[0] 
+            }
         }
+    } else {
+        echo "No components directory found"
     }
-    return components
+    return components ?: ['backend', 'frontend'] // fallback to default components
 }
 
 def buildComponent(componentName) {
+    echo "Building component: ${componentName}"
     dir("components/${componentName}") {
         // Load component-specific Jenkinsfile
-        loadJenkinsfile("components/${componentName}/Jenkinsfile")
+        if (fileExists('Jenkinsfile')) {
+            load 'Jenkinsfile'
+        } else {
+            echo "No Jenkinsfile found for component ${componentName}, using default build"
+            // Add default build steps for components without Jenkinsfile
+            sh '''
+                echo "Building ${componentName} with default steps"
+                # Add your default build commands here
+                if [ -f "package.json" ]; then
+                    npm install
+                    npm run build
+                elif [ -f "pom.xml" ]; then
+                    mvn clean compile
+                elif [ -f "docker-compose.yml" ]; then
+                    docker-compose build
+                fi
+            '''
+        }
+    }
+}
+
+def runIntegrationTests() {
+    echo "Running integration tests"
+    // Add your integration test logic here
+    sh '''
+        echo "Running integration tests between components"
+        # docker-compose -f docker-compose.test.yml up -d
+        # ./run-integration-tests.sh
+        # docker-compose -f docker-compose.test.yml down
+    '''
+}
+
+def deployComponents() {
+    echo "Deploying components"
+    script {
+        if (params.COMPONENT == 'all') {
+            // Deploy all components
+            env.COMPONENTS_LIST.each { component ->
+                deployComponent(component)
+            }
+        } else {
+            // Deploy specific component
+            deployComponent(params.COMPONENT)
+        }
+    }
+}
+
+def deployComponent(componentName) {
+    echo "Deploying component: ${componentName}"
+    dir("components/${componentName}") {
+        // Add component-specific deployment logic
+        sh """
+            echo "Deploying ${componentName}"
+            # Add your deployment commands here
+            # kubectl apply -f k8s/
+            # docker-compose up -d
+            # ./deploy.sh
+        """
     }
 }
