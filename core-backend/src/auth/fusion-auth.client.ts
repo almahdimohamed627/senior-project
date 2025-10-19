@@ -19,6 +19,24 @@ export class FusionAuthClientWrapper {
     const resp = await this.client.retrieveUser(userId);
     return resp.response?.user;
   }
+  async deleteUser(userId:string){
+    return await this.client.deleteUser(userId)
+  }
+  async exchangePassword(username: string, password: string, clientId: string, clientSecret?: string) {
+  const tokenUrl = `${this.baseUrl.replace(/\/$/, '')}/oauth2/token`;
+  const params = new URLSearchParams();
+  params.append('grant_type', 'password');
+  params.append('username', username);
+  params.append('password', password);
+  params.append('scope', 'openid offline_access');
+  params.append('client_id', clientId);
+  if (clientSecret) params.append('client_secret', clientSecret);
+
+  const { data } = await axios.post(tokenUrl, params.toString(), {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+  return data; // access_token, id_token, refresh_token, expires_in, ...
+}
 
   // Token exchange (authorization code -> tokens)
   async exchangeCodeForToken(code: string, redirectUri: string, clientId: string, clientSecret: string) {
@@ -51,5 +69,33 @@ export class FusionAuthClientWrapper {
   // Retrieve JWKS for local JWT verification
   jwksUrl() {
     return `${this.baseUrl}/.well-known/jwks.json`;
+  }
+   // 1) exchange refresh token -> new tokens
+  async exchangeRefreshToken(refreshToken: string, clientId: string, clientSecret: string) {
+    const tokenUrl = `${this.baseUrl}/oauth2/token`;
+    const params = new URLSearchParams();
+    params.append('grant_type', 'refresh_token');
+    params.append('refresh_token', refreshToken);
+    params.append('client_id', clientId);
+    params.append('client_secret', clientSecret);
+
+    const { data } = await axios.post(tokenUrl, params.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    return data; // access_token, id_token, refresh_token (maybe rotated)
+  }
+
+  // 2) revoke token (access or refresh)
+  async revokeToken(token: string, clientId?: string, clientSecret?: string) {
+    const revokeUrl = `${this.baseUrl}/oauth2/revoke`;
+    const params = new URLSearchParams();
+    params.append('token', token);
+    if (clientId) params.append('client_id', clientId);
+    if (clientSecret) params.append('client_secret', clientSecret);
+
+    const { data } = await axios.post(revokeUrl, params.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    return data;
   }
 }

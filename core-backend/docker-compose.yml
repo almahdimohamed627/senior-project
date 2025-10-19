@@ -1,0 +1,31 @@
+version: '3'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: fusionauth
+      POSTGRES_PASSWORD: fusionauth
+      POSTGRES_DB: fusionauth
+    volumes:
+      - fusionauth_db:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  fusionauth:
+    image: fusionauth/fusionauth-app:latest
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/fusionauth
+      DATABASE_USERNAME: fusionauth
+      DATABASE_PASSWORD: fusionauth
+      FUSIONAUTH_MEMORY: 512M
+      FUSIONAUTH_SEARCH_ENGINE_TYPE: database
+    ports:
+      - "9011:9011"
+    volumes:
+      - fusionauth_config:/usr/local/fusionauth/config
+
+volumes:
+  fusionauth_db:
+  fusionauth_config:
