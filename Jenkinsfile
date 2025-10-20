@@ -106,10 +106,17 @@ pipeline {
                 sendTelegramNotification("failure")
             }
         }
+        unstable {
+        script {
+            echo "⚠️ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+            sendTelegramNotification("unstable")
+        }
+    }
     }
 }
 
 // Telegram notification function
+// Advanced Telegram notification with component details
 def sendTelegramNotification(String status) {
     try {
         withCredentials([
@@ -118,24 +125,57 @@ def sendTelegramNotification(String status) {
         ]) {
             def message = ""
             def emoji = ""
+            def branch = env.BRANCH_NAME ?: "main"
+            def duration = currentBuild.durationString ?: "Unknown"
+            
+            // Get component details
+            def componentDetails = getComponentDetails()
             
             if (status == "success") {
                 emoji = "✅"
                 message = """
-${emoji} *Build Success*
-*Job:* ${env.JOB_NAME}
-*Build:* #${env.BUILD_NUMBER}
-*Components:* ${env.COMPONENTS}
-*URL:* ${env.BUILD_URL}
+${emoji} *🚀 Build Success*
+
+*📋 Job:* ${env.JOB_NAME}
+*🔢 Build:* #${env.BUILD_NUMBER}
+*🌿 Branch:* ${branch}
+*⏱️ Duration:* ${duration}
+
+*🏗️ Component Details:*
+${componentDetails}
+
+*📊 Build Stages:*
+• 🔍 Discover Components - ✅ Completed
+• 🏗️ Build Components - ✅ Built ${getBuiltComponentsCount()} components
+• 🧪 Integration Test - ✅ Passed
+• 🚀 Deployment - ${params.DEPLOY ? '✅ Deployed' : '⏸️ Not Deployed'}
+
+*🔗 Build URL:* [View Build](${env.BUILD_URL})
 """
             } else {
                 emoji = "❌"
                 message = """
-${emoji} *Build Failed*
-*Job:* ${env.JOB_NAME}
-*Build:* #${env.BUILD_NUMBER}
-*Components:* ${env.COMPONENTS}
-*URL:* ${env.BUILD_URL}
+${emoji} *💥 Build Failed*
+
+*📋 Job:* ${env.JOB_NAME}
+*🔢 Build:* #${env.BUILD_NUMBER}
+*🌿 Branch:* ${branch}
+*⏱️ Duration:* ${duration}
+
+*🏗️ Component Details:*
+${componentDetails}
+
+*📊 Build Stages:*
+• 🔍 Discover Components - ✅ Completed
+• 🏗️ Build Components - ❌ Failed building components
+• 🧪 Integration Test - ⏸️ Skipped
+• 🚀 Deployment - ⏸️ Skipped
+
+*🔍 Recent Changes:*
+${getRecentChanges()}
+
+*🔗 Build URL:* [View Build](${env.BUILD_URL})
+*📝 Console Log:* [View Log](${env.BUILD_URL}console)
 """
             }
             
@@ -155,6 +195,66 @@ ${emoji} *Build Failed*
         }
     } catch (Exception e) {
         echo "⚠️ Failed to send Telegram notification: ${e.message}"
+    }
+}
+
+// Helper function to get component details
+def getComponentDetails() {
+    def details = ""
+    try {
+        def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').toList() : []
+        components.each { component ->
+            def componentDir = "components/${component}"
+            if (fileExists(componentDir)) {
+                def type = getComponentType(component)
+                details += "• ${component} - ${type}\\n"
+            }
+        }
+    } catch (Exception e) {
+        details = "• ${env.COMPONENTS ?: 'No components discovered'}\\n"
+    }
+    return details
+}
+
+// Helper function to detect component type
+def getComponentType(componentName) {
+    def type = "Generic"
+    try {
+        dir("components/${componentName}") {
+            if (fileExists('docker-compose.yml')) {
+                type = "Docker Compose"
+            } else if (fileExists('package.json')) {
+                type = "Node.js"
+            } else if (fileExists('pom.xml')) {
+                type = "Java"
+            } else if (fileExists('Dockerfile')) {
+                type = "Docker"
+            }
+        }
+    } catch (Exception e) {
+        // Ignore errors
+    }
+    return type
+}
+
+// Helper function to get built components count
+def getBuiltComponentsCount() {
+    try {
+        def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').toList() : []
+        return components.size()
+    } catch (Exception e) {
+        return "unknown"
+    }
+}
+
+// Helper function to get recent changes
+def getRecentChanges() {
+    try {
+        def changes = sh(script: 'git log --oneline -5', returnStdout: true).trim()
+        def changeList = changes.split('\n').collect { "• ${it}" }.join('\\n')
+        return changeList ?: "No recent changes detected"
+    } catch (Exception e) {
+        return "Unable to fetch recent changes"
     }
 }
 
@@ -361,7 +461,7 @@ def deployComponent(componentName) {
                     echo "🚀 Deploying ${componentName} with Docker Compose using Jenkins credentials"
                     
                     // Use the Jenkins credentials for .env file
-                    withCredentials([file(credentialsId: "${componentName}-env", variable: 'ENV_FILE')]) {
+                    withCredentials([file(credentialsId: "${componentName}.env", variable: 'ENV_FILE')]) {
                         sh """
                             echo "=== Using Jenkins credentials for environment variables ==="
                             
