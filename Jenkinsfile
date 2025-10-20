@@ -1,5 +1,6 @@
 pipeline {
     agent any
+    
     parameters {
         choice(
             name: 'COMPONENT',
@@ -12,12 +13,14 @@ pipeline {
             description: 'Deploy after successful build'
         )
     }
-
-    environment {
-        TELEGRAM_CHAT_ID = credentials('887568307') // Your Chat ID credential ID
-    }
     
     stages {
+        stage('Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
+        
         stage('Discover Components') {
             steps {
                 script {
@@ -90,21 +93,68 @@ pipeline {
             script {
                 currentBuild.description = "Components: ${env.COMPONENTS}"
             }
-            telegramSend (
-                message: "Build ${currentBuild.result}: Job '${env.JOB_NAME}' (${env.BUILD_NUMBER})\\nCheck URL: ${env.BUILD_URL}",
-                chatId: "${TELEGRAM_CHAT_ID}" // Use the environment variable for the secret
-            )
         }
         success {
-            echo "✅ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
-            // Comment out slackSend until credentials are configured
-            // slackSend(color: 'good', message: "Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}")
+            script {
+                echo "✅ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+                sendTelegramNotification("success")
+            }
         }
         failure {
-            echo "❌ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
-            // Comment out slackSend until credentials are configured  
-            // slackSend(color: 'danger', message: "Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}")
+            script {
+                echo "❌ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+                sendTelegramNotification("failure")
+            }
         }
+    }
+}
+
+// Telegram notification function
+def sendTelegramNotification(String status) {
+    try {
+        withCredentials([
+            string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN'),
+            string(credentialsId: 'telegram-chat-id', variable: 'CHAT_ID')
+        ]) {
+            def message = ""
+            def emoji = ""
+            
+            if (status == "success") {
+                emoji = "✅"
+                message = """
+${emoji} *Build Success*
+*Job:* ${env.JOB_NAME}
+*Build:* #${env.BUILD_NUMBER}
+*Components:* ${env.COMPONENTS}
+*URL:* ${env.BUILD_URL}
+"""
+            } else {
+                emoji = "❌"
+                message = """
+${emoji} *Build Failed*
+*Job:* ${env.JOB_NAME}
+*Build:* #${env.BUILD_NUMBER}
+*Components:* ${env.COMPONENTS}
+*URL:* ${env.BUILD_URL}
+"""
+            }
+            
+            sh """
+                curl -s -X POST \
+                -H 'Content-Type: application/json' \
+                -d '{
+                    "chat_id": "${CHAT_ID}",
+                    "text": "${message}",
+                    "parse_mode": "Markdown",
+                    "disable_web_page_preview": true
+                }' \
+                "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" > /dev/null
+            """
+            
+            echo "Telegram notification sent for ${status}"
+        }
+    } catch (Exception e) {
+        echo "⚠️ Failed to send Telegram notification: ${e.message}"
     }
 }
 
@@ -227,7 +277,6 @@ def buildComponent(componentName) {
         } catch (Exception e) {
             echo "❌ Failed to build component ${componentName}: ${e.message}"
             // Don't fail the entire build if one component fails
-            // error "Failed to build component ${componentName}"
         }
     }
 }
@@ -312,7 +361,7 @@ def deployComponent(componentName) {
                     echo "🚀 Deploying ${componentName} with Docker Compose using Jenkins credentials"
                     
                     // Use the Jenkins credentials for .env file
-                    withCredentials([file(credentialsId: "${componentName}.env", variable: 'ENV_FILE')]) {
+                    withCredentials([file(credentialsId: "${componentName}-env", variable: 'ENV_FILE')]) {
                         sh """
                             echo "=== Using Jenkins credentials for environment variables ==="
                             
@@ -332,7 +381,7 @@ def deployComponent(componentName) {
                             # Pull latest images
                             docker compose pull --ignore-pull-failures 2>/dev/null || true
                             
-                            # Start services with the .env file
+                            # FIXED: Use double dash --env-file not single dash
                             docker compose --env-file .env up -d
                             
                             echo "=== Waiting for services to initialize ==="
