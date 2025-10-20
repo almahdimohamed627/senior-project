@@ -314,18 +314,18 @@ def deployComponent(componentName) {
                             
                             # Use the host's Docker Compose directly (not in container)
                             echo "Using Docker Compose from host system"
-                            docker-compose --env-file .env down || true
-                            docker-compose --env-file .env pull --ignore-pull-failures || true
-                            docker-compose --env-file .env up -d
+                            docker compose --env-file .env down || true
+                            docker compose --env-file .env pull --ignore-pull-failures || true
+                            docker compose --env-file .env up -d
                             
                             # Wait for services to start
                             sleep 30
                             
                             echo "=== Service Status ==="
-                            docker-compose --env-file .env ps
+                            docker compose --env-file .env ps
                             
                             echo "=== Recent Logs ==="
-                            docker-compose --env-file .env logs --tail=20 || true
+                            docker compose --env-file .env logs --tail=20 || true
                             
                             # Remove the .env file after deployment for security
                             rm -f .env
@@ -335,11 +335,11 @@ def deployComponent(componentName) {
                     // Additional verification
                     sh """
                         echo "=== Final Service Check ==="
-                        if docker-compose ps | grep -q "Up"; then
+                        if docker compose ps | grep -q "Up"; then
                             echo "✅ ${componentName} deployed successfully"
                         else
                             echo "⚠️ Some services may not be running properly"
-                            docker-compose ps
+                            docker compose ps
                         fi
                     """
                 } else {
