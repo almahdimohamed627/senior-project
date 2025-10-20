@@ -12,6 +12,10 @@ pipeline {
             description: 'Deploy after successful build'
         )
     }
+
+    environment {
+        TELEGRAM_CHAT_ID = credentials('887568307') // Your Chat ID credential ID
+    }
     
     stages {
         stage('Discover Components') {
@@ -86,6 +90,10 @@ pipeline {
             script {
                 currentBuild.description = "Components: ${env.COMPONENTS}"
             }
+            telegramSend (
+                message: "Build ${currentBuild.result}: Job '${env.JOB_NAME}' (${env.BUILD_NUMBER})\\nCheck URL: ${env.BUILD_URL}",
+                chatId: "${TELEGRAM_CHAT_ID}" // Use the environment variable for the secret
+            )
         }
         success {
             echo "✅ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
