@@ -325,7 +325,7 @@ def deployComponent(componentName) {
                             docker compose pull --ignore-pull-failures 2>/dev/null || true
                             
                             # Start services with the .env file
-                            docker compose -.env-file .env up -d
+                            docker compose --env-file .env up -d
                             
                             echo "=== Waiting for services to initialize ==="
                             sleep 60
