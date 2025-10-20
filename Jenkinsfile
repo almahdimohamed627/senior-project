@@ -115,69 +115,41 @@ pipeline {
     }
 }
 
+// Fixed URL builder functions
+def getCustomBuildUrl() {
+    def baseUrl = "https://almahdi.cloud:8443"
+    // For multibranch pipelines, the structure is different
+    def jobPath = "senior-project/job/pipeline"
+    return "${baseUrl}/job/${jobPath}/${env.BUILD_NUMBER}/"
+}
+
+def getCustomJobUrl() {
+    def baseUrl = "https://almahdi.cloud:8443"
+    def jobPath = "senior-project/job/pipeline"
+    return "${baseUrl}/job/${jobPath}/"
+}
+
+def getCustomConsoleUrl() {
+    return "${getCustomBuildUrl()}console"
+}
+
 // Telegram notification function
-// Advanced Telegram notification with component details
 def sendTelegramNotification(String status) {
     try {
         withCredentials([
             string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN'),
             string(credentialsId: 'telegram-chat-id', variable: 'CHAT_ID')
         ]) {
-            def message = ""
-            def emoji = ""
-            def branch = env.BRANCH_NAME ?: "main"
-            def duration = currentBuild.durationString ?: "Unknown"
+            def buildUrl = getCustomBuildUrl()
+            def consoleUrl = getCustomConsoleUrl()
+            def jobUrl = getCustomJobUrl()
             
-            // Get component details
-            def componentDetails = getComponentDetails()
+            // Test if URLs are accessible
+            echo "Testing build URL: ${buildUrl}"
+            def urlTest = sh(script: "curl -s -o /dev/null -w '%{http_code}' '${buildUrl}' || echo '000'", returnStdout: true).trim()
+            echo "URL test returned: ${urlTest}"
             
-            if (status == "success") {
-                emoji = "✅"
-                message = """
-${emoji} *🚀 Build Success*
-
-*📋 Job:* ${env.JOB_NAME}
-*🔢 Build:* #${env.BUILD_NUMBER}
-*🌿 Branch:* ${branch}
-*⏱️ Duration:* ${duration}
-
-*🏗️ Component Details:*
-${componentDetails}
-
-*📊 Build Stages:*
-• 🔍 Discover Components - ✅ Completed
-• 🏗️ Build Components - ✅ Built ${getBuiltComponentsCount()} components
-• 🧪 Integration Test - ✅ Passed
-• 🚀 Deployment - ${params.DEPLOY ? '✅ Deployed' : '⏸️ Not Deployed'}
-
-*🔗 Build URL:* [View Build](${env.BUILD_URL})
-"""
-            } else {
-                emoji = "❌"
-                message = """
-${emoji} *💥 Build Failed*
-
-*📋 Job:* ${env.JOB_NAME}
-*🔢 Build:* #${env.BUILD_NUMBER}
-*🌿 Branch:* ${branch}
-*⏱️ Duration:* ${duration}
-
-*🏗️ Component Details:*
-${componentDetails}
-
-*📊 Build Stages:*
-• 🔍 Discover Components - ✅ Completed
-• 🏗️ Build Components - ❌ Failed building components
-• 🧪 Integration Test - ⏸️ Skipped
-• 🚀 Deployment - ⏸️ Skipped
-
-*🔍 Recent Changes:*
-${getRecentChanges()}
-
-*🔗 Build URL:* [View Build](${env.BUILD_URL})
-*📝 Console Log:* [View Log](${env.BUILD_URL}console)
-"""
-            }
+            def message = buildTelegramMessage(status, buildUrl, consoleUrl, jobUrl, urlTest)
             
             sh """
                 curl -s -X POST \
@@ -186,7 +158,7 @@ ${getRecentChanges()}
                     "chat_id": "${CHAT_ID}",
                     "text": "${message}",
                     "parse_mode": "Markdown",
-                    "disable_web_page_preview": true
+                    "disable_web_page_preview": false
                 }' \
                 "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" > /dev/null
             """
@@ -196,6 +168,63 @@ ${getRecentChanges()}
     } catch (Exception e) {
         echo "⚠️ Failed to send Telegram notification: ${e.message}"
     }
+}
+
+def buildTelegramMessage(String status, String buildUrl, String consoleUrl, String jobUrl, String urlTest) {
+    def emoji = status == "success" ? "✅" : "❌"
+    def branch = env.BRANCH_NAME ?: "main"
+    def duration = currentBuild.durationString ?: "Unknown"
+    
+    // Add URL status indicator
+    def urlStatus = (urlTest == "200" || urlTest == "302") ? "🟢" : "🔴"
+    
+    def message = ""
+    if (status == "success") {
+        message = """
+${emoji} *🚀 Build Success*
+
+*📋 Job:* ${env.JOB_NAME}
+*🔢 Build:* #${env.BUILD_NUMBER}
+*🌿 Branch:* ${branch}
+*⏱️ Duration:* ${duration}
+
+*🏗️ Components Built:* ${env.COMPONENTS}
+
+*🔗 Build URL:* ${urlStatus} [Click Here](${buildUrl})
+*📝 Console Log:* [Click Here](${consoleUrl})
+
+*📊 Stage Summary:*
+• 🔍 Discover Components - ✅ Completed
+• 🏗️ Build Components - ✅ Completed  
+• 🧪 Integration Test - ✅ Completed
+• 🚀 Deployment - ${params.DEPLOY ? '✅ Deployed' : '⏸️ Not Deployed'}
+"""
+    } else {
+        message = """
+${emoji} *💥 Build Failed*
+
+*📋 Job:* ${env.JOB_NAME}
+*🔢 Build:* #${env.BUILD_NUMBER}
+*🌿 Branch:* ${branch}
+*⏱️ Duration:* ${duration}
+
+*🏗️ Components:* ${env.COMPONENTS}
+
+*🔗 Build URL:* ${urlStatus} [Click Here](${buildUrl})
+*📝 Console Log:* [Click Here](${consoleUrl})
+
+*📊 Stage Summary:*
+• 🔍 Discover Components - ✅ Completed
+• 🏗️ Build Components - ❌ Failed
+• 🧪 Integration Test - ⏸️ Skipped
+• 🚀 Deployment - ⏸️ Skipped
+
+*🔍 Error Details:*
+Check the console logs for detailed error information
+"""
+    }
+    
+    return message.replace('"', '\\"').replace('\n', '\\n')
 }
 
 // Helper function to get component details
