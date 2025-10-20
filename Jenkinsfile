@@ -297,42 +297,58 @@ def deployComponent(componentName) {
         return
     }
     
-    // Use a Docker container with Docker Compose for deployment
-    docker.image('docker/compose:1.29.2').inside('-v /var/run/docker.sock:/var/run/docker.sock') {
-        dir("components/${componentName}") {
-            script {
-                try {
-                    if (fileExists('docker-compose.yml')) {
-                        echo "🚀 Deploying ${componentName} with Docker Compose"
-                        
-                        // Use Jenkins credentials for environment variables
-                        withCredentials([file(credentialsId: "${componentName}.env", variable: 'ENV_FILE')]) {
-                            sh """
-                                echo "=== Starting Docker Compose with secure environment variables ==="
-                                # Copy the credential file to .env in the workspace
-                                cp \$ENV_FILE .env
-                                # Set secure permissions on the .env file
-                                chmod 600 .env
-                                
-                                docker-compose down || true
-                                docker-compose pull --ignore-pull-failures || true
-                                docker-compose up -d
-                                sleep 15
-                                echo "=== Service Status ==="
-                                docker-compose ps
-                                
-                                # Remove the .env file after deployment for security
-                                rm -f .env
-                            """
-                        }
-                    } else {
-                        echo "⚠️ No docker-compose.yml found for ${componentName}"
+    dir("components/${componentName}") {
+        script {
+            try {
+                if (fileExists('docker-compose.yml')) {
+                    echo "🚀 Deploying ${componentName} with Docker Compose"
+                    
+                    // Use Jenkins credentials for environment variables
+                    withCredentials([file(credentialsId: "${componentName}.env", variable: 'ENV_FILE')]) {
+                        sh """
+                            echo "=== Starting Docker Compose with secure environment variables ==="
+                            # Copy the credential file to .env in the workspace
+                            cp \$ENV_FILE .env
+                            # Set secure permissions on the .env file
+                            chmod 600 .env
+                            
+                            # Use the host's Docker Compose directly (not in container)
+                            echo "Using Docker Compose from host system"
+                            docker-compose --env-file .env down || true
+                            docker-compose --env-file .env pull --ignore-pull-failures || true
+                            docker-compose --env-file .env up -d
+                            
+                            # Wait for services to start
+                            sleep 30
+                            
+                            echo "=== Service Status ==="
+                            docker-compose --env-file .env ps
+                            
+                            echo "=== Recent Logs ==="
+                            docker-compose --env-file .env logs --tail=20 || true
+                            
+                            # Remove the .env file after deployment for security
+                            rm -f .env
+                        """
                     }
-                } catch (Exception e) {
-                    echo "❌ Deployment failed for ${componentName}: ${e.message}"
-                    // Clean up .env file if deployment fails
-                    sh "rm -f .env || true"
+                    
+                    // Additional verification
+                    sh """
+                        echo "=== Final Service Check ==="
+                        if docker-compose ps | grep -q "Up"; then
+                            echo "✅ ${componentName} deployed successfully"
+                        else
+                            echo "⚠️ Some services may not be running properly"
+                            docker-compose ps
+                        fi
+                    """
+                } else {
+                    echo "⚠️ No docker-compose.yml found for ${componentName}"
                 }
+            } catch (Exception e) {
+                echo "❌ Deployment failed for ${componentName}: ${e.message}"
+                // Clean up .env file if deployment fails
+                sh "rm -f .env || true"
             }
         }
     }
