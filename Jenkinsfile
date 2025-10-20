@@ -301,34 +301,80 @@ def deployComponent(componentName) {
         script {
             try {
                 if (fileExists('docker-compose.yml')) {
-                    echo "🚀 Deploying ${componentName} with Docker Compose"
+                    echo "🚀 Deploying ${componentName} with Docker Compose using Jenkins credentials"
                     
+                    // Use the Jenkins credentials for .env file
+                    withCredentials([file(credentialsId: "${componentName}.env", variable: 'ENV_FILE')]) {
+                        sh """
+                            echo "=== Using Jenkins credentials for environment variables ==="
+                            
+                            # Copy the credential file to .env in the workspace
+                            cp \$ENV_FILE .env
+                            
+                            # Set secure permissions on the .env file
+                            chmod 600 .env
+                            
+                            echo "=== Validating Docker Compose configuration ==="
+                            docker compose config
+                            
+                            echo "=== Starting deployment ==="
+                            # Stop any existing services
+                            docker compose down --remove-orphans 2>/dev/null || true
+                            
+                            # Pull latest images
+                            docker compose pull --ignore-pull-failures 2>/dev/null || true
+                            
+                            # Start services with the .env file
+                            docker compose -.env-file .env up -d
+                            
+                            echo "=== Waiting for services to initialize ==="
+                            sleep 60
+                        """
+                    }
+                    
+                    // Health checks (outside credentials block for security)
                     sh """
-                        echo "=== Setting up file permissions (without sudo) ==="
-                        # Use regular chown/chmod without sudo
-                        chown -R jenkins:jenkins . 2>/dev/null || true
-                        chmod -R 755 . 2>/dev/null || true
-                        
-                        echo "=== Starting Docker Compose ==="
-                        # Use docker compose (not docker-compose)
-                        docker compose down || true
-                        docker compose pull --ignore-pull-failures || true
-                        docker compose up -d
-                        
-                        sleep 30
-                        
-                        echo "=== Service Status ==="
+                        echo "=== Checking service status ==="
                         docker compose ps
                         
-                        echo "=== Recent Logs ==="
-                        docker compose logs --tail=20 || true
+                        echo "=== Container overview ==="
+                        docker ps --filter "name=${componentName}" --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" || true
+                        
+                        echo "=== Testing FusionAuth accessibility ==="
+                        # Try multiple times to access FusionAuth
+                        for i in {1..5}; do
+                            if curl -s -f http://localhost:9011/ > /dev/null; then
+                                echo "✅ FusionAuth is accessible at http://localhost:9011"
+                                break
+                            else
+                                echo "⏳ Attempt \$i: FusionAuth not yet accessible, waiting..."
+                                sleep 30
+                            fi
+                        done
+                        
+                        # Final check
+                        if ! curl -s -f http://localhost:9011/ > /dev/null; then
+                            echo "⚠️ FusionAuth not accessible after multiple attempts, checking logs..."
+                            docker compose logs --tail=50 fusionauth 2>/dev/null || true
+                        fi
                     """
+                    
+                    echo "✅ ${componentName} deployment completed successfully"
                     
                 } else {
                     echo "⚠️ No docker-compose.yml found for ${componentName}"
                 }
             } catch (Exception e) {
                 echo "❌ Deployment failed for ${componentName}: ${e.message}"
+                // Provide detailed error information
+                sh """
+                    echo "=== Debug Information ==="
+                    docker compose ps 2>/dev/null || true
+                    echo "=== Recent Logs ==="
+                    docker compose logs --tail=100 2>/dev/null || true
+                """
+                // Clean up .env file on failure
+                sh "rm -f .env 2>/dev/null || true"
             }
         }
     }
