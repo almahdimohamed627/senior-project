@@ -305,20 +305,33 @@ def deployComponent(componentName) {
                     if (fileExists('docker-compose.yml')) {
                         echo "🚀 Deploying ${componentName} with Docker Compose"
                         
-                        sh """
-                            echo "=== Starting Docker Compose ==="
-                            docker-compose down || true
-                            docker-compose pull --ignore-pull-failures || true
-                            docker-compose up -d
-                            sleep 15
-                            echo "=== Service Status ==="
-                            docker-compose ps
-                        """
+                        // Use Jenkins credentials for environment variables
+                        withCredentials([file(credentialsId: "${componentName}.env", variable: 'ENV_FILE')]) {
+                            sh """
+                                echo "=== Starting Docker Compose with secure environment variables ==="
+                                # Copy the credential file to .env in the workspace
+                                cp \$ENV_FILE .env
+                                # Set secure permissions on the .env file
+                                chmod 600 .env
+                                
+                                docker-compose down || true
+                                docker-compose pull --ignore-pull-failures || true
+                                docker-compose up -d
+                                sleep 15
+                                echo "=== Service Status ==="
+                                docker-compose ps
+                                
+                                # Remove the .env file after deployment for security
+                                rm -f .env
+                            """
+                        }
                     } else {
                         echo "⚠️ No docker-compose.yml found for ${componentName}"
                     }
                 } catch (Exception e) {
                     echo "❌ Deployment failed for ${componentName}: ${e.message}"
+                    // Clean up .env file if deployment fails
+                    sh "rm -f .env || true"
                 }
             }
         }
