@@ -303,52 +303,39 @@ def deployComponent(componentName) {
                 if (fileExists('docker-compose.yml')) {
                     echo "🚀 Deploying ${componentName} with Docker Compose"
                     
-                    // Use Jenkins credentials for environment variables
-                    withCredentials([file(credentialsId: "${componentName}.env", variable: 'ENV_FILE')]) {
-                        sh """
-                            echo "=== Starting Docker Compose with secure environment variables ==="
-                            # Copy the credential file to .env in the workspace
-                            cp \$ENV_FILE .env
-                            # Set secure permissions on the .env file
-                            chmod 600 .env
-                            
-                            # Use the host's Docker Compose directly (not in container)
-                            echo "Using Docker Compose from host system"
-                            docker compose --env-file .env down || true
-                            docker compose --env-file .env pull --ignore-pull-failures || true
-                            docker compose --env-file .env up -d
-                            
-                            # Wait for services to start
-                            sleep 30
-                            
-                            echo "=== Service Status ==="
-                            docker compose --env-file .env ps
-                            
-                            echo "=== Recent Logs ==="
-                            docker compose --env-file .env logs --tail=20 || true
-                            
-                            # Remove the .env file after deployment for security
-                            rm -f .env
-                        """
-                    }
-                    
-                    // Additional verification
                     sh """
-                        echo "=== Final Service Check ==="
-                        if docker compose ps | grep -q "Up"; then
-                            echo "✅ ${componentName} deployed successfully"
-                        else
-                            echo "⚠️ Some services may not be running properly"
-                            docker compose ps
-                        fi
+                        echo "=== Setting up proper file permissions ==="
+                        # Ensure Jenkins owns all files before deployment
+                        sudo chown -R jenkins:jenkins . || true
+                        
+                        echo "=== Starting Docker Compose ==="
+                        # Use docker compose (not docker-compose)
+                        docker compose down || true
+                        docker compose pull --ignore-pull-failures || true
+                        
+                        # Run with proper user mapping to avoid permission issues
+                        docker compose up -d
+                        
+                        # Wait for services to start
+                        sleep 30
+                        
+                        echo "=== Service Status ==="
+                        docker compose ps
+                        
+                        echo "=== Setting post-deployment permissions ==="
+                        # Fix any permission issues caused by Docker
+                        sudo chown -R jenkins:jenkins . || true
+                        find . -type f -exec chmod 644 {} \\; || true
+                        find . -type d -exec chmod 755 {} \\; || true
                     """
+                    
                 } else {
                     echo "⚠️ No docker-compose.yml found for ${componentName}"
                 }
             } catch (Exception e) {
                 echo "❌ Deployment failed for ${componentName}: ${e.message}"
-                // Clean up .env file if deployment fails
-                sh "rm -f .env || true"
+                // Ensure we fix permissions even on failure
+                sh "sudo chown -R jenkins:jenkins . || true"
             }
         }
     }
