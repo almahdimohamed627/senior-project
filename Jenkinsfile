@@ -304,29 +304,24 @@ def deployComponent(componentName) {
                     echo "🚀 Deploying ${componentName} with Docker Compose"
                     
                     sh """
-                        echo "=== Setting up proper file permissions ==="
-                        # Ensure Jenkins owns all files before deployment
-                        sudo chown -R jenkins:jenkins . || true
+                        echo "=== Setting up file permissions (without sudo) ==="
+                        # Use regular chown/chmod without sudo
+                        chown -R jenkins:jenkins . 2>/dev/null || true
+                        chmod -R 755 . 2>/dev/null || true
                         
                         echo "=== Starting Docker Compose ==="
                         # Use docker compose (not docker-compose)
                         docker compose down || true
                         docker compose pull --ignore-pull-failures || true
-                        
-                        # Run with proper user mapping to avoid permission issues
                         docker compose up -d
                         
-                        # Wait for services to start
                         sleep 30
                         
                         echo "=== Service Status ==="
                         docker compose ps
                         
-                        echo "=== Setting post-deployment permissions ==="
-                        # Fix any permission issues caused by Docker
-                        sudo chown -R jenkins:jenkins . || true
-                        find . -type f -exec chmod 644 {} \\; || true
-                        find . -type d -exec chmod 755 {} \\; || true
+                        echo "=== Recent Logs ==="
+                        docker compose logs --tail=20 || true
                     """
                     
                 } else {
@@ -334,8 +329,6 @@ def deployComponent(componentName) {
                 }
             } catch (Exception e) {
                 echo "❌ Deployment failed for ${componentName}: ${e.message}"
-                // Ensure we fix permissions even on failure
-                sh "sudo chown -R jenkins:jenkins . || true"
             }
         }
     }
