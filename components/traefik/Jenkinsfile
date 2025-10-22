@@ -5,6 +5,9 @@ def call() {
         environment {
             COMPONENT_NAME = 'traefik'  // Update with actual name
             COMPOSE_PROJECT_NAME = "${env.JOB_NAME}-${env.BUILD_NUMBER}"
+            // Reference your Jenkins credentials by their ID
+            TRAEFIK_TLS_CERT = credentials('traefik-tls-cert')
+            TRAEFIK_TLS_KEY = credentials('traefik-tls-key')
         }
         
         stages {
@@ -14,10 +17,35 @@ def call() {
                         
                          // Handle certificates - either from credentials or generate new ones
                         sh '''
-                        mkdir -p certs
-                        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-                        -keyout certs/local.key -out certs/local.crt \
-                        -subj "/CN=*localhost"
+                        mkdir -p certs dynamic
+                        
+                        # Check if we have certificate credentials, otherwise generate them
+                        if [ -n "${TRAEFIK_TLS_CERT}" ] && [ -n "${TRAEFIK_TLS_KEY}" ]; then
+                            echo "Using certificates from Jenkins credentials"
+                            echo "${TRAEFIK_TLS_CERT}" > certs/local.crt
+                            echo "${TRAEFIK_TLS_KEY}" > certs/local.key
+                        else
+                            echo "Generating new self-signed certificates"
+                            openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+                            -keyout certs/local.key -out certs/local.crt \
+                            -subj "/CN=*.localhost" -addext "subjectAltName=DNS:*.localhost,DNS:*.almahdi.cloud"
+                        fi
+                        
+                        # Create dynamic TLS configuration
+                        cat > dynamic/tls.yaml << 'EOF'
+                        tls:
+                        certificates:
+                            - certFile: /certs/local.crt
+                            keyFile: /certs/local.key
+                        EOF
+                        
+                        # Set proper permissions
+                        chmod 600 certs/local.*
+                        chmod 644 dynamic/tls.yaml
+                        
+                        # Verify certificate format
+                        echo "=== Certificate Info ==="
+                        openssl x509 -in certs/local.crt -text -noout 2>/dev/null && echo "Certificate is valid" || echo "Certificate is invalid"
                         '''
                         
                         sh '''

@@ -38,7 +38,7 @@ services:
 
       # Attach the static configuration tls.yaml file that contains the tls configuration settings
       - "--providers.file.filename=/dynamic/tls.yaml"
-
+      
       # Providers 
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
