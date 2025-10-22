@@ -3,7 +3,7 @@ def call() {
         agent any
         
         environment {
-            COMPONENT_NAME = 'proxy-manager'  // Update with actual name
+            COMPONENT_NAME = 'traefik'  // Update with actual name
             COMPOSE_PROJECT_NAME = "${env.JOB_NAME}-${env.BUILD_NUMBER}"
         }
         
