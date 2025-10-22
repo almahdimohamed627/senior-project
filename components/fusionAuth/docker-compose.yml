@@ -18,6 +18,8 @@ services:
     restart: unless-stopped
     volumes:
       - db_data:/var/lib/postgresql/data
+    networks:
+      - proxy-network
 
   # This is the main FusionAuth application.
   fusionauth:
@@ -55,6 +57,8 @@ services:
       - fusionauth_config:/usr/local/fusionauth/config
       - ${FUSIONAUTH_LOCAL_KICKSTART_DIRECTORY}:/usr/local/fusionauth/kickstart
       - ${FUSIONAUTH_LOCAL_PLUGIN_DIRECTORY}:/usr/local/fusionauth/plugins
+    networks:
+      - proxy-network
 
   # Open Search isn't technically required, but the `fusionauth` service currently depends on it, so we start it here.
   # You can change the search engine backend to `database` in the `.env` file if you would prefer to use that.
@@ -85,6 +89,8 @@ services:
       - 9600:9600 # Performance Analyzer
     volumes:
       - search_data:/usr/share/opensearch/data
+    networks:
+      - proxy-network
 
   #
   # Optional services
@@ -105,6 +111,8 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+    networks:
+      - proxy-network
 
   # Mailcatcher is a nice SMTP server that can be used for development and testing. You'll need to configure FusionAuth
   # to use Mailcatcher (or use a Kickstart file that points the SMTP configuration to localhost:1025).
@@ -119,6 +127,8 @@ services:
       interval: 10s
       retries: 80
       test: wget -q -O /dev/null http://mailcatcher:1080/
+    networks:
+      - proxy-network
 
   # Zookeeper is needed for Kafka
   zookeeper:
@@ -130,6 +140,8 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - 2181:2181
+    networks:
+      - proxy-network
 
   # Kafka can be used for Webhooks rather than HTTP. You'll need to configure FusionAuth to use Kafka (or use a
   # Kickstart file that enables Kafka).
@@ -148,6 +160,8 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - proxy-network
 
   # Cleanspeak provides filtering of usernames and profile data to prevent profanity and other unwanted content. You'll
   # need a Cleanspeak license to enable this service.
@@ -174,6 +188,8 @@ services:
       - 8001:8001
     volumes:
       - cs_config:/usr/local/cleanspeak/config
+    networks:
+      - proxy-network
 
   # OpenTelemetry can be used to collect metrics from FusionAuth and push them to Prometheus or other systems. You might need
   # to configure OpenTelemetry by editing the opentelementy-collector-config.yml file.
@@ -189,6 +205,8 @@ services:
     volumes:
       - ${OPENTELEMETRY_COLLECTOR_CONFIG_FILE}:/etc/opentelemetry/collector-config.yml
     command: ["--config=/etc/opentelemetry/collector-config.yml"]
+  networks:
+      - proxy-network
 
   # Prometheus can be used to monitor FusionAuth and can be used with OpenTelemetry or directly. Depending on the way you want to
   # use Prometheus, you might need to change the PROMETHEUS_CONFIG_FILE variable to point to a different configuration file or
@@ -205,6 +223,8 @@ services:
       - ${PROMETHEUS_CONFIG_FILE}:/etc/prometheus/prometheus.yml
       - ${PROMETHEUS_RULES_FILE}:/etc/prometheus/rules.yml
       - prometheus_data:/prometheus
+    networks:
+      - proxy-network
 
   # Alertmanager can be used in conjunction with Prometheus to handle errors that are collected.
   alertmanager:
@@ -217,6 +237,8 @@ services:
       - 9093:9093
     volumes:
       - ${ALERTMANAGER_CONFIG_FILE}:/etc/alertmanager/alertmanager-config.yml
+    networks:
+      - proxy-network
 
 volumes:
   caddy_config:
