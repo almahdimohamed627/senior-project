@@ -36,9 +36,13 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--entrypoints.websecure.http.tls=true"
 
+      # Static TLS Configuration (CORRECTED)
+      - "--tls.stores.default.defaultCertificate.certFile=/certs/local.crt"
+      - "--tls.stores.default.defaultCertificate.keyFile=/certs/local.key"
+
       # Attach the static configuration tls.yaml file that contains the tls configuration settings
-      - "--providers.file.filename=/dynamic/tls.yaml"
-      
+      #- "--providers.file.filename=/dynamic/tls.yaml"
+
       # Providers 
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
