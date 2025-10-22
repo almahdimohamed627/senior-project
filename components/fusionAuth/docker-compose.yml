@@ -27,6 +27,10 @@ services:
         condition: service_healthy
       search:
         condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.your-app.rule=Host(`auth.almahdi.cloud`)"
+      - "traefik.http.routers.your-app.entrypoints=web"
     environment:
       DATABASE_URL: jdbc:postgresql://db:5432/fusionauth
       DATABASE_ROOT_USERNAME: ${POSTGRES_USER}
