@@ -14,6 +14,12 @@ def call() {
             stage('adding certifications') {
                 steps {
                     script {
+
+                        sh '''
+                        echo "Current workspace: ${WORKSPACE}"
+                        pwd
+                        ls -la
+                        '''
                         
                          // Handle certificates - either from credentials or generate new ones
                         sh '''
