@@ -1,6 +1,5 @@
 .env
-certs
+# Ignore the entire certs directory
 certs/
-certs/*
-local.key
-local.cert
+# Ignore the entire dynamic directory
+dynamic/
