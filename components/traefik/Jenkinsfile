@@ -5,9 +5,35 @@ def call() {
         environment {
             COMPONENT_NAME = 'traefik'  // Update with actual name
             COMPOSE_PROJECT_NAME = "${env.JOB_NAME}-${env.BUILD_NUMBER}"
+            // Reference your Jenkins credentials by their ID
+            TRAEFIK_TLS_CERT = credentials('traefik-tls-cert')
+            TRAEFIK_TLS_KEY = credentials('traefik-tls-key')
         }
         
         stages {
+            stage('adding certifications') {
+                steps {
+                    script {
+                        
+                        // Create directories and certificate files from Jenkins credentials
+                        sh '''
+                        mkdir -p certs
+                        # Write the certificate and key from credentials to files
+                        echo "${TRAEFIK_TLS_CERT}" > certs/local.crt
+                        echo "${TRAEFIK_TLS_KEY}" > certs/local.key
+                        # Ensure correct permissions
+                        chmod 600 certs/local.*
+                        '''
+                        
+                        sh '''
+                        # Validate the configuration
+                        docker compose config
+                        # Deploy the stack
+                        docker compose up -d
+                        '''
+                    }
+                }
+            }
             stage('Validate Docker Compose') {
                 steps {
                     script {

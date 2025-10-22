@@ -17,6 +17,8 @@ services:
 
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./certs:/certs:ro
+      - ./dynamic:/dynamic:ro
 
     environment:
       - TRAEFIK_BASIC_AUTH_USERS=${TRAEFIK_BASIC_AUTH_USERS}
@@ -34,10 +36,9 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--entrypoints.websecure.http.tls=true"
 
-
-      # TLS Configuration from environment variables
-      - "--tls.certificates=certcontent:${TRAEFIK_TLS_CERT},keycontent:${TRAEFIK_TLS_KEY}"
-
+      # Attach the static configuration tls.yaml file that contains the tls configuration settings
+      - "--providers.file.filename=/dynamic/tls.yaml"
+      
       # Providers 
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
