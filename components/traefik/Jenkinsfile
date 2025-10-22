@@ -3,159 +3,149 @@ def call() {
         agent any
         
         environment {
-            COMPONENT_NAME = 'traefik'  // Update with actual name
+            COMPONENT_NAME = 'traefik'
             COMPOSE_PROJECT_NAME = "${env.JOB_NAME}-${env.BUILD_NUMBER}"
-            // Reference your Jenkins credentials by their ID
             TRAEFIK_TLS_CERT = credentials('traefik-tls-cert')
             TRAEFIK_TLS_KEY = credentials('traefik-tls-key')
+            WORKSPACE_PATH = "${env.WORKSPACE}"  // Get Jenkins workspace path
         }
         
         stages {
-            stage('adding certifications') {
+            stage('Adding Certifications') {
                 steps {
                     script {
-
                         sh '''
                         echo "Current workspace: ${WORKSPACE}"
                         pwd
                         ls -la
                         '''
                         
-                         // Handle certificates - either from credentials or generate new ones
+                        // Create directories and certificates
                         sh '''
                         mkdir -p certs dynamic
                         
-                        # Check if we have certificate credentials, otherwise generate them
-                        if [ -n "${TRAEFIK_TLS_CERT}" ] && [ -n "${TRAEFIK_TLS_KEY}" ]; then
-                            echo "Using certificates from Jenkins credentials"
-                            echo "${TRAEFIK_TLS_CERT}" > certs/local.crt
-                            echo "${TRAEFIK_TLS_KEY}" > certs/local.key
-                        else
-                            echo "Generating new self-signed certificates"
-                            openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-                            -keyout certs/local.key -out certs/local.crt \
-                            -subj "/CN=*.localhost" -addext "subjectAltName=DNS:*.localhost,DNS:*.almahdi.cloud"
-                        fi
+                        # Use certificates from Jenkins credentials
+                        echo "Using certificates from Jenkins credentials"
+                        echo "${TRAEFIK_TLS_CERT}" > certs/local.crt
+                        echo "${TRAEFIK_TLS_KEY}" > certs/local.key
                         
                         # Create dynamic TLS configuration
                         cat > dynamic/tls.yaml << 'EOF'
                         tls:
-                        certificates:
+                          certificates:
                             - certFile: /certs/local.crt
-                            keyFile: /certs/local.key
+                              keyFile: /certs/local.key
                         EOF
                         
                         # Set proper permissions
                         chmod 600 certs/local.*
                         chmod 644 dynamic/tls.yaml
                         
-                        # Verify certificate format
-                        echo "=== Certificate Info ==="
-                        openssl x509 -in certs/local.crt -text -noout 2>/dev/null && echo "Certificate is valid" || echo "Certificate is invalid"
+                        # Verify files exist
+                        echo "=== Checking created files ==="
+                        ls -la certs/
+                        ls -la dynamic/
                         '''
+                    }
+                }
+            }
+            
+            stage('Update Docker Compose with Absolute Paths') {
+                steps {
+                    script {
+                        // Create a docker-compose with absolute paths
+                        sh '''
+                        cat > docker-compose-absolute.yml << EOF
+                        services:
+                          traefik:
+                            image: traefik:v3.4
+                            container_name: traefik
+                            restart: unless-stopped
+                            security_opt:
+                              - no-new-privileges:true
+                            networks:
+                              - proxy
+                            ports:
+                              - "80:80"
+                              - "443:443"
+                              - "2468:8080"
+                            volumes:
+                              - /var/run/docker.sock:/var/run/docker.sock:ro
+                              - ${WORKSPACE}/certs:/certs:ro
+                              - ${WORKSPACE}/dynamic:/dynamic:ro
+                            command:
+                              - "--entrypoints.web.address=:80"
+                              - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+                              - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+                              - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+                              - "--entrypoints.websecure.address=:443"
+                              - "--entrypoints.websecure.http.tls=true"
+                              - "--providers.file.filename=/dynamic/tls.yaml"
+                              - "--providers.docker=true"
+                              - "--providers.docker.exposedbydefault=false"
+                              - "--providers.docker.network=proxy"
+                              - "--api.dashboard=true"
+                              - "--api.insecure=true"
+                              - "--log.level=INFO"
+                              - "--accesslog=true"
+                              - "--metrics.prometheus=true"
+                            labels:
+                              - "traefik.enable=true"
+                              - "traefik.http.routers.dashboard.rule=Host(\\"dashboard.localhost\\")"
+                              - "traefik.http.routers.dashboard.entrypoints=websecure"
+                              - "traefik.http.routers.dashboard.service=api@internal"
+                              - "traefik.http.routers.dashboard.tls=true"
+                              - "traefik.http.middlewares.dashboard-auth.basicauth.users=admin:\\$\\$apr1\\$\\$P@ssw0rd"
+                              - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
+
+                          whoami:
+                            image: traefik/whoami
+                            container_name: whoami
+                            restart: unless-stopped
+                            networks:
+                              - proxy
+                            labels:
+                              - "traefik.enable=true"
+                              - "traefik.http.routers.whoami.rule=Host(\\"whoami.localhost\\")"
+                              - "traefik.http.routers.whoami.entrypoints=websecure"
+                              - "traefik.http.routers.whoami.tls=true"
+
+                        networks:
+                          proxy:
+                            name: proxy
+                        EOF
+                        '''
+                    }
+                }
+            }
+            
+            stage('Deploy') {
+                steps {
+                    script {
+                        sh '''
+                        echo "=== Deploying with absolute paths ==="
+                        docker compose -f docker-compose-absolute.yml down
+                        docker compose -f docker-compose-absolute.yml up -d
                         
-                        sh '''
-                        # Validate the configuration
-                        docker compose config
-                        # Deploy the stack
-                        docker compose up -d
+                        echo "=== Checking container mounts ==="
+                        docker exec traefik ls -la /certs/ || echo "Certs not mounted"
+                        docker exec traefik ls -la /dynamic/ || echo "Dynamic not mounted"
+                        
+                        echo "=== Checking Traefik logs ==="
+                        docker compose -f docker-compose-absolute.yml logs traefik
                         '''
                     }
-                }
-            }
-            stage('Validate Docker Compose') {
-                steps {
-                    script {
-                        sh '''
-                            echo "Validating docker-compose.yml..."
-                            docker-compose config
-                        '''
-                    }
-                }
-            }
-            
-            stage('Pull Images') {
-                steps {
-                    script {
-                        sh '''
-                            echo "Pulling Docker images from Docker Hub..."
-                            docker-compose pull --ignore-pull-failures
-                        '''
-                    }
-                }
-            }
-            
-            stage('Build Services') {
-                when {
-                    expression { 
-                        // Only build if there are buildable services
-                        fileExists('Dockerfile') || 
-                        sh(script: 'docker-compose config | grep -q "build:"', returnStatus: true) == 0
-                    }
-                }
-                steps {
-                    sh 'docker-compose build --no-cache --pull'
-                }
-            }
-            
-            stage('Smoke Test') {
-                steps {
-                    script {
-                        sh '''
-                            echo "Starting services for smoke test..."
-                            docker-compose up -d
-                            
-                            # Wait for services to be ready
-                            sleep 30
-                            
-                            # Check if services are running
-                            docker-compose ps
-                            
-                            # Run basic health checks (adjust based on your services)
-                            if docker-compose ps | grep -q "Up"; then
-                                echo "✅ Services are running"
-                            else
-                                echo "❌ Some services failed to start"
-                                exit 1
-                            fi
-                        '''
-                    }
-                }
-                post {
-                    always {
-                        sh '''
-                            echo "Stopping services after smoke test..."
-                            docker-compose down
-                        '''
-                    }
-                }
-            }
-            
-            stage('Save Compose Configuration') {
-                steps {
-                    sh '''
-                        # Generate the final compose config for deployment
-                        docker-compose config > docker-compose.resolved.yml
-                    '''
-                    archiveArtifacts artifacts: 'docker-compose.resolved.yml', fingerprint: true
                 }
             }
         }
         
         post {
             always {
-                script {
-                    // Clean up any orphaned containers
-                    sh '''
-                        docker-compose down --remove-orphans 2>/dev/null || true
-                    '''
-                }
-            }
-            success {
-                echo "✅ ${env.COMPONENT_NAME} Docker Compose deployment prepared successfully"
-            }
-            failure {
-                echo "❌ ${env.COMPONENT_NAME} Docker Compose deployment failed"
+                sh '''
+                echo "=== Cleanup ==="
+                docker compose -f docker-compose-absolute.yml down
+                rm -f docker-compose-absolute.yml
+                '''
             }
         }
     }
