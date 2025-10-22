@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    restart: unless-stopped
+    networks:
+      - traefik-network
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+#      - /usr/local/bin/docker-compose:/usr/local/bin/docker-compose
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jenkins.rule=Host(`jenkins.almahdi.cloud`)"
+      - "traefik.http.routers.jenkins.entrypoints=web"
+      - "traefik.http.routers.jenkins.middlewares=jenkins-auth"
+      - "traefik.http.middlewares.jenkins-auth.basicauth.users=admin:$$apr1$$somehashedpassword"
+
+volumes:
+  jenkins_data:
+
+networks:
+  traefik-network:
+    external: true

@@ -1,23 +1,30 @@
-# docker-compose.yml
 version: '3.8'
+
 services:
   traefik:
-    image: traefik:v2.10
+    image: traefik:v3.5
     container_name: traefik
-    command:
-      - --api.dashboard=true
-      - --providers.docker=true
-      - --entrypoints.web.address=:80
-      - --entrypoints.websecure.address=:443
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - traefik-network
     ports:
       - "80:80"
       - "443:443"
-      - "2468:8080"  # Dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - proxy-network
+      - ./traefik.yml:/traefik.yml:ro
+      - ./acme.json:/acme.json
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--certificatesresolvers.letsencrypt.acme.email=almahdimohamed627@gmail.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
 
 networks:
-  proxy-network:
-    driver: bridge
+  traefik-network:
+    name: traefik-network
