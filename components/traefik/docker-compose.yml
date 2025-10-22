@@ -19,12 +19,7 @@ services:
       - proxy-network
 
   # Example app service
-  fusionauth:
-    image: fusionauth/fusionauth-app:latest
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.your-app.rule=Host(`auth.almahdi.cloud`)"
-      - "traefik.http.routers.your-app.entrypoints=web"
+  
     networks:
       - proxy-network
 
