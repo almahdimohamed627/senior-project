@@ -1,30 +1,85 @@
-version: '3.8'
-
 services:
   traefik:
-    image: traefik:v3.5
+    image: traefik:v3.4
     container_name: traefik
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+
     networks:
-      - traefik-network
+     # Connect to the 'traefik_proxy' overlay network for inter-container communication across nodes
+      - proxy
+
     ports:
       - "80:80"
       - "443:443"
+      - "2468:8080"
+
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik.yml:/traefik.yml:ro
-      - ./acme.json:/acme.json
+
+    environment:
+      - TRAEFIK_BASIC_AUTH_USERS=${TRAEFIK_BASIC_AUTH_USERS}
+      - TRAEFIK_TLS_CERT=${TRAEFIK_TLS_CERT}
+      - TRAEFIK_TLS_KEY=${TRAEFIK_TLS_KEY}
+      - TRAEFIK_DASHBOARD_DOMAIN=${TRAEFIK_DASHBOARD_DOMAIN}
+      - TRAEFIK_WHOAMI_DOMAIN=${TRAEFIK_WHOAMI_DOMAIN}
+
     command:
-      - "--api.dashboard=true"
+      # EntryPoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+
+
+      # TLS Configuration from environment variables
+      - "--tls.certificates=certcontent:${TRAEFIK_TLS_CERT},keycontent:${TRAEFIK_TLS_KEY}"
+
+      # Providers 
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--certificatesresolvers.letsencrypt.acme.email=almahdimohamed627@gmail.com"
-      - "--certificatesresolvers.letsencrypt.acme.storage=acme.json"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--providers.docker.network=proxy"
+
+      # API & Dashboard 
+      - "--api.dashboard=true"
+      - "--api.insecure=false"
+
+      # Observability 
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      - "--metrics.prometheus=true"
+
+  # Traefik Dynamic configuration via Docker labels
+    labels:
+      # Enable self‑routing
+      - "traefik.enable=true"
+
+      # Dashboard router
+      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_DASHBOARD_DOMAIN}`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.tls=true"
+
+      # Basic‑auth middleware
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_BASIC_AUTH_USERS}""
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
+
+# Whoami application
+  whoami:
+    image: traefik/whoami
+    container_name: whoami
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`${TRAEFIK_WHOAMI_DOMAIN}`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls=true"
 
 networks:
-  traefik-network:
-    name: traefik-network
+  proxy:
+    name: proxy
