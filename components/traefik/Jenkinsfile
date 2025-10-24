@@ -11,7 +11,7 @@ def call() {
         }
         
         stages {
-            stage('adding certifications') {
+            stage('certification') {
                 steps {
                     script {
 

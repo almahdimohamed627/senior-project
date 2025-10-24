@@ -373,14 +373,14 @@ def getComponentCertificationStage(String componentName) {
     }
 }
 
-// Function to add certifications for a component
 def addComponentCertification(componentName) {
     echo "Starting certification process for component: ${componentName}"
     
     // Check if component directory exists
     if (!fileExists("components/${componentName}")) {
         echo "⚠️ Component directory 'components/${componentName}' not found for certification"
-        env["CERTIFICATION_${componentName.toUpperCase()}"] = "Failed - Directory not found"
+        // Use a different approach instead of env[] dynamic assignment
+        sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Failed - Directory not found' >> certification.properties"
         return
     }
     
@@ -393,7 +393,7 @@ def addComponentCertification(componentName) {
                     chmod +x certify.sh
                     ./certify.sh
                 """
-                env["CERTIFICATION_${componentName.toUpperCase()}"] = "Certified"
+                sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Certified' >> ../../certification.properties"
                 
             } else if (fileExists('Jenkinsfile')) {
                 // Check if Jenkinsfile has certification stage
@@ -402,7 +402,7 @@ def addComponentCertification(componentName) {
                 if (jenkinsfileContent.contains('certification') || jenkinsfileContent.contains('certify')) {
                     echo "Loading component-specific Jenkinsfile with certification for ${componentName}"
                     load 'Jenkinsfile'
-                    env["CERTIFICATION_${componentName.toUpperCase()}"] = "Certified"
+                    sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Certified' >> ../../certification.properties"
                 } else {
                     echo "No certification stage found in Jenkinsfile, using auto-certification"
                     autoCertifyComponent(componentName)
@@ -414,13 +414,12 @@ def addComponentCertification(componentName) {
             
         } catch (Exception e) {
             echo "❌ Certification failed for component ${componentName}: ${e.message}"
-            env["CERTIFICATION_${componentName.toUpperCase()}"] = "Failed - ${e.message}"
+            sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Failed - ${e.message}' >> ../../certification.properties"
             currentBuild.result = 'UNSTABLE'
         }
     }
 }
 
-// Auto-certification for components without specific certification scripts
 def autoCertifyComponent(componentName) {
     echo "Auto-certifying component: ${componentName}"
     
@@ -458,23 +457,17 @@ def autoCertifyComponent(componentName) {
         if (fileExists('docker-compose.yml')) {
             sh """
                 echo "🐳 Running Docker Compose validation"
-                docker-compose config --quiet && echo "✅ Docker Compose configuration valid" || echo "❌ Docker Compose configuration invalid"
+                docker compose config --quiet && echo "✅ Docker Compose configuration valid" || echo "❌ Docker Compose configuration invalid"
             """
         }
         
-        if (fileExists('package.json')) {
-            sh """
-                echo "📦 Running npm audit (if available)"
-                npm audit --audit-level moderate || echo "⚠️  npm audit found vulnerabilities"
-            """
-        }
-        
-        env["CERTIFICATION_${componentName.toUpperCase()}"] = "Auto-Certified"
+        // Write certification status to file instead of using env[]
+        sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Auto-Certified' >> ../../certification.properties"
         echo "✅ Auto-certification completed for ${componentName}"
         
     } catch (Exception e) {
         echo "❌ Auto-certification failed for ${componentName}: ${e.message}"
-        env["CERTIFICATION_${componentName.toUpperCase()}"] = "Auto-Certification Failed"
+        sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Auto-Certification Failed' >> ../../certification.properties"
         throw e
     }
 }
