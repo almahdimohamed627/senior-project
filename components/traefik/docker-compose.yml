@@ -69,7 +69,7 @@ services:
   # Traefik Dynamic configuration via Docker labels
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`TRAEFIK_DASHBOARD_DOMAIN`)"
+      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_DASHBOARD_DOMAIN}`)"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.tls=true"
