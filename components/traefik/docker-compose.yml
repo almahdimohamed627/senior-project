@@ -23,6 +23,7 @@ services:
       # Mount the dynamic configuration directory
       - /etc/ssl/traefik/dynamic/:/etc/traefik/dynamic:ro
       - /etc/ssl/traefik/dynamic/traefik.yml:/etc/traefik/traefik.yml
+      - /etc/ssl/traefik//letsencrypt:/letsencrypt
 
     environment:
       - TRAEFIK_BASIC_AUTH_USERS=${TRAEFIK_BASIC_AUTH_USERS}
