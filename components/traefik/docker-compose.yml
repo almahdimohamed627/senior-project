@@ -18,8 +18,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 # Mount your certificates directory
-      - /etc/pki/tls/certs/:/etc/traefik/certs:ro
-      - /etc/pki/tls/private/:/etc/traefik/certs:ro
+      - /etc/pki/tls/certs/localhost.crt:/etc/traefik/certs/localhost.crt:ro
+      - /etc/pki/tls/private/localhost.key:/etc/traefik/certs/localhost.key:ro
       # Mount the dynamic configuration directory
       - ./dynamic/:/etc/traefik/dynamic:ro
 

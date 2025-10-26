@@ -1,4 +1,5 @@
+# dynamic/tls.yaml
 tls:
   certificates:
-    - certFile: /certs/local.crt
-      keyFile:  /certs/local.key
+    - certFile: /etc/traefik/certs/localhost.crt
+      keyFile: /etc/traefik/certs/localhost.key
