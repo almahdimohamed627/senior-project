@@ -59,8 +59,8 @@ services:
       - "--certificatesresolvers.le.acme.email=almahdimohemd627@gmail.com"
       - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json" # Path inside container volume
       - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
-
-      # - "--certificatesresolvers.le.acme.dnschallenge.provider=your-dns-provider" # Needs provider setup
+      - "--certificatesresolvers.le.acme.dnschallenge=true"
+      - "--certificatesresolvers.le.acme.dnschallenge.provider=hostinger"
 
       # Optionally make 'le' the default resolver for TLS-enabled routers
       - "--entrypoints.websecure.http.tls.certresolver=le"
@@ -68,10 +68,11 @@ services:
   # Traefik Dynamic configuration via Docker labels
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`dashboard.almahdi.cloud`)"
+      - "traefik.http.routers.dashboard.rule=Host(`TRAEFIK_DASHBOARD_DOMAIN`)"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.tls.certresolver=le"
 
       # Basic‑auth middleware
       - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_BASIC_AUTH_USERS}"
