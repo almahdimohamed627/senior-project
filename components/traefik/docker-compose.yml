@@ -48,7 +48,6 @@ services:
 
       # API & Dashboard 
       - "--api.dashboard=true"
-      - "--api.insecure=false"
 
       # Observability 
       - "--log.level=INFO"
@@ -76,8 +75,8 @@ services:
       - "traefik.http.routers.dashboard.tls.certresolver=le"
 
       # Basic‑auth middleware
-      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_BASIC_AUTH_USERS}"
-      - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
+      #- "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_BASIC_AUTH_USERS}"
+      #- "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
 
 # Whoami application
   whoami:
