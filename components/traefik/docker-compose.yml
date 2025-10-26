@@ -23,6 +23,7 @@ services:
       # Mount the dynamic configuration directory
       - /etc/ssl/traefik/dynamic/:/etc/traefik/dynamic:ro
       - /etc/ssl/traefik/letsencrypt:/letsencrypt
+      - /etc/ssl/traefik/htpasswd:/etc/traefik/htpasswd:ro
 
     environment:
       - TRAEFIK_BASIC_AUTH_USERS=${TRAEFIK_BASIC_AUTH_USERS}
@@ -75,8 +76,8 @@ services:
       - "traefik.http.routers.dashboard.tls.certresolver=le"
 
       # Basic‑auth middleware
-      #- "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_BASIC_AUTH_USERS}"
-      #- "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.usersfile=/etc/traefik/htpasswd"
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth@docker"
 
 # Whoami application
   whoami:
