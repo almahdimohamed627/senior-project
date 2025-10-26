@@ -5,9 +5,6 @@ def call() {
         environment {
             COMPONENT_NAME = 'traefik'  // Update with actual name
             COMPOSE_PROJECT_NAME = "${env.JOB_NAME}-${env.BUILD_NUMBER}"
-            // Reference your Jenkins credentials by their ID
-            TRAEFIK_TLS_CERT = credentials('traefik-tls-cert')
-            TRAEFIK_TLS_KEY = credentials('traefik-tls-key')
         }
         
         stages {

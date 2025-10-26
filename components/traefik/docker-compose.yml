@@ -39,8 +39,8 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--entrypoints.websecure.http.tls=true"
 
-      # Point Traefik to your dynamic configuration
-      - "--providers.file.directory=/etc/traefik/dynamic"
+      # Attach the static configuration tls.yaml file that contains the tls configuration settings
+      - "--providers.file.filename=/etc/traefik/dynamic/tls.yaml"
       
       # Providers 
       - "--providers.docker=true"

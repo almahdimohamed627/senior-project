@@ -501,7 +501,7 @@ def deployComponent(componentName) {
                         
                         echo "=== Testing FusionAuth accessibility ==="
                         # Try multiple times to access FusionAuth
-                        for i in {1..5}; do
+                        for i in {1..3}; do
                             if curl -s -f http://localhost:9011/ > /dev/null; then
                                 echo "✅ FusionAuth is accessible at http://localhost:9011"
                                 break
