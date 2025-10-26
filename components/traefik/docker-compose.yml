@@ -56,10 +56,20 @@ services:
       - "--accesslog=true"
       - "--metrics.prometheus=true"
 
+      # ... other command arguments ...
+      - "--certificatesresolvers.le.acme.email=almahdimohemd627@gmail.com"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json" # Path inside container volume
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+
+      # - "--certificatesresolvers.le.acme.dnschallenge.provider=your-dns-provider" # Needs provider setup
+
+      # Optionally make 'le' the default resolver for TLS-enabled routers
+      - "--entrypoints.websecure.http.tls.certresolver=le"
+
   # Traefik Dynamic configuration via Docker labels
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_DASHBOARD_DOMAIN}`)"
+      - "traefik.http.routers.dashboard.rule=Host(`dashboard.almahdi.cloud`)"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.tls=true"
