@@ -22,12 +22,10 @@ services:
       - /etc/pki/tls/private/localhost.key:/etc/traefik/certs/localhost.key:ro
       # Mount the dynamic configuration directory
       - /etc/ssl/traefik/dynamic/:/etc/traefik/dynamic:ro
-      - /etc/ssl/traefik//letsencrypt:/letsencrypt
+      - /etc/ssl/traefik/letsencrypt:/letsencrypt
 
     environment:
       - TRAEFIK_BASIC_AUTH_USERS=${TRAEFIK_BASIC_AUTH_USERS}
-      - TRAEFIK_TLS_CERT=${TRAEFIK_TLS_CERT}
-      - TRAEFIK_TLS_KEY=${TRAEFIK_TLS_KEY}
       - TRAEFIK_DASHBOARD_DOMAIN=${TRAEFIK_DASHBOARD_DOMAIN}
       - TRAEFIK_WHOAMI_DOMAIN=${TRAEFIK_WHOAMI_DOMAIN}
 
@@ -91,7 +89,7 @@ services:
       - "traefik.http.routers.whoami.rule=Host(`${TRAEFIK_WHOAMI_DOMAIN}`)"
       - "traefik.http.routers.whoami.entrypoints=websecure"
       - "traefik.http.routers.whoami.tls=true"
-      - "traefik.http.routers.yourservice.tls.certresolver=myresolver"
+      - "traefik.http.routers.whoami.tls.certresolver=le"
 
 networks:
   proxy:
