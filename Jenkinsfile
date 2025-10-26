@@ -24,8 +24,10 @@ pipeline {
         stage('Discover Components') {
             steps {
                 script {
+                    // Dynamically discover components with better error handling
                     def components = findComponents()
                     env.COMPONENTS = components.join(',')
+                    // Store as serializable string instead of direct list
                     env.COMPONENTS_STRING = components.join(',')
                     echo "Discovered components: ${components}"
                 }
@@ -35,7 +37,10 @@ pipeline {
         stage('Build Components') {
             steps {
                 script {
+                    // Recreate components list from string to avoid serialization issues
                     def components = env.COMPONENTS_STRING.split(',').toList()
+                    
+                    // Filter out invalid/empty component names
                     def validComponents = components.findAll { component ->
                         component && component.trim() && component != '[' && component != ']'
                     }
@@ -47,37 +52,17 @@ pipeline {
                         return
                     }
                     
+                    // Create parallel stages dynamically with proper serialization
                     def parallelStages = [:]
+                    
                     validComponents.each { component ->
                         String safeComponent = component.trim()
+                        // Use a simple string key to avoid serialization issues
                         parallelStages["build_${safeComponent}"] = getComponentBuildStage(safeComponent)
                     }
                     
+                    // Execute all parallel stages
                     parallel parallelStages
-                }
-            }
-        }
-        
-        stage('Add Certifications') {
-            steps {
-                script {
-                    def components = env.COMPONENTS_STRING.split(',').toList()
-                    def validComponents = components.findAll { component ->
-                        component && component.trim() && component != '[' && component != ']'
-                    }
-                    
-                    if (validComponents.isEmpty()) {
-                        echo "No valid components found for certification"
-                        return
-                    }
-                    
-                    def parallelCertStages = [:]
-                    validComponents.each { component ->
-                        String safeComponent = component.trim()
-                        parallelCertStages["certify_${safeComponent}"] = getComponentCertificationStage(safeComponent)
-                    }
-                    
-                    parallel parallelCertStages
                 }
             }
         }
@@ -122,15 +107,18 @@ pipeline {
             }
         }
         unstable {
-            script {
-                echo "⚠️ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
-                sendTelegramNotification("unstable")
-            }
+        script {
+            echo "⚠️ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+            sendTelegramNotification("unstable")
         }
+    }
     }
 }
 
+
+
 // Telegram notification function
+// Advanced Telegram notification with component details
 def sendTelegramNotification(String status) {
     try {
         withCredentials([
@@ -142,8 +130,8 @@ def sendTelegramNotification(String status) {
             def branch = env.BRANCH_NAME ?: "main"
             def duration = currentBuild.durationString ?: "Unknown"
             
+            // Get component details
             def componentDetails = getComponentDetails()
-            def certificationDetails = getCertificationDetails()
             
             if (status == "success") {
                 emoji = "✅"
@@ -158,40 +146,11 @@ ${emoji} *🚀 Build Success*
 *🏗️ Component Details:*
 ${componentDetails}
 
-*📜 Certification Status:*
-${certificationDetails}
-
 *📊 Build Stages:*
 • 🔍 Discover Components - ✅ Completed
 • 🏗️ Build Components - ✅ Built ${getBuiltComponentsCount()} components
-• 📜 Add Certifications - ✅ ${getCertifiedComponentsCount()} components certified
 • 🧪 Integration Test - ✅ Passed
 • 🚀 Deployment - ${params.DEPLOY ? '✅ Deployed' : '⏸️ Not Deployed'}
-
-*🔗 Build URL:* [View Build](${env.BUILD_URL})
-"""
-            } else if (status == "unstable") {
-                emoji = "⚠️"
-                message = """
-${emoji} *Build Unstable*
-
-*📋 Job:* ${env.JOB_NAME}
-*🔢 Build:* #${env.BUILD_NUMBER}
-*🌿 Branch:* ${branch}
-*⏱️ Duration:* ${duration}
-
-*🏗️ Component Details:*
-${componentDetails}
-
-*📜 Certification Status:*
-${certificationDetails}
-
-*📊 Build Stages:*
-• 🔍 Discover Components - ✅ Completed
-• 🏗️ Build Components - ⚠️ Partial success
-• 📜 Add Certifications - ⚠️ Some certifications failed
-• 🧪 Integration Test - ⚠️ Tests unstable
-• 🚀 Deployment - ${params.DEPLOY ? '⏸️ Skipped' : '⏸️ Not Deployed'}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 """
@@ -208,13 +167,9 @@ ${emoji} *💥 Build Failed*
 *🏗️ Component Details:*
 ${componentDetails}
 
-*📜 Certification Status:*
-${certificationDetails}
-
 *📊 Build Stages:*
 • 🔍 Discover Components - ✅ Completed
 • 🏗️ Build Components - ❌ Failed building components
-• 📜 Add Certifications - ⏸️ Skipped
 • 🧪 Integration Test - ⏸️ Skipped
 • 🚀 Deployment - ⏸️ Skipped
 
@@ -261,37 +216,6 @@ def getComponentDetails() {
         details = "• ${env.COMPONENTS ?: 'No components discovered'}\\n"
     }
     return details
-}
-
-// Helper function to get certification details
-def getCertificationDetails() {
-    def details = ""
-    try {
-        def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').toList() : []
-        components.each { component ->
-            def certStatus = env["CERTIFICATION_${component.toUpperCase()}"] ?: "Not Certified"
-            details += "• ${component} - ${certStatus}\\n"
-        }
-    } catch (Exception e) {
-        details = "• Certification status unavailable\\n"
-    }
-    return details
-}
-
-// Helper function to get certified components count
-def getCertifiedComponentsCount() {
-    try {
-        def certifiedCount = 0
-        def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').toList() : []
-        components.each { component ->
-            if (env["CERTIFICATION_${component.toUpperCase()}"] == "Certified") {
-                certifiedCount++
-            }
-        }
-        return certifiedCount
-    } catch (Exception e) {
-        return "unknown"
-    }
 }
 
 // Helper function to detect component type
@@ -341,6 +265,7 @@ def getComponentBuildStage(String componentName) {
     return {
         stage("Build ${componentName}") {
             script {
+                // Check if we should build this component
                 boolean shouldBuild = params.COMPONENT == 'all' || params.COMPONENT == componentName
                 
                 if (shouldBuild) {
@@ -354,125 +279,7 @@ def getComponentBuildStage(String componentName) {
     }
 }
 
-// Serializable function to create certification stages
-def getComponentCertificationStage(String componentName) {
-    return {
-        stage("Certify ${componentName}") {
-            script {
-                boolean shouldCertify = params.COMPONENT == 'all' || params.COMPONENT == componentName
-                
-                if (shouldCertify) {
-                    echo "Adding certifications for component: ${componentName}"
-                    addComponentCertification(componentName)
-                } else {
-                    echo "Skipping certification for component ${componentName} - not selected in parameters"
-                    env["CERTIFICATION_${componentName.toUpperCase()}"] = "Skipped"
-                }
-            }
-        }
-    }
-}
-
-def addComponentCertification(componentName) {
-    echo "Starting certification process for component: ${componentName}"
-    
-    // Check if component directory exists
-    if (!fileExists("components/${componentName}")) {
-        echo "⚠️ Component directory 'components/${componentName}' not found for certification"
-        // Use a different approach instead of env[] dynamic assignment
-        sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Failed - Directory not found' >> certification.properties"
-        return
-    }
-    
-    dir("components/${componentName}") {
-        try {
-            // Check for component-specific certification script
-            if (fileExists('certify.sh')) {
-                echo "Running component-specific certification script for ${componentName}"
-                sh """
-                    chmod +x certify.sh
-                    ./certify.sh
-                """
-                sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Certified' >> ../../certification.properties"
-                
-            } else if (fileExists('Jenkinsfile')) {
-                // Check if Jenkinsfile has certification stage
-                echo "Checking Jenkinsfile for certification stage in ${componentName}"
-                def jenkinsfileContent = readFile('Jenkinsfile')
-                if (jenkinsfileContent.contains('certification') || jenkinsfileContent.contains('certify')) {
-                    echo "Loading component-specific Jenkinsfile with certification for ${componentName}"
-                    load 'Jenkinsfile'
-                    sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Certified' >> ../../certification.properties"
-                } else {
-                    echo "No certification stage found in Jenkinsfile, using auto-certification"
-                    autoCertifyComponent(componentName)
-                }
-            } else {
-                echo "No certification script or Jenkinsfile found, using auto-certification"
-                autoCertifyComponent(componentName)
-            }
-            
-        } catch (Exception e) {
-            echo "❌ Certification failed for component ${componentName}: ${e.message}"
-            sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Failed - ${e.message}' >> ../../certification.properties"
-            currentBuild.result = 'UNSTABLE'
-        }
-    }
-}
-
-def autoCertifyComponent(componentName) {
-    echo "Auto-certifying component: ${componentName}"
-    
-    try {
-        // Basic security and compliance checks
-        sh """
-            echo "🔒 Running security and compliance checks for ${componentName}"
-            
-            # Check for sensitive files
-            if [ -f ".env" ]; then
-                echo "⚠️  Found .env file - ensure no secrets are committed"
-            fi
-            
-            # Check Dockerfile security
-            if [ -f "Dockerfile" ]; then
-                echo "📋 Checking Dockerfile security"
-                grep -i "root" Dockerfile && echo "⚠️  Warning: Running as root in Dockerfile" || true
-            fi
-            
-            # Check for dependency configuration
-            if [ -f "package.json" ]; then
-                echo "📦 Checking package.json for security"
-                [ -f "package-lock.json" ] || echo "⚠️  No package-lock.json found"
-            fi
-            
-            # Verify build artifacts
-            if [ -d "dist" ] || [ -d "build" ] || [ -d "target" ]; then
-                echo "📁 Build artifacts directory found"
-            fi
-            
-            echo "✅ Basic security checks completed for ${componentName}"
-        """
-        
-        // Additional component-specific checks
-        if (fileExists('docker-compose.yml')) {
-            sh """
-                echo "🐳 Running Docker Compose validation"
-                docker compose config --quiet && echo "✅ Docker Compose configuration valid" || echo "❌ Docker Compose configuration invalid"
-            """
-        }
-        
-        // Write certification status to file instead of using env[]
-        sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Auto-Certified' >> ../../certification.properties"
-        echo "✅ Auto-certification completed for ${componentName}"
-        
-    } catch (Exception e) {
-        echo "❌ Auto-certification failed for ${componentName}: ${e.message}"
-        sh "echo 'CERTIFICATION_${componentName.toUpperCase()}=Auto-Certification Failed' >> ../../certification.properties"
-        throw e
-    }
-}
-
-// Existing helper functions (unchanged)
+// Helper functions
 def findComponents() {
     def components = []
     try {
@@ -482,16 +289,18 @@ def findComponents() {
                 components = jenkinsfiles.collect { 
                     def path = it.path
                     def componentName = path.split('/')[0]
+                    // Validate component name
                     if (componentName && componentName.trim() && !componentName.contains('[') && !componentName.contains(']')) {
                         return componentName.trim()
                     } else {
                         echo "Skipping invalid component name: ${componentName}"
                         return null
                     }
-                }.findAll { it != null }
+                }.findAll { it != null } // Remove null entries
                 
                 echo "Found components with Jenkinsfiles: ${components}"
                 
+                // Also look for directories without Jenkinsfiles but with docker-compose.yml or other build files
                 def additionalComponents = discoverComponentsByStructure()
                 components.addAll(additionalComponents)
                 components = components.unique()
@@ -501,9 +310,11 @@ def findComponents() {
         }
     } catch (Exception e) {
         echo "Error discovering components: ${e.message}"
+        // Fallback to parameter choices minus 'all'
         components = ['backend', 'frontend', 'database', 'fusionAuth']
     }
     
+    // Final validation and fallback
     if (components.isEmpty()) {
         components = ['backend', 'frontend']
     }
@@ -514,11 +325,13 @@ def findComponents() {
 def discoverComponentsByStructure() {
     def additionalComponents = []
     try {
+        // Use shell command to find component directories with common build files
         def componentDirs = sh(script: '''
             if [ -d "components" ]; then
                 find components -maxdepth 1 -mindepth 1 -type d | \
                 while read dir; do
                     dir_name=$(basename "$dir")
+                    # Check if directory has any build-related files
                     if [ -f "$dir/Jenkinsfile" ] || [ -f "$dir/docker-compose.yml" ] || \
                        [ -f "$dir/Dockerfile" ] || [ -f "$dir/package.json" ] || \
                        [ -f "$dir/pom.xml" ]; then
@@ -548,6 +361,7 @@ def discoverComponentsByStructure() {
 def buildComponent(componentName) {
     echo "Starting build for component: ${componentName}"
     
+    // Check if component directory exists
     if (!fileExists("components/${componentName}")) {
         echo "⚠️ Component directory 'components/${componentName}' not found"
         return
@@ -564,6 +378,7 @@ def buildComponent(componentName) {
             }
         } catch (Exception e) {
             echo "❌ Failed to build component ${componentName}: ${e.message}"
+            // Don't fail the entire build if one component fails
         }
     }
 }
@@ -576,9 +391,11 @@ def autoBuildComponent(componentName) {
             echo "Docker Compose component detected"
             docker-compose config || true
             docker-compose pull --ignore-pull-failures || true
+            # Only build if there are buildable services
             if docker-compose config | grep -q "build:"; then
                 docker-compose build --no-cache || true
             fi
+            # Test service startup
             docker-compose up -d || true
             sleep 10
             docker-compose ps || true
@@ -645,18 +462,28 @@ def deployComponent(componentName) {
                 if (fileExists('docker-compose.yml')) {
                     echo "🚀 Deploying ${componentName} with Docker Compose using Jenkins credentials"
                     
+                    // Use the Jenkins credentials for .env file
                     withCredentials([file(credentialsId: "${componentName}.env", variable: 'ENV_FILE')]) {
                         sh """
                             echo "=== Using Jenkins credentials for environment variables ==="
+                            
+                            # Copy the credential file to .env in the workspace
                             cp \$ENV_FILE .env
+                            
+                            # Set secure permissions on the .env file
                             chmod 600 .env
                             
                             echo "=== Validating Docker Compose configuration ==="
                             docker compose config
                             
                             echo "=== Starting deployment ==="
+                            # Stop any existing services
                             docker compose down --remove-orphans 2>/dev/null || true
+                            
+                            # Pull latest images
                             docker compose pull --ignore-pull-failures 2>/dev/null || true
+                            
+                            # FIXED: Use double dash --env-file not single dash
                             docker compose --env-file .env up -d
                             
                             echo "=== Waiting for services to initialize ==="
@@ -664,6 +491,7 @@ def deployComponent(componentName) {
                         """
                     }
                     
+                    // Health checks (outside credentials block for security)
                     sh """
                         echo "=== Checking service status ==="
                         docker compose ps
@@ -672,6 +500,7 @@ def deployComponent(componentName) {
                         docker ps --filter "name=${componentName}" --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" || true
                         
                         echo "=== Testing FusionAuth accessibility ==="
+                        # Try multiple times to access FusionAuth
                         for i in {1..5}; do
                             if curl -s -f http://localhost:9011/ > /dev/null; then
                                 echo "✅ FusionAuth is accessible at http://localhost:9011"
@@ -682,6 +511,7 @@ def deployComponent(componentName) {
                             fi
                         done
                         
+                        # Final check
                         if ! curl -s -f http://localhost:9011/ > /dev/null; then
                             echo "⚠️ FusionAuth not accessible after multiple attempts, checking logs..."
                             docker compose logs --tail=50 fusionauth 2>/dev/null || true
@@ -695,12 +525,14 @@ def deployComponent(componentName) {
                 }
             } catch (Exception e) {
                 echo "❌ Deployment failed for ${componentName}: ${e.message}"
+                // Provide detailed error information
                 sh """
                     echo "=== Debug Information ==="
                     docker compose ps 2>/dev/null || true
                     echo "=== Recent Logs ==="
                     docker compose logs --tail=100 2>/dev/null || true
                 """
+                // Clean up .env file on failure
                 sh "rm -f .env 2>/dev/null || true"
             }
         }
