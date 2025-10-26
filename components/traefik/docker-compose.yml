@@ -17,8 +17,11 @@ services:
 
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./certs:/certs
-      - ./dynamic:/dynamic
+# Mount your certificates directory
+      - /etc/pki/tls/certs/:/etc/traefik/certs:ro
+      - /etc/pki/tls/private/:/etc/traefik/certs:ro
+      # Mount the dynamic configuration directory
+      - ./dynamic/:/etc/traefik/dynamic:ro
 
     environment:
       - TRAEFIK_BASIC_AUTH_USERS=${TRAEFIK_BASIC_AUTH_USERS}
