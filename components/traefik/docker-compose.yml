@@ -86,13 +86,12 @@ services:
     restart: unless-stopped
     networks:
       - proxy
-    # Example for a whoami or web service
     labels:
       - "traefik.enable=true"
-      # This rule tells Traefik to route both the root domain and the www subdomain to this service.
-      - "traefik.http.routers.my-web-router.rule=Host(`almahdi.cloud`, `www.almahdi.cloud`)"
-      - "traefik.http.routers.my-web-router.entrypoints=websecure"
-      - "traefik.http.routers.my-web-router.tls.certresolver=le"
+      - "traefik.http.routers.whoami.rule=Host(`${TRAEFIK_WHOAMI_DOMAIN}`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls=true"
+      - "traefik.http.routers.whoami.tls.certresolver=le"
 
 networks:
   proxy:
