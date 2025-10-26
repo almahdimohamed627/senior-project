@@ -60,7 +60,8 @@ services:
       - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json" # Path inside container volume
       - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.le.acme.dnschallenge=true"
-      - "--certificatesresolvers.le.acme.dnschallenge.provider=hostinger"
+      - "--certificatesresolvers.le.acme.dnschallenge.provider=manual"
+      - "--certificatesresolvers.le.acme.dnschallenge.delaybeforecheck=10"
 
       # Optionally make 'le' the default resolver for TLS-enabled routers
       - "--entrypoints.websecure.http.tls.certresolver=le"
