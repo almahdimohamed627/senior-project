@@ -34,7 +34,7 @@ export class AuthController {
 
     if (!email || !password) {
       // لو حبينا نطبع الـ body الكامل للتشخيص:
-      this.logger.debug('Request headers:', req.headers);
+     // this.logger.debug('Request headers:', req.headers);
       // لا تطبع كلمة السر في اللوغز في بيئة حقيقية - هنا فقط للتشخيص المحلي
       return res.status(400).json({ error: 'email and password required' });
     }
@@ -79,10 +79,11 @@ export class AuthController {
   async refresh(@Req() req: Request, @Res() res: Response) {
     // cookies exist if you use cookie-parser middleware in your Nest app
     // TypeScript's Request type may not include cookies, so use a safe cast
-    const refreshToken = (req as any).cookies?.refresh_token;
-    if (!refreshToken) {
-      return res.status(401).json({ error: 'No refresh token' });
-    }
+const refreshToken = (req as any).body?.refreshToken || (req as any).cookies?.refresh_token;
+  
+if (!refreshToken) {
+  return res.status(401).json({ error: 'No refresh token' });
+}
 
     try {
       const tokens = await this.authService.refreshTokens(refreshToken);
@@ -96,7 +97,7 @@ export class AuthController {
           maxAge: 30 * 24 * 60 * 60 * 1000, // example
         });
       }
-      return res.json({ access_token: tokens.access_token, id_token: tokens.id_token });
+      return res.json({ access_token: tokens.access_token,refresh_token:tokens.refresh_token ,id_token: tokens.id_token });
     } catch (err: any) {
       this.logger.error('Refresh failed', err?.message || err);
       return res.status(401).json({ error: err?.message || 'Could not refresh tokens' });

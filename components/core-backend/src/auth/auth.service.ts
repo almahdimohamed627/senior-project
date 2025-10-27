@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { FusionAuthClientWrapper } from './fusion-auth.client';
 import { RegisterDto } from './dto/register.dto';
 // Drizzle imports
-import { db } from '../db/client';
+import { db } from './client';
   import { schema } from '../db/schema/schema';
 import * as bcrypt from 'bcrypt';
 import { eq, isNull, not, and } from 'drizzle-orm';
@@ -35,7 +35,9 @@ export class AuthService {
     this.redirectUri =
       this.config.get<string>('FUSIONAUTH_REDIRECT_URI') || '';
     this.apiKey = this.config.get<string>('FUSIONAUTH_API_KEY');
-    this.fusionClient = new FusionAuthClientWrapper(this.baseUrl, this.apiKey);
+    this.fusionClient = new FusionAuthClientWrapper(this.baseUrl, this.apiKey ,  this.clientId,       // ⚡ جديد
+      this.clientSecret);
+    
    
   }
 
@@ -62,17 +64,20 @@ export class AuthService {
       this.clientId,
       this.clientSecret,
     );
-
+  console.log(tokens.refresh_token)
     if (!tokens || !tokens.access_token) {
       throw new UnauthorizedException('Invalid credentials or no access token returned');
     }
 
     // 2) استخراج userId من id_token أو access_token
+ 
     const payload = await this.getUserProfileFromIdToken(tokens.id_token || tokens.access_token);
+      
     const userId = payload?.sub;
     if (!userId) {
       this.logger.warn('No subject (sub) found in id_token; userId missing');
     }
+    console.log(tokens.refresh_token)
 
     // 3) إذا في refresh_token — خزّنه كهاش في جدول user_sessions
     if (tokens.refresh_token && userId) {
@@ -86,13 +91,13 @@ export class AuthService {
         });
 
         // set httpOnly secure cookie
-        res.cookie('refresh_token', tokens.refresh_token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          path: '/',
-          maxAge: tokens.expires_in ? tokens.expires_in * 1000 : 30 * 24 * 60 * 60 * 1000,
-        });
+        // res.cookie('refresh_token', tokens.refresh_token, {
+        //   httpOnly: true,
+        //   secure: process.env.NODE_ENV === 'production',
+        //   sameSite: 'strict',
+        //   path: '/',
+        //   maxAge: tokens.expires_in ? tokens.expires_in * 1000 : 30 * 24 * 60 * 60 * 1000,
+        // });
       } catch (e) {
         this.logger.error('Failed to create session for user after password login', e?.message || e);
       }
@@ -101,6 +106,7 @@ export class AuthService {
     return {
       access_token: tokens.access_token,
       id_token: tokens.id_token,
+      refreshToken:tokens.refresh_token,
       expires_in: tokens.expires_in,
     };
   }
@@ -115,7 +121,9 @@ export class AuthService {
   }
 
   async introspectAccessToken(token: string) {
+   // console.log(token)
     const data = await this.fusionClient.introspectToken(token);
+   // console.log(data)
     return data;
   }
 
@@ -147,11 +155,11 @@ export class AuthService {
   // ------------------------------
   // registerUserAndProfile
   // ------------------------------
-   async registerUserAndProfile(dto: RegisterDto): Promise<string> {
+ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
   let fusionUserId: string | undefined;
   let createdUserResp: any;
 
-  // Helper validators (حسب تعريف الـ schema اللي عطيتني)
+  // Validators (كما عندك)
   const validateDoctorPayload = (p: any) => {
     const errs: string[] = [];
     if (!p.fusionAuthId) errs.push('fusionAuthId is missing');
@@ -185,21 +193,20 @@ export class AuthService {
   };
 
   try {
-    // 1️⃣ إعداد بيانات المستخدم
-    const userPayload = {
+    // 1️⃣ Create user in FusionAuth
+    const createPayload = {
       user: {
         email: dto.email,
         password: dto.password,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        data: { role: dto.role },
+        // do not rely on data.role for authorization — we'll add registration explicitly
       },
     };
-    this.logger.log(`Creating FusionAuth user for: ${dto.email}`);
 
-    // 2️⃣ إرسال الطلب إلى FusionAuth (لا نغير هذا الجزء كما طلبت)
-    const url = `${this.baseUrl.replace(/\/$/, '')}/api/user`;
-    createdUserResp = await axios.post(url, userPayload, {
+    this.logger.log(`Creating FusionAuth user for: ${dto.email}`);
+    const urlCreate = `${this.baseUrl.replace(/\/$/, '')}/api/user`;
+    createdUserResp = await axios.post(urlCreate, createPayload, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': this.apiKey,
@@ -207,22 +214,66 @@ export class AuthService {
       timeout: 10000,
     });
 
-    // 3️⃣ استخراج الـ userId
-    fusionUserId =
-      createdUserResp.data?.user?.id ||
-      createdUserResp.data?.id;
-
+    fusionUserId = createdUserResp.data?.user?.id || createdUserResp.data?.id;
     if (!fusionUserId) {
       this.logger.error('❌ Invalid FusionAuth response: no user id found', createdUserResp?.data || createdUserResp);
-      throw new InternalServerErrorException('Invalid response from FusionAuth');
+      throw new InternalServerErrorException('Invalid response from FusionAuth (no user id).');
+    }
+    this.logger.log(`✅ FusionAuth user created: ${fusionUserId}`);
+
+    // Determine tenantId: prefer the one returned in the created user, else from config env if available
+    const tenantIdFromResp = createdUserResp.data?.user?.tenantId;
+    const tenantId = tenantIdFromResp || this.config.get<string>('FUSIONAUTH_TENANT_ID') || undefined;
+
+    // 2️⃣ Add registration to the application (link user -> application + role)
+    // Use the registration endpoint which is explicit and tends to be more reliable
+    // Use the endpoint that requires the userId in the URL
+const registrationUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/registration/${fusionUserId}`;
+const registrationPayload = {
+  registration: {
+    applicationId: this.clientId, // your application id
+    roles: [dto.role], // "doctor" or role id if you prefer
+  },
+};
+const registrationHeaders: Record<string, string> = {
+  'Content-Type': 'application/json',
+  'Authorization': this.apiKey || '',
+};
+if (tenantId) {
+  registrationHeaders['X-FusionAuth-TenantId'] = tenantId;
+}
+
+this.logger.log(`Adding registration for user ${fusionUserId} to app ${this.clientId} with roles ${JSON.stringify([dto.role])}`);
+const regResp = await axios.post(registrationUrl, registrationPayload, {
+  headers: registrationHeaders,
+  timeout: 10000,
+});
+
+
+    // check registration response minimal
+    if (!regResp?.data?.registration) {
+      this.logger.error('Failed to register user to application — empty registration response', regResp?.data || regResp);
+      // Rollback: attempt to delete created user
+      try {
+        const delUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/${fusionUserId}`;
+        const delHeaders: Record<string, string> = {
+          'Authorization': this.apiKey || '',
+        };
+        if (tenantId) delHeaders['X-FusionAuth-TenantId'] = tenantId;
+        await axios.delete(delUrl, { headers: delHeaders, timeout: 10000 });
+        this.logger.warn(`Rolled back FusionAuth user ${fusionUserId} after failed registration`);
+      } catch (delErr: any) {
+        this.logger.error('Failed to rollback FusionAuth user after registration failure', delErr?.response?.data || delErr?.message || delErr);
+      }
+      throw new InternalServerErrorException('Failed to add user registration in FusionAuth.');
     }
 
-    this.logger.log(`✅ FusionAuth user created: ${fusionUserId}`);
+    this.logger.log(`✅ Registration added: ${JSON.stringify(regResp.data.registration)}`);
   } catch (err: any) {
     const status = err?.response?.status;
     const data = err?.response?.data;
     const msg = data?.message || err.message;
-    this.logger.error('FusionAuth createUser error', { status, message: msg, data: data || {} });
+    this.logger.error('FusionAuth createUser/registration error', { status, message: msg, data: data || {} });
 
     if (status === 401) {
       throw new InternalServerErrorException('Unauthorized: check FusionAuth API key.');
@@ -234,10 +285,10 @@ export class AuthService {
       throw new InternalServerErrorException(`Cannot reach FusionAuth server: ${msg}`);
     }
 
-    throw new InternalServerErrorException('Failed to create user in FusionAuth.');
+    throw new InternalServerErrorException('Failed to create user or register in FusionAuth.');
   }
 
-  // 4️⃣ تجهيز بيانات البروفايل المحلي
+  // 3️⃣ Prepare local profile data (unchanged)
   const birthYearNum = dto.birthYear ? Number(dto.birthYear) : 0;
 
   const newDoctor = {
@@ -260,9 +311,8 @@ export class AuthService {
     profilePhoto: dto.profilePhoto ?? null,
   };
 
-  // 5️⃣ إدخال البيانات في قاعدة البيانات
+  // 4️⃣ Insert into local DB
   try {
-    // سجّل الـ payload قبل المحاولة — مهم للتشخيص
     this.logger.debug('Attempting DB insert. newDoctor:', JSON.stringify(newDoctor));
     this.logger.debug('Attempting DB insert. newPatient:', JSON.stringify(newPatient));
 
@@ -274,7 +324,7 @@ export class AuthService {
 
     this.logger.log(`✅ Local profile created for ${dto.email} (${dto.role})`);
   } catch (dbErr: any) {
-    // 1) سجل كل تفاصيل الخطأ اللي ممكن تجيبها Drizzle/Postgres
+    // Log details
     this.logger.error('DB insert error — full:', {
       message: dbErr?.message,
       code: dbErr?.code,
@@ -284,40 +334,44 @@ export class AuthService {
       stack: dbErr?.stack,
     });
 
-    // 2) شغل فحوصات محلية سريعة على الpayload لتتأكد من القيم (قبل rollback)
     const validationErrors = dto.role === 'doctor'
       ? validateDoctorPayload(newDoctor)
       : validatePatientPayload(newPatient);
 
     if (validationErrors.length > 0) {
       this.logger.error('Local payload validation failed:', validationErrors);
-      // رغم فشل الفحص، سنحاول rollback في FusionAuth لأنك تفضل ذلك،
-      // لكن نُعطي رسالة خطأ أوضح للـ client تتضمن فحوصاتنا.
     } else {
       this.logger.log('Local payload validation passed (no obvious client-side issues).');
     }
 
-    // 3) محاولة حذف المستخدم من FusionAuth كـ rollback (لا نغير منطق الفيوجن)
-    // try {
-    //   if (fusionUserId) {
-    //     const delUrl = `${this.baseUrl}/api/user/${fusionUserId}`;
-    //     await axios.delete(delUrl, {
-    //       headers: {
-    //         'Authorization': this.apiKey,
-    //       },
-    //     });
-    //     this.logger.warn(`Rolled back FusionAuth user ${fusionUserId}`);
-    //   }
-    // } catch (delErr: any) {
-    //   // سجّل تفاصيل فشل الـ rollback لأن إلّا بيخلي المستخدم في FusionAuth بدون سجل محلي
-    //   this.logger.error('Failed to rollback FusionAuth user', {
-    //     message: delErr?.message || delErr,
-    //     status: delErr?.response?.status,
-    //     data: delErr?.response?.data,
-    //   });
-    // }
+    // Try rollback: delete registration and delete user from FusionAuth
+    try {
+      // delete registration first (there's no dedicated delete-by-id endpoint; remove registration by calling the registration endpoint with null?)
+      // FusionAuth supports DELETE /api/user/{userId}/registration/{applicationId}
+      const delRegUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/${fusionUserId}/registration/${this.clientId}`;
+      const delHeaders: Record<string, string> = {
+        'Authorization': this.apiKey || '',
+      };
+      const tenantFromCreated = createdUserResp?.data?.user?.tenantId;
+      if (tenantFromCreated) delHeaders['X-FusionAuth-TenantId'] = tenantFromCreated;
 
-    // 4) ارجع رسالة خطأ أوضح للعميل (بدون تسريب معلومات حساسة)
+      await axios.delete(delRegUrl, { headers: delHeaders, timeout: 10000 });
+      this.logger.warn(`Deleted registration for user ${fusionUserId} due to local DB error.`);
+    } catch (delRegErr: any) {
+      this.logger.error('Failed to delete registration during rollback', delRegErr?.response?.data || delRegErr?.message || delRegErr);
+    }
+
+    try {
+      const delUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/${fusionUserId}`;
+      const delHeaders: Record<string, string> = { 'Authorization': this.apiKey || '' };
+      const tenantFromCreated = createdUserResp?.data?.user?.tenantId;
+      if (tenantFromCreated) delHeaders['X-FusionAuth-TenantId'] = tenantFromCreated;
+      await axios.delete(delUrl, { headers: delHeaders, timeout: 10000 });
+      this.logger.warn(`Rolled back FusionAuth user ${fusionUserId} after local DB error`);
+    } catch (delErr: any) {
+      this.logger.error('Failed to rollback FusionAuth user after DB insert error', delErr?.response?.data || delErr?.message || delErr);
+    }
+
     const clientMsg = validationErrors.length > 0
       ? `Failed to create local profile; validation errors: ${validationErrors.join('; ')}`
       : 'Failed to create local profile; database insert failed (see server logs).';
@@ -325,8 +379,9 @@ export class AuthService {
     throw new InternalServerErrorException(clientMsg);
   }
 
-  return fusionUserId;
+  return fusionUserId!;
 }
+
 
 async login(email:string,password:string){
 
@@ -368,54 +423,32 @@ async login(email:string,password:string){
   }
 
   // refresh tokens
-  async refreshTokens(refreshToken: string) {
-    // 1) find candidate sessions that are not revoked and not expired
-    const now = new Date();
-    const candidates = await db.select().from(schema.userSessions)
-      .where(
-        and(
-          eq(schema.userSessions.revoked, false),
-          not(isNull(schema.userSessions.refreshTokenHash))
-          // you can also add expiresAt check if desired
-        )
-      )
-      .limit(200); // limit to reasonable number
+async refreshTokens(refreshToken: string) {
+  // 3) call FusionAuth to exchange refresh token
+  const tokens = await this.fusionClient.exchangeRefreshToken(
+    refreshToken,
+    this.clientId,
+    this.clientSecret,
+  );
 
-    // 2) find matching session by comparing bcrypt
-    let matchedSession: any = null;
-    for (const s of candidates) {
-      const ok = await bcrypt.compare(refreshToken, s.refreshTokenHash);
-      if (ok) {
-        matchedSession = s;
-        break;
-      }
-    }
+  // ✅ هنا بتحط الكود مباشرة
+  const accessToken = tokens.access_token ?? tokens.accessToken;
+  const idToken = tokens.id_token ?? tokens.idToken;
+  const refreshTok = tokens.refresh_token ?? tokens.refreshToken ?? tokens.refresh;
 
-    if (!matchedSession) {
-      // token not recognized -> security: reject
-      throw new UnauthorizedException('Refresh token not recognized');
-    }
+  // فقط حتى تتأكد شو رجع فعلياً
+  console.log('Tokens from FusionAuth:', tokens);
+  console.log('Parsed Tokens:', { accessToken, idToken, refreshTok });
 
-    // 3) call FusionAuth to exchange refresh token
-    const tokens = await this.fusionClient.exchangeRefreshToken(refreshToken, this.clientId, this.clientSecret);
+  // بعدين ترجّعهم بالشكل الموحّد
+  return {
+    access_token: accessToken,
+    id_token: idToken,
+    refresh_token: refreshTok,
+  };
+}
 
-    // 4) if FusionAuth returned a rotated refresh token, update the matched session
-    if (tokens.refresh_token) {
-      const newHashed = await this.hashToken(tokens.refresh_token);
-      await db.update(schema.userSessions).set({
-        refreshTokenHash: newHashed,
-        lastUsedAt: new Date(),
-        expiresAt: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : null,
-      }).where(eq(schema.userSessions.id, matchedSession.id));
-    } else {
-      // at least update lastUsedAt
-      await db.update(schema.userSessions).set({
-        lastUsedAt: new Date(),
-      }).where(eq(schema.userSessions.id, matchedSession.id));
-    }
 
-    return tokens;
-  }
 
   // revoke refresh token: call FusionAuth revoke endpoint + delete session row
   async revokeRefreshToken(refreshToken: string, userId?: string) {

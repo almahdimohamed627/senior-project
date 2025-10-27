@@ -2,6 +2,7 @@
 import { pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm"; // قد تحتاجه لاحقًا للـ default expressions
 import { doctorProfile, patientProfile, DoctorProfile, PatientProfile, NewDoctorProfile, NewPatientProfile } from "./profiles.schema";
+import { relations } from "drizzle-orm";
 
 export const posts = pgTable('posts', {
   id: serial('id').primaryKey(),
@@ -23,6 +24,14 @@ export const posts = pgTable('posts', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const postsRelations =relations(posts,({one})=>({
+  doctor:one(doctorProfile,{
+    fields:[posts.userId],
+    references:[doctorProfile.fusionAuthId]
+  })
+}))
+
 export default {
-    posts
+    posts,
+    postsRelations
 }

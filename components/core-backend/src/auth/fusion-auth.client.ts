@@ -1,101 +1,105 @@
 // src/auth/fusion-auth.client.ts
-import FusionAuthClient from '@fusionauth/typescript-client';
 import axios from 'axios';
+import {
 
+  Logger
+
+} from '@nestjs/common';
 export class FusionAuthClientWrapper {
-  private client: FusionAuthClient;
-  constructor(private baseUrl: string, private apiKey?: string) {
-    this.client = new FusionAuthClient(apiKey || '', baseUrl);
-  }
+  constructor(
+    private baseUrl: string,
+    private apiKey?: string,
+    private clientId?: string,
+    private clientSecret?: string,
+   private logger = new Logger(FusionAuthClientWrapper.name)
+  ) {}
 
-  // Admin API - create user (example)
-  async createUser(userObj: any) {
-    const resp = await this.client.createUser("", { user: userObj });
-    return resp.response;
-  }
-
-  // Get user by id
-  async getUser(userId: string) {
-    const resp = await this.client.retrieveUser(userId);
-    return resp.response?.user;
-  }
-  async deleteUser(userId:string){
-    return await this.client.deleteUser(userId)
-  }
-  async exchangePassword(username: string, password: string, clientId: string, clientSecret?: string) {
-  const tokenUrl = `${this.baseUrl.replace(/\/$/, '')}/oauth2/token`;
-  const params = new URLSearchParams();
-  params.append('grant_type', 'password');
-  params.append('username', username);
-  params.append('password', password);
-  params.append('scope', 'openid offline_access');
-  params.append('client_id', clientId);
-  if (clientSecret) params.append('client_secret', clientSecret);
-
-  const { data } = await axios.post(tokenUrl, params.toString(), {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-  return data; // access_token, id_token, refresh_token, expires_in, ...
-}
-
-  // Token exchange (authorization code -> tokens)
-  async exchangeCodeForToken(code: string, redirectUri: string, clientId: string, clientSecret: string) {
-    const tokenUrl = `${this.baseUrl}/oauth2/token`;
+  // تبادل كلمة المرور للحصول على التوكنات
+  async exchangePassword(email: string, password: string, clientId: string, clientSecret: string) {
     const params = new URLSearchParams();
-    params.append('grant_type', 'authorization_code');
-    params.append('code', code);
-    params.append('client_id', clientId);
-    params.append('client_secret', clientSecret);
-    params.append('redirect_uri', redirectUri);
+    params.append('grant_type', 'password');
+params.append('username', email);
+params.append('password', password);
+params.append('client_id', clientId);
+params.append('client_secret', clientSecret);
+// اطلب offline_access للحصول على refresh token، وopenid إذا تريد id_token
+params.append('scope', 'offline_access openid');
 
-    const { data } = await axios.post(tokenUrl, params.toString(), {
+    const resp = await axios.post(`${this.baseUrl}/oauth2/token`, params, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });
-    return data; // access_token, id_token, refresh_token...
+    return resp.data;
   }
 
-  // Introspect token (optional)
-  async introspectToken(token: string) {
-    const introspectUrl = `${this.baseUrl}/oauth2/introspect`;
-    const params = new URLSearchParams();
-    params.append('token', token);
-
-    const { data } = await axios.post(introspectUrl, params.toString(), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
-    return data;
-  }
-
-  // Retrieve JWKS for local JWT verification
-  jwksUrl() {
-    return `${this.baseUrl}/.well-known/jwks.json`;
-  }
-   // 1) exchange refresh token -> new tokens
+  // تبادل refresh token للحصول على توكن جديد
   async exchangeRefreshToken(refreshToken: string, clientId: string, clientSecret: string) {
-    const tokenUrl = `${this.baseUrl}/oauth2/token`;
     const params = new URLSearchParams();
     params.append('grant_type', 'refresh_token');
     params.append('refresh_token', refreshToken);
     params.append('client_id', clientId);
     params.append('client_secret', clientSecret);
+    params.append('scope', 'openid offline_access');
 
-    const { data } = await axios.post(tokenUrl, params.toString(), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
-    return data; // access_token, id_token, refresh_token (maybe rotated)
+   const resp = await axios.post(`${this.baseUrl}/oauth2/token`, params, {
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+});
+this.logger.debug('FusionAuth refresh response', resp.data);
+return resp.data;
   }
 
-  // 2) revoke token (access or refresh)
-  async revokeToken(token: string, clientId?: string, clientSecret?: string) {
-    const revokeUrl = `${this.baseUrl}/oauth2/revoke`;
+  // التحقق من صلاحية التوكن
+  async introspectToken(token: string) {
+    if (!this.clientId) throw new Error('clientId not set in FusionAuthClientWrapper');
+
     const params = new URLSearchParams();
     params.append('token', token);
-    if (clientId) params.append('client_id', clientId);
+    params.append('client_id', this.clientId);
+    if (this.clientSecret) params.append('client_secret', this.clientSecret);
+
+    const resp = await axios.post(`${this.baseUrl}/oauth2/introspect`, params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    return resp.data;
+  }
+
+  // جلب بيانات المستخدم من FusionAuth
+  async getUser(userId: string) {
+    const url = `${this.baseUrl}/api/user/${userId}`;
+    const resp = await axios.get(url, {
+      headers: {
+        'Authorization': this.apiKey || '',
+      },
+    });
+    return resp.data.user;
+  }
+
+  // إلغاء صلاحية refresh token
+  async revokeToken(refreshToken: string, clientId: string, clientSecret: string) {
+    const url = `${this.baseUrl}/oauth2/revoke`;
+    const params = new URLSearchParams();
+    params.append('token', refreshToken);
+    params.append('client_id', clientId);
     if (clientSecret) params.append('client_secret', clientSecret);
 
-    const { data } = await axios.post(revokeUrl, params.toString(), {
+    await axios.post(url, params, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });
-    return data;
+  }
+
+  // تبادل authorization code للحصول على التوكنات
+  async exchangeCodeForToken(code: string, redirectUri: string, clientId: string, clientSecret: string) {
+    const params = new URLSearchParams();
+    params.append('grant_type', 'authorization_code');
+    params.append('code', code);
+    params.append('redirect_uri', redirectUri);
+    params.append('client_id', clientId);
+    params.append('client_secret', clientSecret);
+
+    const resp = await axios.post(`${this.baseUrl}/oauth2/token`, params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    return resp.data;
   }
 }
