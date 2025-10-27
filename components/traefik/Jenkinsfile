@@ -1,0 +1,107 @@
+def call() {
+    pipeline {
+        agent any
+        
+        environment {
+            COMPONENT_NAME = 'traefik'  // Update with actual name
+            COMPOSE_PROJECT_NAME = "${env.JOB_NAME}-${env.BUILD_NUMBER}"
+        }
+        
+        stages {
+            stage('Validate Docker Compose') {
+                steps {
+                    script {
+                        sh '''
+                            echo "Validating docker-compose.yml..."
+                            docker-compose config
+                        '''
+                    }
+                }
+            }
+            
+            stage('Pull Images') {
+                steps {
+                    script {
+                        sh '''
+                            echo "Pulling Docker images from Docker Hub..."
+                            docker-compose pull --ignore-pull-failures
+                        '''
+                    }
+                }
+            }
+            
+            stage('Build Services') {
+                when {
+                    expression { 
+                        // Only build if there are buildable services
+                        fileExists('Dockerfile') || 
+                        sh(script: 'docker-compose config | grep -q "build:"', returnStatus: true) == 0
+                    }
+                }
+                steps {
+                    sh 'docker-compose build --no-cache --pull'
+                }
+            }
+            
+            stage('Smoke Test') {
+                steps {
+                    script {
+                        sh '''
+                            echo "Starting services for smoke test..."
+                            docker-compose up -d
+                            
+                            # Wait for services to be ready
+                            sleep 30
+                            
+                            # Check if services are running
+                            docker-compose ps
+                            
+                            # Run basic health checks (adjust based on your services)
+                            if docker-compose ps | grep -q "Up"; then
+                                echo "✅ Services are running"
+                            else
+                                echo "❌ Some services failed to start"
+                                exit 1
+                            fi
+                        '''
+                    }
+                }
+                post {
+                    always {
+                        sh '''
+                            echo "Stopping services after smoke test..."
+                            docker-compose down
+                        '''
+                    }
+                }
+            }
+            
+            stage('Save Compose Configuration') {
+                steps {
+                    sh '''
+                        # Generate the final compose config for deployment
+                        docker-compose config > docker-compose.resolved.yml
+                    '''
+                    archiveArtifacts artifacts: 'docker-compose.resolved.yml', fingerprint: true
+                }
+            }
+        }
+        
+        post {
+            always {
+                script {
+                    // Clean up any orphaned containers
+                    sh '''
+                        docker-compose down --remove-orphans 2>/dev/null || true
+                    '''
+                }
+            }
+            success {
+                echo "✅ ${env.COMPONENT_NAME} Docker Compose deployment prepared successfully"
+            }
+            failure {
+                echo "❌ ${env.COMPONENT_NAME} Docker Compose deployment failed"
+            }
+        }
+    }
+}
