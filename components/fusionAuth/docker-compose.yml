@@ -24,6 +24,7 @@ services:
 
   # This is the main FusionAuth application.
   fusionauth:
+    container_name: fusionauth
     image: fusionauth/fusionauth-app:latest
     depends_on:
       db:
@@ -39,7 +40,7 @@ services:
       FUSIONAUTH_APP_KICKSTART_FILE: ${FUSIONAUTH_APP_KICKSTART_FILE}
       FUSIONAUTH_APP_MEMORY: ${FUSIONAUTH_APP_MEMORY}
       FUSIONAUTH_APP_RUNTIME_MODE: ${FUSIONAUTH_APP_RUNTIME_MODE}
-      FUSIONAUTH_APP_URL: ${FUSIONAUTH_DOMAIN}
+      FUSIONAUTH_APP_URL: https://${FUSIONAUTH_DOMAIN}
 
       SEARCH_SERVERS: http://localhost:9200
       SEARCH_TYPE: ${FUSIONAUTH_SEARCH_TYPE}
