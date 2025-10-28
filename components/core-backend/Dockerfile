@@ -1,7 +1,15 @@
-FROM node:18
+# Build stage
+FROM node:20-alpine AS builder
 WORKDIR /
-COPY package*.json ./
+COPY package*.json tsconfig*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
-CMD [ "npm", "run", "start:dev" ]
+
+# Production stage
+FROM node:20-alpine AS production
+WORKDIR /
+COPY package*.json tsconfig*.json ./
+RUN npm install --only=production
+COPY --from=builder /dist ./dist
+CMD [ "node", "dist/main" ]
