@@ -42,7 +42,7 @@ services:
       FUSIONAUTH_APP_RUNTIME_MODE: ${FUSIONAUTH_APP_RUNTIME_MODE}
       FUSIONAUTH_APP_URL: https://${FUSIONAUTH_DOMAIN}
 
-      SEARCH_SERVERS: http://localhost:9200
+      SEARCH_SERVERS: http://search:9200
       SEARCH_TYPE: ${FUSIONAUTH_SEARCH_TYPE}
     healthcheck:
       test: curl --silent --fail http://localhost:9011/api/status -o /dev/null -w "%{http_code}"
@@ -71,6 +71,7 @@ services:
   # Then you can remove the search dependency above and disable this service.
   search:
     image: opensearchproject/opensearch:2.11.0
+    container_name: search
     environment:
       cluster.name: fusionauth
       discovery.type: single-node
