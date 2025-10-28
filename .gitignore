@@ -1,1 +1,5 @@
 .env
+# Ignore the entire certs directory
+certs/
+# Ignore the entire dynamic directory
+dynamic/

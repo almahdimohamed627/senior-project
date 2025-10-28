@@ -19,6 +19,7 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+
   # This is the main FusionAuth application.
   fusionauth:
     image: fusionauth/fusionauth-app:latest
@@ -27,6 +28,12 @@ services:
         condition: service_healthy
       search:
         condition: service_healthy
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fusionauth.rule=Host(`auth.almahdi.cloud`)"
+      - "traefik.http.routers.fusionauth.entrypoints=web"
+
     environment:
       DATABASE_URL: jdbc:postgresql://db:5432/fusionauth
       DATABASE_ROOT_USERNAME: ${POSTGRES_USER}
@@ -36,7 +43,9 @@ services:
       FUSIONAUTH_APP_KICKSTART_FILE: ${FUSIONAUTH_APP_KICKSTART_FILE}
       FUSIONAUTH_APP_MEMORY: ${FUSIONAUTH_APP_MEMORY}
       FUSIONAUTH_APP_RUNTIME_MODE: ${FUSIONAUTH_APP_RUNTIME_MODE}
+
       FUSIONAUTH_APP_URL: http://fusionauth:9011
+
       SEARCH_SERVERS: http://search:9200
       SEARCH_TYPE: ${FUSIONAUTH_SEARCH_TYPE}
     healthcheck:
@@ -52,6 +61,7 @@ services:
       - ${FUSIONAUTH_LOCAL_KICKSTART_DIRECTORY}:/usr/local/fusionauth/kickstart
       - ${FUSIONAUTH_LOCAL_PLUGIN_DIRECTORY}:/usr/local/fusionauth/plugins
 
+
   # Open Search isn't technically required, but the `fusionauth` service currently depends on it, so we start it here.
   # You can change the search engine backend to `database` in the `.env` file if you would prefer to use that.
   # Then you can remove the search dependency above and disable this service.
@@ -61,8 +71,10 @@ services:
       cluster.name: fusionauth
       discovery.type: single-node
       node.name: search
+
       plugins.security.disabled: true
       bootstrap.memory_lock: true
+
       OPENSEARCH_JAVA_OPTS: ${OPENSEARCH_JAVA_OPTS}
     healthcheck:
       interval: 10s
@@ -81,6 +93,7 @@ services:
       - 9600:9600 # Performance Analyzer
     volumes:
       - search_data:/usr/share/opensearch/data
+
 
   #
   # Optional services
@@ -102,6 +115,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+
   # Mailcatcher is a nice SMTP server that can be used for development and testing. You'll need to configure FusionAuth
   # to use Mailcatcher (or use a Kickstart file that points the SMTP configuration to localhost:1025).
   mailcatcher:
@@ -116,6 +130,7 @@ services:
       retries: 80
       test: wget -q -O /dev/null http://mailcatcher:1080/
 
+
   # Zookeeper is needed for Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -126,6 +141,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - 2181:2181
+
 
   # Kafka can be used for Webhooks rather than HTTP. You'll need to configure FusionAuth to use Kafka (or use a
   # Kickstart file that enables Kafka).
@@ -144,6 +160,7 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
 
   # Cleanspeak provides filtering of usernames and profile data to prevent profanity and other unwanted content. You'll
   # need a Cleanspeak license to enable this service.
@@ -171,6 +188,7 @@ services:
     volumes:
       - cs_config:/usr/local/cleanspeak/config
 
+
   # OpenTelemetry can be used to collect metrics from FusionAuth and push them to Prometheus or other systems. You might need
   # to configure OpenTelemetry by editing the opentelementy-collector-config.yml file.
   opentelemetry:
@@ -185,6 +203,7 @@ services:
     volumes:
       - ${OPENTELEMETRY_COLLECTOR_CONFIG_FILE}:/etc/opentelemetry/collector-config.yml
     command: ["--config=/etc/opentelemetry/collector-config.yml"]
+
 
   # Prometheus can be used to monitor FusionAuth and can be used with OpenTelemetry or directly. Depending on the way you want to
   # use Prometheus, you might need to change the PROMETHEUS_CONFIG_FILE variable to point to a different configuration file or
@@ -202,6 +221,7 @@ services:
       - ${PROMETHEUS_RULES_FILE}:/etc/prometheus/rules.yml
       - prometheus_data:/prometheus
 
+
   # Alertmanager can be used in conjunction with Prometheus to handle errors that are collected.
   alertmanager:
     image: prom/alertmanager:v0.28.1
@@ -213,6 +233,7 @@ services:
       - 9093:9093
     volumes:
       - ${ALERTMANAGER_CONFIG_FILE}:/etc/alertmanager/alertmanager-config.yml
+
 
 volumes:
   caddy_config:
