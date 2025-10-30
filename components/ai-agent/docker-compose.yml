@@ -12,7 +12,7 @@ services:
       - ollama_data:/root/.ollama
       - /etc/ollama/model_files:/model_files  # Mount a directory for custom scripts and Modelfiles
     tty: true
-    mem_limit: 8G        # Hard limit on physical RAM
+    #mem_limit: 8G        # Hard limit on physical RAM
     memswap_limit: -1    # Total limit (RAM + Swap)
 
     restart: unless-stopped
