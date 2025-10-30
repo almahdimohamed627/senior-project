@@ -2,6 +2,8 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
+    environment:
+      - OLLAMA_NUM_PARALLEL=2 
     ports:
       - "11434:11434"
     networks:
@@ -10,6 +12,9 @@ services:
       - ollama_data:/root/.ollama
       - /etc/ollama/model_files:/model_files  # Mount a directory for custom scripts and Modelfiles
     tty: true
+    mem_limit: 8G        # Hard limit on physical RAM
+    memswap_limit: 40G    # Total limit (RAM + Swap)
+    mem_swappiness: 90
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/model_files/run_ollama.sh"]  # Custom script to run on start
     labels:
