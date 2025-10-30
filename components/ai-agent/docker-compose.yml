@@ -13,8 +13,8 @@ services:
       - /etc/ollama/model_files:/model_files  # Mount a directory for custom scripts and Modelfiles
     tty: true
     mem_limit: 8G        # Hard limit on physical RAM
-    memswap_limit: 40G    # Total limit (RAM + Swap)
-    mem_swappiness: 90
+    memswap_limit: -1    # Total limit (RAM + Swap)
+
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/model_files/run_ollama.sh"]  # Custom script to run on start
     labels:
