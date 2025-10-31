@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class BasicAuthGuard implements CanActivate {
+  
   constructor(private config: ConfigService) {}
 
   canActivate(context: ExecutionContext): boolean {

@@ -16,7 +16,8 @@ import * as bcrypt from 'bcrypt';
 import { eq, isNull, not, and } from 'drizzle-orm';
 import axios from 'axios';
 import { Response } from 'express';
-
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 @Injectable()
 export class AuthService {
   private fusionClient: FusionAuthClientWrapper;
@@ -155,9 +156,30 @@ export class AuthService {
   // ------------------------------
   // registerUserAndProfile
   // ------------------------------
- async registerUserAndProfile(dto: RegisterDto): Promise<string> {
+async registerUserAndProfile(dto: RegisterDto): Promise<string> {
   let fusionUserId: string | undefined;
   let createdUserResp: any;
+
+  // Helper: remove uploaded file if it points inside uploads folder
+  const removeUploadedFileIfSafe = async (maybePath?: string | null) => {
+    if (!maybePath) return;
+    try {
+      // normalize and ensure we only delete paths inside the project uploads folder
+      const normalized = maybePath.replace(/\\/g, '/'); // normalize Windows slashes
+      // accept values like 'uploads/filename.jpg' or '/uploads/filename.jpg'
+      const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+      if (!trimmed.startsWith('uploads/')) {
+        // safety: do not unlink arbitrary paths
+        this.logger.warn(`Skip deleting uploaded file because path is outside uploads/: ${maybePath}`);
+        return;
+      }
+      const fullPath = join(process.cwd(), trimmed);
+      await unlink(fullPath).catch(() => null);
+      this.logger.warn(`Deleted uploaded file during rollback: ${fullPath}`);
+    } catch (e) {
+      this.logger.error('Error while trying to delete uploaded file', e?.message || e);
+    }
+  };
 
   // Validators (كما عندك)
   const validateDoctorPayload = (p: any) => {
@@ -200,7 +222,6 @@ export class AuthService {
         password: dto.password,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        // do not rely on data.role for authorization — we'll add registration explicitly
       },
     };
 
@@ -217,54 +238,53 @@ export class AuthService {
     fusionUserId = createdUserResp.data?.user?.id || createdUserResp.data?.id;
     if (!fusionUserId) {
       this.logger.error('❌ Invalid FusionAuth response: no user id found', createdUserResp?.data || createdUserResp);
+      // If a file was uploaded by controller (dto.profilePhoto set) - delete it
+      await removeUploadedFileIfSafe(dto.profilePhoto ?? null);
       throw new InternalServerErrorException('Invalid response from FusionAuth (no user id).');
     }
     this.logger.log(`✅ FusionAuth user created: ${fusionUserId}`);
 
-    // Determine tenantId: prefer the one returned in the created user, else from config env if available
+    // Determine tenantId
     const tenantIdFromResp = createdUserResp.data?.user?.tenantId;
     const tenantId = tenantIdFromResp || this.config.get<string>('FUSIONAUTH_TENANT_ID') || undefined;
 
     // 2️⃣ Add registration to the application (link user -> application + role)
-    // Use the registration endpoint which is explicit and tends to be more reliable
-    // Use the endpoint that requires the userId in the URL
-const registrationUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/registration/${fusionUserId}`;
-const registrationPayload = {
-  registration: {
-    applicationId: this.clientId, // your application id
-    roles: [dto.role], // "doctor" or role id if you prefer
-  },
-};
-const registrationHeaders: Record<string, string> = {
-  'Content-Type': 'application/json',
-  'Authorization': this.apiKey || '',
-};
-if (tenantId) {
-  registrationHeaders['X-FusionAuth-TenantId'] = tenantId;
-}
+    const registrationUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/registration/${fusionUserId}`;
+    const registrationPayload = {
+      registration: {
+        applicationId: this.clientId,
+        roles: [dto.role],
+      },
+    };
+    const registrationHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': this.apiKey || '',
+    };
+    if (tenantId) {
+      registrationHeaders['X-FusionAuth-TenantId'] = tenantId;
+    }
 
-this.logger.log(`Adding registration for user ${fusionUserId} to app ${this.clientId} with roles ${JSON.stringify([dto.role])}`);
-const regResp = await axios.post(registrationUrl, registrationPayload, {
-  headers: registrationHeaders,
-  timeout: 10000,
-});
-
+    this.logger.log(`Adding registration for user ${fusionUserId} to app ${this.clientId} with roles ${JSON.stringify([dto.role])}`);
+    const regResp = await axios.post(registrationUrl, registrationPayload, {
+      headers: registrationHeaders,
+      timeout: 10000,
+    });
 
     // check registration response minimal
     if (!regResp?.data?.registration) {
       this.logger.error('Failed to register user to application — empty registration response', regResp?.data || regResp);
-      // Rollback: attempt to delete created user
+      // Rollback: delete created user
       try {
         const delUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/${fusionUserId}`;
-        const delHeaders: Record<string, string> = {
-          'Authorization': this.apiKey || '',
-        };
+        const delHeaders: Record<string, string> = { 'Authorization': this.apiKey || '' };
         if (tenantId) delHeaders['X-FusionAuth-TenantId'] = tenantId;
         await axios.delete(delUrl, { headers: delHeaders, timeout: 10000 });
         this.logger.warn(`Rolled back FusionAuth user ${fusionUserId} after failed registration`);
       } catch (delErr: any) {
         this.logger.error('Failed to rollback FusionAuth user after registration failure', delErr?.response?.data || delErr?.message || delErr);
       }
+      // cleanup uploaded file
+      await removeUploadedFileIfSafe(dto.profilePhoto ?? null);
       throw new InternalServerErrorException('Failed to add user registration in FusionAuth.');
     }
 
@@ -274,6 +294,9 @@ const regResp = await axios.post(registrationUrl, registrationPayload, {
     const data = err?.response?.data;
     const msg = data?.message || err.message;
     this.logger.error('FusionAuth createUser/registration error', { status, message: msg, data: data || {} });
+
+    // If we failed before DB insert, make sure to remove uploaded file
+    await removeUploadedFileIfSafe(dto.profilePhoto ?? null);
 
     if (status === 401) {
       throw new InternalServerErrorException('Unauthorized: check FusionAuth API key.');
@@ -288,7 +311,7 @@ const regResp = await axios.post(registrationUrl, registrationPayload, {
     throw new InternalServerErrorException('Failed to create user or register in FusionAuth.');
   }
 
-  // 3️⃣ Prepare local profile data (unchanged)
+  // 3️⃣ Prepare local profile data
   const birthYearNum = dto.birthYear ? Number(dto.birthYear) : 0;
 
   const newDoctor = {
@@ -346,12 +369,8 @@ const regResp = await axios.post(registrationUrl, registrationPayload, {
 
     // Try rollback: delete registration and delete user from FusionAuth
     try {
-      // delete registration first (there's no dedicated delete-by-id endpoint; remove registration by calling the registration endpoint with null?)
-      // FusionAuth supports DELETE /api/user/{userId}/registration/{applicationId}
       const delRegUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/${fusionUserId}/registration/${this.clientId}`;
-      const delHeaders: Record<string, string> = {
-        'Authorization': this.apiKey || '',
-      };
+      const delHeaders: Record<string, string> = { 'Authorization': this.apiKey || '' };
       const tenantFromCreated = createdUserResp?.data?.user?.tenantId;
       if (tenantFromCreated) delHeaders['X-FusionAuth-TenantId'] = tenantFromCreated;
 
@@ -372,6 +391,9 @@ const regResp = await axios.post(registrationUrl, registrationPayload, {
       this.logger.error('Failed to rollback FusionAuth user after DB insert error', delErr?.response?.data || delErr?.message || delErr);
     }
 
+    // cleanup uploaded file if existed
+    await removeUploadedFileIfSafe(dto.profilePhoto ?? null);
+
     const clientMsg = validationErrors.length > 0
       ? `Failed to create local profile; validation errors: ${validationErrors.join('; ')}`
       : 'Failed to create local profile; database insert failed (see server logs).';
@@ -381,6 +403,7 @@ const regResp = await axios.post(registrationUrl, registrationPayload, {
 
   return fusionUserId!;
 }
+
 
 
 async login(email:string,password:string){

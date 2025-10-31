@@ -1,30 +1,61 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { posts } from 'src/db/schema/posts.schema';
 import { db } from 'src/auth/client';
 import schema from 'src/db/schema/schema';
 import { eq } from 'drizzle-orm'; // ✅ أهم import!
-
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 @Injectable()
 export class PostService {
+  private readonly logger = new Logger(PostService.name);
 
+   /**
+   * Create a post and attach uploaded photos paths.
+   * @param dto CreatePostDto & { authorId: string }
+   * @param uploadedPaths array of strings like 'uploads/posts/<filename>'
+   */
+  async createPost(dto: CreatePostDto & { authorId: string }, uploadedPaths: string[] = []) {
+    // Prepare photos JSON
+    const photosJson = uploadedPaths.length > 0 ? JSON.stringify(uploadedPaths) : JSON.stringify([]);
 
- async createPost(dto: CreatePostDto & { authorId: string }) {
-    // stringify photos array (could be undefined)
-    const photosJson = dto.photos ? JSON.stringify(dto.photos) : JSON.stringify([]);
+    try {
+      const inserted = await db.insert(posts).values({
+        title: dto.title,
+        content: dto.content,
+        userId: dto.authorId,
+        photos: photosJson,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }).returning();
 
-    // optionally validate authorId exists in your doctor_profiles table
-    // await db.select().from(schema.doctors).where(schema.doctors.fusionAuthId.eq(dto.authorId))
+      // return single created row (drizzle may return array)
+      if (Array.isArray(inserted)) return inserted[0];
+      return inserted;
+    } catch (err: any) {
+      this.logger.error('DB insert failed for post', err?.message || err);
 
-    const inserted = await db.insert(posts).values({
-      title: dto.title,
-      content: dto.content, 
-      userId: dto.authorId,
-      photos: photosJson,
-    }).returning(); // قد تختلف طريقة returning حسب نسخة drizzle
+      // Rollback: delete uploaded files to avoid orphan files
+      await Promise.all(uploadedPaths.map(async (p) => {
+        try {
+          // Normalize path, ensure it is inside uploads/posts
+          const normalized = p.replace(/\\/g, '/');
+          const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+          if (!trimmed.startsWith('uploads/posts/')) {
+            this.logger.warn(`Skipping deletion of suspicious path during rollback: ${p}`);
+            return;
+          }
+          const fullPath = join(process.cwd(), trimmed);
+          await unlink(fullPath).catch(() => null);
+          this.logger.log(`Deleted uploaded file during rollback: ${fullPath}`);
+        } catch (e) {
+          this.logger.warn('Failed to delete uploaded file during rollback', e?.message || e);
+        }
+      }));
 
-    return inserted; // أو ترجع inserted[0] حسب شكل النتيجة
+      throw new InternalServerErrorException('Failed to create post; database insert failed.');
+    }
   }
 
    async findAll() {
@@ -50,6 +81,11 @@ async findOne(id: number) {
   const result = await db.select().from(posts).where(eq(posts.id, id));
   if (!result.length) throw new NotFoundException(`Post with id ${id} not found`);
   return result[0];
+}
+async findOneByUserId(id: string) {
+  const result = await db.select().from(posts).where(eq(posts.userId, id));
+  if (!result.length) throw new NotFoundException(`Post with id ${id} not found`);
+  return result;
 }
 
 async  update(id: number, updatePostDto: UpdatePostDto) {
