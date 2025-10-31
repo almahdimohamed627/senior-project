@@ -1,5 +1,6 @@
 
 .env
-
-
-components/core-backend/uploads/
+# Ignore the entire certs directory
+certs/
+# Ignore the entire dynamic directory
+dynamic/

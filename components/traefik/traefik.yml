@@ -1,0 +1,17 @@
+api:
+  dashboard: true
+
+entryPoints:
+  web:
+    address: ":80"
+
+providers:
+  docker: {}
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: almahdimohamed627@gmail.com
+      storage: acme.json
+      httpChallenge:
+        entryPoint: web
