@@ -11,8 +11,6 @@ services:
       - PORT=3000
     ports:
       - '3000'
-    volumes:
-      - ./src:/app/src
     networks:
       - proxy
     labels:
