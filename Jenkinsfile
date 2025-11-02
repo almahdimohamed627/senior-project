@@ -423,7 +423,9 @@ def buildComponent(componentName) {
     try {
       if (fileExists('Jenkinsfile')) {
         echo "Loading component-specific Jenkinsfile for ${componentName}"
-        load 'Jenkinsfile'
+        // Load AND call the Jenkinsfile
+        def componentPipeline = load 'Jenkinsfile'
+        componentPipeline()  // ← THIS IS MISSING! Call the function
       } else {
         echo "No Jenkinsfile found for ${componentName}, using auto-build"
         autoBuildComponent(componentName)

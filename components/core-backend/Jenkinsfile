@@ -50,14 +50,19 @@ def call() {
             
             stage('Build Services') {
                 when {
-                    expression { 
-                        // Only build if there are buildable services
-                        fileExists('Dockerfile') || 
+                    expression {
+                        fileExists('Dockerfile') ||
                         sh(script: 'docker-compose config | grep -q "build:"', returnStatus: true) == 0
                     }
                 }
                 steps {
-                    sh 'docker-compose build --no-cache --pull'
+                    sh '''
+                        # Build the specific service image directly, ensuring no-cache
+                        docker build --no-cache --pull -t core-backend-nest-app ./components/core-backend
+
+                        # Even with direct build, try a final compose build to ensure service configuration is updated
+                        docker-compose build --no-cache nest-app || echo "Compose build may be redundant but attempted."
+                    '''
                 }
             }
             
