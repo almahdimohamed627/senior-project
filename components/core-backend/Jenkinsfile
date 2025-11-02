@@ -19,6 +19,23 @@ def call() {
                 }
             }
             
+            stage('Clean Previous Builds') {
+                steps {
+                    script {
+                        sh '''
+                            echo "Cleaning up previous builds and images..."
+                            # Stop and remove any existing containers from previous builds
+                            docker-compose down --remove-orphans --rmi all 2>/dev/null || true
+                            
+                            # Remove any dangling images that might interfere with new build
+                            docker image prune -f 2>/dev/null || true
+                            
+                            # 🔥 CRITICAL FIX: Specific cleanup for nest-app images to ensure fresh build
+                            docker rmi -f $(docker images | grep "nest-app" | awk "{print \$3}") 2>/dev/null || true
+                        '''
+                    }
+                }
+            }
             stage('Pull Images') {
                 steps {
                     script {
