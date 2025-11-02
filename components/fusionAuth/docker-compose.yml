@@ -80,10 +80,7 @@ services:
 
 
 volumes:
-  cs_config:
-  db_data:
   fusionauth_config:
-  prometheus_data:
   search_data:
 
 networks:
