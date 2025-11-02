@@ -24,6 +24,7 @@ def call() {
                     script {
                         sh '''
                             echo "Cleaning up previous builds and images..."
+                            docker rmi --force core-backend-nest-app
                             # Stop and remove any existing containers from previous builds
                             docker-compose down --remove-orphans --rmi all 2>/dev/null || true
                             
