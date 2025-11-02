@@ -17,12 +17,12 @@ RUN npm run build
 FROM node:20-alpine AS production
 WORKDIR /app
 
-# Copy package files
+# Copy package files AND node_modules from builder to ensure all deps are available
 COPY package*.json ./
 COPY tsconfig*.json ./
 
-# Install ALL dependencies (not just production) to ensure runtime deps are available
-RUN npm ci --only=production && npm cache clean --force
+# Install production dependencies but keep all transitive dependencies
+RUN npm ci --production --no-optional && npm cache clean --force
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
@@ -30,8 +30,6 @@ COPY --from=builder /app/dist ./dist
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nestapp -u 1001
-
-# Change ownership to non-root user
 RUN chown -R nestapp:nodejs /app
 USER nestapp
 
