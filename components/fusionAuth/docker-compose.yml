@@ -1,39 +1,15 @@
 services:
-  #
-  # Required services (database and FusionAuth)
-  #
-
-  # Postgresql is the default database. You can swap this out for MySQL if you prefer.
-  fusionauth-db:
-    image: postgres:16.0-bookworm
-    container_name: fusionauth-db
-    environment:
-      PGDATA: /var/lib/postgresql/data/pgdata
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    networks:
-      - proxy
-
-
   # This is the main FusionAuth application.
-  fusionauth-fusionauth:
-    container_name: fusionauth-fusionauth
+  fusionauth:
+    container_name: fusionauth
     image: fusionauth/fusionauth-app:latest
     depends_on:
-      fusionauth-db:
+      db:
         condition: service_healthy
       fusionauth-search:
         condition: service_healthy
     environment:
-      DATABASE_URL: jdbc:postgresql://fusionauth-db:5432/fusionauth
+      DATABASE_URL: jdbc:postgresql://db:5432/fusionauth
       DATABASE_ROOT_USERNAME: ${POSTGRES_USER}
       DATABASE_ROOT_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_USERNAME: ${DATABASE_USER}
@@ -43,7 +19,7 @@ services:
       FUSIONAUTH_APP_RUNTIME_MODE: ${FUSIONAUTH_APP_RUNTIME_MODE}
       FUSIONAUTH_APP_URL: https://${FUSIONAUTH_DOMAIN}
 
-      SEARCH_SERVERS: http://fusionauth-search:9200
+      SEARCH_SERVERS: http://search:9200
       SEARCH_TYPE: ${FUSIONAUTH_SEARCH_TYPE}
     healthcheck:
       test: curl --silent --fail http://localhost:9011/api/status -o /dev/null -w "%{http_code}"
@@ -70,9 +46,9 @@ services:
   # Open Search isn't technically required, but the `fusionauth` service currently depends on it, so we start it here.
   # You can change the search engine backend to `database` in the `.env` file if you would prefer to use that.
   # Then you can remove the search dependency above and disable this service.
-  fusionauth-search:
+  search:
     image: opensearchproject/opensearch:2.11.0
-    container_name: fusionauth-search
+    container_name: search
     environment:
       cluster.name: fusionauth
       discovery.type: single-node
