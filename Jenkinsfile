@@ -284,12 +284,12 @@ ${getRecentChanges()}
         curl -s -X POST \
         -H 'Content-Type: application/json' \
         -d '{
-          "chat_id": "${CHAT_ID}",
+          "chat_id": "${telegram-chat-id}",
           "text": "${message}",
           "parse_mode": "Markdown",
           "disable_web_page_preview": true
         }' \
-        "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" > /dev/null
+        "https://api.telegram.org/bot${telegram-bot-token}/sendMessage" > /dev/null
       """
       echo "Telegram notification sent for ${status}"
     }
