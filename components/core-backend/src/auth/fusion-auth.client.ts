@@ -63,7 +63,29 @@ return resp.data;
     });
     return resp.data;
   }
-
+    async updateUser(userId: string, payload: {
+    email?: string;
+    password?: string;
+    firstName?: string;
+    lastName?: string;
+  }) {
+    const url = `${this.baseUrl}/api/user/${userId}`;
+    const body = {
+      user: {
+        email: payload.email,
+        password: payload.password, // FusionAuth يقبلها نصياً وسيقوم بالتخزين الآمن
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+      },
+    };
+    const resp = await axios.patch(url, body, {
+      headers: {
+        Authorization: this.apiKey || '',
+        'Content-Type': 'application/json',
+      },
+    });
+    return resp.data?.user;
+  }
   // جلب بيانات المستخدم من FusionAuth
   async getUser(userId: string) {
     const url = `${this.baseUrl}/api/user/${userId}`;

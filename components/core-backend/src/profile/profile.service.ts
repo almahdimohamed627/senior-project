@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { db } from '../auth/client'; // تأكد المسار صحيح
@@ -26,6 +26,13 @@ type PublicProfile = {
   city?: string | null;
   specialty?: string | null;
   profilePhoto?: string | null;
+};
+type UpdateArgs = {
+  id: string;                         // profile id (رقمي من جدولك)
+  type: 'doctor' | 'patient';
+  dto: UpdateProfileDto;
+  storedPath?: string;
+  fusionAuthId: string;               // من التوكن
 };
 
 @Injectable()
@@ -162,9 +169,54 @@ export class ProfileService {
     };
   }
 
-  update(id: number, updateProfileDto: UpdateProfileDto) {
-    return `This action updates a #${id} profile`;
+   async updateMe({ type, dto, storedPath, fusionAuthId }: {
+  type: 'doctor' | 'patient';
+  dto: UpdateProfileDto;
+  storedPath?: string;
+  fusionAuthId: string;
+}) {
+  const table = type === 'doctor' ? doctorProfile : patientProfile;
+
+  // جيب السجل بهذا المستخدم
+  const rows = await db.select().from(table).where(eq(table.fusionAuthId, fusionAuthId)).limit(1);
+  const current = rows[0];
+  if (!current) throw new NotFoundException(`${type} profile not found`);
+
+  // تغييرات FusionAuth؟
+  const hasFusionChanges =
+    dto.firstName !== undefined ||
+    dto.lastName !== undefined ||
+    dto.email !== undefined ||
+    dto.password !== undefined;
+
+  if (hasFusionChanges) {
+    await this.fusionClient.updateUser(current.fusionAuthId, {
+      email: dto.email,
+      password: dto.password,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+    });
   }
+
+  // تحديث محلي (صورة وأي محلي ثاني)
+  const localUpdates: Record<string, any> = { updatedAt: new Date() };
+  if (dto.profilePhoto) localUpdates.profilePhoto = dto.profilePhoto; // رابط
+  if (storedPath) localUpdates.profilePhoto = storedPath;            // ملف
+
+  if (Object.keys(localUpdates).length > 1) {
+    await db.update(table).set(localUpdates).where(eq(table.fusionAuthId, fusionAuthId));
+  }
+
+  const fresh = await db.select().from(table).where(eq(table.fusionAuthId, fusionAuthId));
+  return {
+    ok: true,
+    type,
+    profile: fresh[0],
+    fusionUpdated: !!hasFusionChanges,
+    photoUpdated: !!(storedPath || dto.profilePhoto),
+  };
+}
+
 
   remove(id: number) {
     return `This action removes a #${id} profile`;

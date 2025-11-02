@@ -25,7 +25,7 @@ export class RegisterDto {
   // حقول عامة (مش مكررة)
   // -------------------------
   // profilePhoto ممكن تكون اختيارية للجميع
-  @IsOptional() @IsString() profilePhoto?: string|null;
+
 
   // gender, city يمكن أن تكون اختيارية أو مطلوبة حسب حاجتك — هنا جعلتها اختيارية
   @IsOptional() @IsString() gender?: string;

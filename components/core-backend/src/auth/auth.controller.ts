@@ -10,8 +10,6 @@ import {
   HttpStatus,
   Req,
   Logger,
-  UseInterceptors,
-  UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
@@ -22,7 +20,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-
 const UPLOADS_FOLDER = 'uploads';
 
 // ensure uploads folder exists (will create if missing)
@@ -101,47 +98,13 @@ export class AuthController {
   }
 
   // ------------------------
-  // Registration endpoint (supports profilePhoto upload)
+  // Registration endpoint (no photo upload)
   // ------------------------
   @Post('register')
-  @UseInterceptors(
-    FileInterceptor('profilePhoto', {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          cb(null, UPLOADS_FOLDER);
-        },
-        filename: editFileName,
-      }),
-      fileFilter,
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
-    }),
-  )
-  async register(@Body() body: RegisterDto, @UploadedFile() file?: Express.Multer.File) {
-    // If client uploaded a file, attach its relative path to the DTO
-    // (we store `uploads/<filename>` so it can be served from /uploads/<filename>)
-    try {
-      if (file) {
-        body.profilePhoto = `${UPLOADS_FOLDER}/${file.filename}`;
-      } else {
-        // ensure explicit null when not provided (so service validation uses null)
-        body.profilePhoto = body.profilePhoto ?? null;
-      }
-
-      const fusionId = await this.authService.registerUserAndProfile(body);
-      return { fusionId };
-    } catch (err) {
-      // On error, if file was uploaded attempt to remove it to avoid orphan files
-      if (file) {
-        const filePath = join(process.cwd(), `${UPLOADS_FOLDER}/${file.filename}`);
-        // Lazy unlink: don't block on it, but try to remove
-        import('fs/promises')
-          .then(({ unlink }) => unlink(filePath).catch(() => null))
-          .catch(() => null);
-        this.logger.warn(`Removed uploaded file after register error: ${file?.filename}`);
-      }
-      // rethrow so Nest handles as 500 (or the service may have thrown better error)
-      throw err;
-    }
+  async register(@Body() body: RegisterDto) {
+  
+    const fusionId = await this.authService.registerUserAndProfile(body);
+    return { fusionId };
   }
 
   // Refresh endpoint (reads refresh token from httpOnly cookie)

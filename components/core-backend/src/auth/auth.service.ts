@@ -159,7 +159,7 @@ export class AuthService {
 async registerUserAndProfile(dto: RegisterDto): Promise<string> {
   let fusionUserId: string | undefined;
   let createdUserResp: any;
-
+  const DEFAULT_AVATAR = 'uploads/avatar.png';
   // Helper: remove uploaded file if it points inside uploads folder
   const removeUploadedFileIfSafe = async (maybePath?: string | null) => {
     if (!maybePath) return;
@@ -239,7 +239,7 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
     if (!fusionUserId) {
       this.logger.error('❌ Invalid FusionAuth response: no user id found', createdUserResp?.data || createdUserResp);
       // If a file was uploaded by controller (dto.profilePhoto set) - delete it
-      await removeUploadedFileIfSafe(dto.profilePhoto ?? null);
+  
       throw new InternalServerErrorException('Invalid response from FusionAuth (no user id).');
     }
     this.logger.log(`✅ FusionAuth user created: ${fusionUserId}`);
@@ -284,7 +284,6 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
         this.logger.error('Failed to rollback FusionAuth user after registration failure', delErr?.response?.data || delErr?.message || delErr);
       }
       // cleanup uploaded file
-      await removeUploadedFileIfSafe(dto.profilePhoto ?? null);
       throw new InternalServerErrorException('Failed to add user registration in FusionAuth.');
     }
 
@@ -296,7 +295,6 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
     this.logger.error('FusionAuth createUser/registration error', { status, message: msg, data: data || {} });
 
     // If we failed before DB insert, make sure to remove uploaded file
-    await removeUploadedFileIfSafe(dto.profilePhoto ?? null);
 
     if (status === 401) {
       throw new InternalServerErrorException('Unauthorized: check FusionAuth API key.');
@@ -314,25 +312,25 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
   // 3️⃣ Prepare local profile data
   const birthYearNum = dto.birthYear ? Number(dto.birthYear) : 0;
 
-  const newDoctor = {
-    fusionAuthId: fusionUserId,
-    gender: dto.gender || '',
-    university: dto.university || '',
-    specialty: dto.specialty || '',
-    profilePhoto: dto.profilePhoto ?? null,
-    city: dto.city || '',
-    birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
-    phoneNumber: dto.phoneNumber || '',
-  };
+const newDoctor = {
+  fusionAuthId: fusionUserId,
+  gender: dto.gender || '',
+  university: dto.university || '',
+  specialty: dto.specialty || '',
+  city: dto.city || '',
+  birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
+  phoneNumber: dto.phoneNumber || '',
+  profilePhoto: DEFAULT_AVATAR, // <<<<<<<<<<
+};
 
-  const newPatient = {
-    fusionAuthId: fusionUserId,
-    birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
-    gender: dto.gender || '',
-    city: dto.city || '',
-    phoneNumber: dto.phoneNumber || '',
-    profilePhoto: dto.profilePhoto ?? null,
-  };
+const newPatient = {
+  fusionAuthId: fusionUserId,
+  birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
+  gender: dto.gender || '',
+  city: dto.city || '',
+  phoneNumber: dto.phoneNumber || '',
+  profilePhoto: DEFAULT_AVATAR, // <<<<<<<<<<
+};
 
   // 4️⃣ Insert into local DB
   try {
@@ -392,7 +390,6 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
     }
 
     // cleanup uploaded file if existed
-    await removeUploadedFileIfSafe(dto.profilePhoto ?? null);
 
     const clientMsg = validationErrors.length > 0
       ? `Failed to create local profile; validation errors: ${validationErrors.join('; ')}`

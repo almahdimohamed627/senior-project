@@ -1,1 +1,5 @@
-export class CreateProfileDto {}
+export class CreateProfileDto {
+
+  
+
+}
