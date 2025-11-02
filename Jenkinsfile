@@ -223,8 +223,8 @@ def topoOrder(List wanted, Map deps) {
 def sendTelegramNotification(String status) {
   try {
     withCredentials([
-      string(credentialsId: 'telegram-bot-token'),
-      string(credentialsId: 'telegram-chat-id')
+      string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN'),
+      string(credentialsId: 'telegram-chat-id', variable: 'CHAT_ID')
     ]) {
       def message = ""
       def emoji = ""
@@ -284,12 +284,12 @@ ${getRecentChanges()}
         curl -s -X POST \
         -H 'Content-Type: application/json' \
         -d '{
-          "chat_id": "${telegram-chat-id}",
+          "chat_id": "${CHAT_ID}",
           "text": "${message}",
           "parse_mode": "Markdown",
           "disable_web_page_preview": true
         }' \
-        "https://api.telegram.org/bot${telegram-bot-token}/sendMessage" > /dev/null
+        "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" > /dev/null
       """
       echo "Telegram notification sent for ${status}"
     }
