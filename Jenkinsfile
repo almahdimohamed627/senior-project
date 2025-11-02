@@ -423,14 +423,15 @@ def buildComponent(componentName) {
     try {
       if (fileExists('Jenkinsfile')) {
         echo "Loading component-specific Jenkinsfile for ${componentName}"
-        load 'Jenkinsfile'
+        def componentLib = load 'Jenkinsfile'
+        componentLib.build()  // Call the build method
       } else {
         echo "No Jenkinsfile found for ${componentName}, using auto-build"
         autoBuildComponent(componentName)
       }
     } catch (Exception e) {
       echo "❌ Failed to build ${componentName}: ${e.message}"
-      // لا نفشل البايبلاين بالكامل
+      // Don't fail the entire pipeline for one component
     }
   }
 }
@@ -482,7 +483,6 @@ def runIntegrationTests() {
 
 def deployComponent(componentName) {
   echo "Deploying component: ${componentName}"
-
   if (!fileExists("components/${componentName}")) {
     echo "⚠️ Component directory 'components/${componentName}' not found for deployment"
     return
@@ -491,56 +491,182 @@ def deployComponent(componentName) {
   dir("components/${componentName}") {
     script {
       try {
-        if (fileExists('docker-compose.yml')) {
-          echo "🚀 Deploying ${componentName} with Docker Compose using Jenkins credentials"
-
-          withCredentials([file(credentialsId: "${componentName}.env", variable: 'ENV_FILE')]) {
-            sh """
-              cp "\$ENV_FILE" .env
-              chmod 600 .env
-              docker compose config
-              docker compose down --remove-orphans 2>/dev/null || true
-              docker compose pull --ignore-pull-failures 2>/dev/null || true
-              docker compose --env-file .env up -d
-              sleep 60
-            """
-          }
-
-          sh """
-            docker compose ps || true
-            docker ps --filter "name=${componentName}" --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" || true
-
-            if docker compose ps fusionauth >/dev/null 2>&1; then
-              for i in 1 2 3; do
-                if curl -s -f http://localhost:9011/ >/dev/null; then
-                  echo "✅ FusionAuth is accessible at http://localhost:9011"
-                  break
-                else
-                  echo "⏳ Attempt \$i: FusionAuth not yet accessible, waiting..."
-                  sleep 30
-                fi
-              done
-              if ! curl -s -f http://localhost:9011/ >/dev/null; then
-                echo "⚠️ FusionAuth not accessible, showing recent logs..."
-                docker compose logs --tail=50 fusionauth || true
-              fi
-            fi
-          """
-
-          echo "✅ ${componentName} deployment completed successfully"
+        if (fileExists('Jenkinsfile')) {
+          echo "Loading component-specific Jenkinsfile for ${componentName}"
+          def componentLib = load 'Jenkinsfile'
+          componentLib.deploy()  // Call the deploy method
         } else {
-          echo "⚠️ No docker-compose.yml found for ${componentName}"
+          echo "No Jenkinsfile found for ${componentName}, using auto-deploy"
+          autoDeployComponent(componentName)
         }
       } catch (Exception e) {
         echo "❌ Deployment failed for ${componentName}: ${e.message}"
-        sh """
-          echo "=== Debug Information ==="
-          docker compose ps 2>/dev/null || true
-          echo "=== Recent Logs ==="
-          docker compose logs --tail=100 2>/dev/null || true
-        """
-        sh "rm -f .env 2>/dev/null || true"
+        // Don't fail the entire pipeline for one component
       }
     }
+  }
+}
+
+/* ========================= AUTO DEPLOYMENT ========================= */
+
+def autoDeployComponent(componentName) {
+  echo "Auto-deploying component: ${componentName}"
+  
+  if (!fileExists('docker-compose.yml')) {
+    echo "⚠️ No docker-compose.yml found for ${componentName}, skipping deployment"
+    return
+  }
+
+  try {
+    // Dynamically resolve credential ID based on component name
+    def credentialId = "${componentName}.env"
+    
+    echo "🔐 Using credential ID: ${credentialId} for ${componentName}"
+    
+    withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
+      sh """
+        cp "\$ENV_FILE" .env
+        chmod 600 .env
+        docker compose config
+        docker compose down --remove-orphans 2>/dev/null || true
+        docker compose pull --ignore-pull-failures 2>/dev/null || true
+        docker compose --env-file .env up -d
+        sleep 60
+      """
+    }
+
+    // Check deployment status
+    sh """
+      docker compose ps || true
+      docker ps --filter "name=${componentName}" --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" || true
+    """
+
+    // Component-specific health checks
+    performComponentHealthCheck(componentName)
+
+    echo "✅ ${componentName} auto-deployment completed successfully"
+    
+  } catch (Exception e) {
+    echo "❌ Auto-deployment failed for ${componentName}: ${e.message}"
+    sh """
+      echo "=== Debug Information for ${componentName} ==="
+      docker compose ps 2>/dev/null || true
+      echo "=== Recent Logs ==="
+      docker compose logs --tail=100 2>/dev/null || true
+    """
+    sh "rm -f .env 2>/dev/null || true"
+    // Don't re-throw to avoid failing entire pipeline
+  }
+}
+
+def performComponentHealthCheck(componentName) {
+  echo "Performing health check for ${componentName}"
+  
+  switch(componentName) {
+    case 'traefik':
+      sh '''
+        for i in 1 2 3; do
+          if curl -s -f http://localhost:2468/ >/dev/null; then
+            echo "✅ Traefik dashboard is accessible at http://localhost:2468"
+            break
+          else
+            echo "⏳ Attempt $i: Traefik not yet accessible, waiting..."
+            sleep 30
+          fi
+        done
+        if ! curl -s -f http://localhost:2468/ >/dev/null; then
+          echo "⚠️ Traefik not accessible, showing recent logs..."
+          docker compose logs --tail=50 traefik || true
+        fi
+      '''
+      break
+      
+    case 'db':
+      sh '''
+        for i in 1 2 3; do
+          if docker compose ps db | grep -q "healthy"; then
+            echo "✅ Database is healthy"
+            break
+          else
+            echo "⏳ Attempt $i: Database not yet healthy, waiting..."
+            sleep 30
+          fi
+        done
+        if ! docker compose ps db | grep -q "healthy"; then
+          echo "⚠️ Database not healthy, showing recent logs..."
+          docker compose logs --tail=50 db || true
+        fi
+      '''
+      break
+      
+    case 'fusionauth':
+      sh '''
+        for i in 1 2 3; do
+          if curl -s -f http://localhost:9011/ >/dev/null; then
+            echo "✅ FusionAuth is accessible at http://localhost:9011"
+            break
+          else
+            echo "⏳ Attempt $i: FusionAuth not yet accessible, waiting..."
+            sleep 30
+          fi
+        done
+        if ! curl -s -f http://localhost:9011/ >/dev/null; then
+          echo "⚠️ FusionAuth not accessible, showing recent logs..."
+          docker compose logs --tail=50 fusionauth || true
+        fi
+      '''
+      break
+      
+    case 'core-backend':
+      sh '''
+        for i in 1 2 3; do
+          if curl -s -f http://localhost:3000/health >/dev/null 2>&1 || 
+             curl -s -f http://localhost:3000 >/dev/null 2>&1; then
+            echo "✅ Core-backend is accessible at http://localhost:3000"
+            break
+          else
+            echo "⏳ Attempt $i: Core-backend not yet accessible, waiting..."
+            sleep 30
+          fi
+        done
+        if ! curl -s -f http://localhost:3000/health >/dev/null 2>&1 && 
+           ! curl -s -f http://localhost:3000 >/dev/null 2>&1; then
+          echo "⚠️ Core-backend not accessible, showing recent logs..."
+          docker compose logs --tail=50 nest-app || true
+        fi
+      '''
+      break
+      
+    case 'ai-agent':
+      sh '''
+        for i in 1 2 3; do
+          if curl -s -f http://localhost:8080/health >/dev/null 2>&1 || 
+             curl -s -f http://localhost:8080 >/dev/null 2>&1; then
+            echo "✅ AI Agent is accessible at http://localhost:8080"
+            break
+          else
+            echo "⏳ Attempt $i: AI Agent not yet accessible, waiting..."
+            sleep 30
+          fi
+        done
+        if ! curl -s -f http://localhost:8080/health >/dev/null 2>&1 && 
+           ! curl -s -f http://localhost:8080 >/dev/null 2>&1; then
+          echo "⚠️ AI Agent not accessible, showing recent logs..."
+          docker compose logs --tail=50 ai-agent || true
+        fi
+      '''
+      break
+      
+    default:
+      echo "⚠️ No specific health check configured for ${componentName}"
+      // Generic health check
+      sh '''
+        if docker compose ps | grep -q "Up"; then
+          echo "✅ ${componentName} services are running"
+        else
+          echo "⚠️ Some ${componentName} services may not be running properly"
+        fi
+      '''
+      break
   }
 }
