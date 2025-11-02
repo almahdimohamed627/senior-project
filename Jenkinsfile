@@ -356,45 +356,55 @@ def getRecentChanges() {
   }
 }
 
+/* ========================= FIXED COMPONENT DISCOVERY ========================= */
+
 def findComponents() {
-  // يكتشف المجلدات داخل components التي تبدو قابلة للبناء
   def components = []
   try {
     if (fileExists('components')) {
-      dir('components') {
-        def jenkinsfiles = findFiles(glob: '*/Jenkinsfile')
-        components = jenkinsfiles.collect {
-          def comp = it.path.tokenize('/')[0]
-          return comp?.trim()
-        }.findAll { it }
-
-        def extra = discoverComponentsByStructure()
-        components.addAll(extra)
-        components = components.unique()
+      // Use ONLY structure-based discovery - don't rely on Jenkinsfiles
+      components = discoverComponentsByStructure()
+      
+      // If no components found with structure, fall back to default list
+      if (components.isEmpty()) {
+        echo "No components discovered by structure, using default components"
+        components = ['traefik', 'db', 'fusionauth', 'core-backend', 'ai-agent']
       }
     } else {
-      echo "No components directory found"
+      echo "No components directory found, using default components"
+      components = ['traefik', 'db', 'fusionauth', 'core-backend', 'ai-agent']
     }
   } catch (Exception e) {
-    echo "Error discovering components: ${e.message}"
+    echo "Error discovering components: ${e.message}, using default components"
     components = ['traefik', 'db', 'fusionauth', 'core-backend', 'ai-agent']
   }
-  if (components.isEmpty()) components = ['traefik']
+  
+  // Remove any null or empty values and normalize
+  components = components.findAll { it?.trim() }.collect { it.trim() }.unique()
+  
+  echo "Final discovered components: ${components}"
   return components
 }
 
 def discoverComponentsByStructure() {
-  def additionalComponents = []
+  def components = []
   try {
     def componentDirs = sh(script: '''
+      #!/bin/bash
       if [ -d "components" ]; then
         find components -maxdepth 1 -mindepth 1 -type d | while read dir; do
           name=$(basename "$dir")
-          if [ -f "$dir/Jenkinsfile" ] || \
-             [ -f "$dir/docker-compose.yml" ] || \
+          # Check for ANY build/deploy configuration files (not just Jenkinsfile)
+          if [ -f "$dir/docker-compose.yml" ] || \
              [ -f "$dir/Dockerfile" ] || \
              [ -f "$dir/package.json" ] || \
-             [ -f "$dir/pom.xml" ]; then
+             [ -f "$dir/pom.xml" ] || \
+             [ -f "$dir/build.gradle" ] || \
+             [ -f "$dir/go.mod" ] || \
+             [ -f "$dir/requirements.txt" ] || \
+             [ -f "$dir/Cargo.toml" ] || \
+             [ -f "$dir/Makefile" ] || \
+             [ -f "$dir/Jenkinsfile" ]; then
             echo "$name"
           fi
         done
@@ -403,13 +413,15 @@ def discoverComponentsByStructure() {
 
     if (componentDirs) {
       componentDirs.split('\n').each { n ->
-        if (n?.trim()) additionalComponents << n.trim()
+        if (n?.trim()) components << n.trim()
       }
     }
+    
+    echo "Structure-based discovery found: ${components}"
   } catch (Exception e) {
     echo "Error in structure discovery: ${e.message}"
   }
-  return additionalComponents
+  return components
 }
 
 def buildComponent(componentName) {
@@ -468,6 +480,21 @@ def autoBuildComponent(componentName) {
       echo "Docker image build detected"
       docker build -t ${componentName}:${env.BUILD_TAG} . || true
     """
+  } else if (fileExists('build.gradle')) {
+    sh '''
+      echo "Gradle component detected"
+      ./gradlew build --no-daemon || true
+    '''
+  } else if (fileExists('go.mod')) {
+    sh '''
+      echo "Go component detected"
+      go build -o app . || true
+    '''
+  } else if (fileExists('requirements.txt')) {
+    sh '''
+      echo "Python component detected"
+      pip install -r requirements.txt || true
+    '''
   } else {
     echo "⚠️ No build system detected for ${componentName}"
   }

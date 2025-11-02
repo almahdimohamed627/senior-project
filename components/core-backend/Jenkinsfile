@@ -4,7 +4,7 @@ def build() {
     stage('Validate Docker Compose') {
         sh '''
             echo "Validating docker-compose.yml..."
-            docker-compose config
+            docker compose config
         '''
     }
     
@@ -13,7 +13,7 @@ def build() {
             echo "Cleaning up previous builds and images..."
             docker rmi --force core-backend-nest-app
             # Stop and remove any existing containers from previous builds
-            docker-compose down --remove-orphans --rmi all 2>/dev/null || true
+            docker compose down --remove-orphans --rmi all 2>/dev/null || true
             
             # Remove any dangling images that might interfere with new build
             docker image prune -f 2>/dev/null || true
@@ -26,14 +26,14 @@ def build() {
     stage('Pull Images') {
         sh '''
             echo "Pulling Docker images from Docker Hub..."
-            docker-compose pull --ignore-pull-failures
+            docker compose pull --ignore-pull-failures
         '''
     }
     
     stage('Build Services') {
         // Check if we should build
         def shouldBuild = fileExists('Dockerfile') || 
-                         sh(script: 'docker-compose config | grep -q "build:"', returnStatus: true) == 0
+                         sh(script: 'docker compose config | grep -q "build:"', returnStatus: true) == 0
         
         if (shouldBuild) {
             sh '''
@@ -42,7 +42,7 @@ def build() {
                 docker build --no-cache --pull -t core-backend-nest-app .
 
                 # Even with direct build, try a final compose build to ensure service configuration is updated
-                docker-compose build --no-cache nest-app || echo "Compose build may be redundant but attempted."
+                docker compose build --no-cache nest-app || echo "Compose build may be redundant but attempted."
             '''
         } else {
             echo "⚠️ No build configuration found - skipping build"
@@ -53,16 +53,16 @@ def build() {
         try {
             sh '''
                 echo "Starting services for smoke test..."
-                docker-compose up -d
+                docker compose up -d
                 
                 # Wait for services to be ready
                 sleep 30
                 
                 # Check if services are running
-                docker-compose ps
+                docker compose ps
                 
                 # Run basic health checks (adjust based on your services)
-                if docker-compose ps | grep -q "Up"; then
+                if docker compose ps | grep -q "Up"; then
                     echo "✅ Services are running"
                 else
                     echo "❌ Some services failed to start"
@@ -75,7 +75,7 @@ def build() {
         } finally {
             sh '''
                 echo "Stopping services after smoke test..."
-                docker-compose down
+                docker compose down
             '''
         }
     }
@@ -83,7 +83,7 @@ def build() {
     stage('Save Compose Configuration') {
         sh '''
             # Generate the final compose config for deployment
-            docker-compose config > docker-compose.resolved.yml
+            docker compose config > docker-compose.resolved.yml
         '''
         archiveArtifacts artifacts: 'docker-compose.resolved.yml', fingerprint: true
     }
@@ -154,7 +154,7 @@ def test() {
 def cleanup() {
     echo "🧹 Cleaning up core-backend resources"
     sh '''
-        docker-compose down --remove-orphans --rmi all 2>/dev/null || true
+        docker compose down --remove-orphans --rmi all 2>/dev/null || true
         docker rmi -f core-backend-nest-app 2>/dev/null || true
     '''
 }
