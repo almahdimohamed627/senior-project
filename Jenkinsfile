@@ -448,22 +448,59 @@ def buildComponent(componentName) {
   }
 }
 
+/* ========================= FIXED AUTO-BUILD WITH ENV FILES ========================= */
+
 def autoBuildComponent(componentName) {
   echo "Auto-building component: ${componentName}"
 
   if (fileExists('docker-compose.yml')) {
-    sh '''
-      echo "Docker Compose component detected"
-      docker compose config || true
-      docker compose pull --ignore-pull-failures || true
-      if docker compose config | grep -q "build:"; then
-        docker compose build --no-cache || true
-      fi
-      docker compose up -d || true
-      sleep 10
-      docker compose ps || true
-      docker compose down || true
-    '''
+    // Try to use environment file if credential exists
+    def credentialId = "${componentName}.env"
+    def useEnvFile = false
+    
+    try {
+      // Check if credential exists by trying to use it
+      withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
+        useEnvFile = true
+      }
+    } catch (Exception e) {
+      echo "⚠️ No credential found for ${credentialId}, proceeding without environment file"
+      useEnvFile = false
+    }
+
+    if (useEnvFile) {
+      echo "🔐 Using environment file for ${componentName}"
+      withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
+        sh """
+          cp "\$ENV_FILE" .env
+          chmod 600 .env
+          echo "Docker Compose component detected with environment file"
+          docker compose config || true
+          docker compose pull --ignore-pull-failures || true
+          if docker compose config | grep -q "build:"; then
+            docker compose build --no-cache || true
+          fi
+          docker compose --env-file .env up -d || true
+          sleep 10
+          docker compose --env-file .env ps || true
+          docker compose --env-file .env down || true
+          rm -f .env 2>/dev/null || true
+        """
+      }
+    } else {
+      sh '''
+        echo "Docker Compose component detected (no environment file)"
+        docker compose config || true
+        docker compose pull --ignore-pull-failures || true
+        if docker compose config | grep -q "build:"; then
+          docker compose build --no-cache || true
+        fi
+        docker compose up -d || true
+        sleep 10
+        docker compose ps || true
+        docker compose down || true
+      '''
+    }
   } else if (fileExists('package.json')) {
     sh '''
       echo "Node.js component detected"
@@ -534,7 +571,7 @@ def deployComponent(componentName) {
   }
 }
 
-/* ========================= AUTO DEPLOYMENT ========================= */
+/* ========================= FIXED AUTO DEPLOYMENT ========================= */
 
 def autoDeployComponent(componentName) {
   echo "Auto-deploying component: ${componentName}"
