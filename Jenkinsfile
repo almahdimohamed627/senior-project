@@ -516,7 +516,7 @@ def deployComponent(componentName) {
                   echo "✅ FusionAuth is accessible at http://localhost:9011"
                   break
                 else
-                  echo "⏳ Attempt $i: FusionAuth not yet accessible, waiting..."
+                  echo "⏳ Attempt \$i: FusionAuth not yet accessible, waiting..."
                   sleep 30
                 fi
               done
