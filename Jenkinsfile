@@ -223,8 +223,8 @@ def topoOrder(List wanted, Map deps) {
 def sendTelegramNotification(String status) {
   try {
     withCredentials([
-      string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN'),
-      string(credentialsId: 'telegram-chat-id', variable: 'CHAT_ID')
+      string(credentialsId: 'telegram-bot-token'),
+      string(credentialsId: 'telegram-chat-id')
     ]) {
       def message = ""
       def emoji = ""
