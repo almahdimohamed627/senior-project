@@ -22,7 +22,7 @@ pipeline {
     stage('Discover Components') {
       steps {
         script {
-          def discovered = findComponents()
+          def discovered = normalizeComponents(findComponents())
           env.DISCOVERED_COMPONENTS = discovered.join(',')
           echo "Discovered components: ${discovered}"
         }
@@ -32,23 +32,22 @@ pipeline {
     stage('Resolve Order') {
       steps {
         script {
-          // استخدم المصفوفة العالمية
-          def deps = deps()
+          def depmap = deps()
 
-          // الموجود فعليًا في الريبو
+          // الموجود فعليًا (مطَبَّع)
           def present = (env.DISCOVERED_COMPONENTS ?: '')
             .split(',')
             .findAll { it?.trim() }
             .collect { it.trim() }
             .unique()
 
-          // الهدف من الباراميتر + متطلباته
-          def target = params.COMPONENT
+          // الهدف من الباراميتر + متطلباته (مطَبَّع)
+          def target = normalizeComponent(params.COMPONENT)
           def wanted = []
           if (target == 'all') {
             wanted = present
           } else {
-            wanted = resolveWithPrereqs(target, deps)
+            wanted = resolveWithPrereqs(target, depmap)
               .findAll { present.contains(it) }
           }
 
@@ -56,8 +55,8 @@ pipeline {
             error "No valid components to process."
           }
 
-          // تأكيد عدم وجود دورات
-          def ordered = topoOrder(wanted, deps).findAll { present.contains(it) }
+          // ترتيب (مع تجنّب استدعاءات محظورة)
+          def ordered = topoOrder(wanted, depmap).findAll { present.contains(it) }
           env.COMPONENTS_STRING = ordered.join(',')
           echo "Ordered components: ${ordered}"
         }
@@ -101,10 +100,7 @@ pipeline {
   }
 
   post {
-    always {
-      cleanWs()
-      script { currentBuild.description = "Components: ${env.COMPONENTS_STRING ?: env.DISCOVERED_COMPONENTS}" }
-    }
+    // مهم: نفّذ الإشعارات أولاً ثم نظّف المساحة
     success {
       script {
         echo "✅ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
@@ -123,14 +119,17 @@ pipeline {
         sendTelegramNotification("unstable")
       }
     }
+    always {
+      script { currentBuild.description = "Components: ${env.COMPONENTS_STRING ?: env.DISCOVERED_COMPONENTS}" }
+      cleanWs()
+    }
   }
 }
 
 /* ========================= GLOBAL DEPENDENCIES ========================= */
-// اجعل الاعتماديات عالمية عبر دالة واحدة تُستخدم بكل مكان
+// الكل يعتمد على traefik
+// fusionauth و core-backend يعتمدان أيضًا على db
 def deps() {
-  // الكل يعتمد على traefik
-  // fusionauth و core-backend يعتمدان أيضًا على db
   return [
     'traefik'     : [],
     'db'          : ['traefik'],
@@ -140,17 +139,32 @@ def deps() {
   ]
 }
 
+/* ========================= Normalization helpers ========================= */
+
+def normalizeComponent(String name) {
+  if (!name) return name
+  def n = name.trim()
+  // lower-case
+  n = n.toLowerCase()
+  // aliases
+  if (n == 'fusionauth' || n == 'fusion-auth' || n == 'fusionauth/') n = 'fusionauth'
+  if (n == 'corebackend' || n == 'core_backend') n = 'core-backend'
+  return n
+}
+
+def normalizeComponents(List list) {
+  return list.collect { normalizeComponent(it) }.unique()
+}
+
 /* ========================= Layering utilities ========================= */
 
-def layerize(List wanted, Map deps) {
+def layerize(List wanted, Map depmap) {
   def remaining = wanted as Set
-  def depsInSet = { String n -> (deps[n] ?: []).findAll { remaining.contains(it) } }
+  def depsInSet = { String n -> (depmap[n] ?: []).findAll { remaining.contains(it) } }
   def layers = []
   while (!remaining.isEmpty()) {
     def layer = remaining.findAll { n -> depsInSet(n).isEmpty() }.toList().sort()
-    if (layer.isEmpty()) {
-      error "Cyclic or missing dependency detected among: ${remaining}"
-    }
+    if (layer.isEmpty()) error "Cyclic or missing dependency among: ${remaining}"
     layers << layer
     remaining.removeAll(layer)
   }
@@ -175,40 +189,42 @@ def runLayered(List layers, String op /* 'build' or 'deploy' */) {
   }
 }
 
-/* ========================= Dependency resolution helpers ========================= */
+/* ========================= Dependency resolution (sandbox-safe) ========================= */
 
-def resolveWithPrereqs(String target, Map deps) {
+def resolveWithPrereqs(String target, Map depmap) {
   def out = [] as LinkedHashSet
   def visit
   visit = { String n ->
-    (deps[n] ?: []).each { visit(it as String) }
+    (depmap[n] ?: []).each { visit(it as String) }
     out << n
   }
   visit(target)
   return out.toList()
 }
 
-def topoOrder(List wanted, Map deps) {
+// نسخة آمنة بدون removeFirst ولا ArrayDeque
+def topoOrder(List wanted, Map depmap) {
   def wantedSet = wanted as Set
   def indeg = [:].withDefault { 0 }
   def adj = [:].withDefault { [] as Set }
 
   wanted.each { n ->
-    def parents = (deps[n] ?: []).findAll { wantedSet.contains(it) }
+    def parents = (depmap[n] ?: []).findAll { wantedSet.contains(it) }
     indeg[n] = parents.size()
     parents.each { p -> adj[p] = (adj[p] + n) as Set }
   }
 
-  def q = [] as ArrayDeque
-  wanted.each { n -> if (indeg[n] == 0) q.add(n) }
+  def q = [] as List
+  wanted.each { n -> if (indeg[n] == 0) q << n }
 
   def out = []
-  while (!q.isEmpty()) {
-    def u = q.removeFirst()
+  int qi = 0
+  while (qi < q.size()) {
+    def u = q[qi++]        // لا إزالة من البداية، فقط مؤشّر
     out << u
     (adj[u] ?: []).each { v ->
       indeg[v] = indeg[v] - 1
-      if (indeg[v] == 0) q.add(v)
+      if (indeg[v] == 0) q << v
     }
   }
 
@@ -478,7 +494,6 @@ def deployComponent(componentName) {
         if (fileExists('docker-compose.yml')) {
           echo "🚀 Deploying ${componentName} with Docker Compose using Jenkins credentials"
 
-          // اعتماد بيئة يحمل نفس اسم المكوّن: <component>.env
           withCredentials([file(credentialsId: "${componentName}.env", variable: 'ENV_FILE')]) {
             sh """
               cp "\$ENV_FILE" .env
@@ -495,7 +510,6 @@ def deployComponent(componentName) {
             docker compose ps || true
             docker ps --filter "name=${componentName}" --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" || true
 
-            # مثال: فحص صحة fusionauth إذا كان ضمن هذه الخدمة
             if docker compose ps fusionauth >/dev/null 2>&1; then
               for i in 1 2 3; do
                 if curl -s -f http://localhost:9011/ >/dev/null; then
