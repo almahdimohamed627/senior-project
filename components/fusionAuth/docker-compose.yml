@@ -4,9 +4,7 @@ services:
     container_name: fusionauth
     image: fusionauth/fusionauth-app:latest
     depends_on:
-      db:
-        condition: service_healthy
-      fusionauth-search:
+      search:
         condition: service_healthy
     environment:
       DATABASE_URL: jdbc:postgresql://db:5432/fusionauth
