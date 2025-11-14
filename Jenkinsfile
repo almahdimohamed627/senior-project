@@ -83,7 +83,6 @@ pipeline {
     }
 
     stage('Deploy (layered waves)') {
-      when { expression { params.DEPLOY == true } }
       steps {
         script {
           def components = (env.COMPONENTS_STRING ?: '')
