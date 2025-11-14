@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, NotFoundException, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException, Logger, BadRequestException, ForbiddenException, Inject, InternalServerErrorException } from '@nestjs/common';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { db } from '../auth/client'; // تأكد المسار صحيح
@@ -10,6 +10,9 @@ import { FusionAuthClientWrapper } from 'src/auth/fusion-auth.client';
 import pLimit from 'p-limit';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
+import axios from 'axios';
+import schema from 'src/db/schema/schema';
+import { AuthService } from 'src/auth/auth.service';
 
 interface FusionUser {
   firstName?: string | null;
@@ -41,16 +44,19 @@ export class ProfileService {
   private readonly logger = new Logger(ProfileService.name);
   // default photo URL (served via static)
   private readonly defaultPhoto = '/uploads/logo.png';
-
-  constructor(private config: ConfigService) {
-    const baseUrl = (this.config.get<string>('FUSIONAUTH_BASE_URL') || '').replace(/\/$/, '');
-    const apiKey = this.config.get<string>('FUSIONAUTH_API_KEY');
+ private baseUrl: string=process.env.FUSIONAUTH_BASE_URL||"";
+ private apiKey: string=process.env.FUSIONAUTH_API_KEY||"";
+  constructor(private config: ConfigService,@Inject() private authService: AuthService) {
+    const baseUrl = (this.config.get<string>('FUSIONAUTH_BASE_URL') || 'https://auth.almahdi.cloud').replace(/\/$/, '');
+    const apiKey = this.config.get<string>('FUSIONAUTH_API_KEY')||'aNnC27LYRSW8WBZdni-_kbcsc7O8c00PiMVDRIgcAua4hBD2OpnIMUb9';
     this.fusionClient = new FusionAuthClientWrapper(baseUrl, apiKey);
+  
+    
   }
 
-  create(createProfileDto: CreateProfileDto) {
-    return 'This action adds a new profile';
-  }
+  // create(createProfileDto: CreateProfileDto) {
+  //   return 'This action adds a new profile';
+  // }
 
   async findAll() {
     const profiles = await db.select().from(doctorProfile);
@@ -218,8 +224,92 @@ export class ProfileService {
 }
 
 
-  remove(id: number) {
-    return `This action removes a #${id} profile`;
+  async remove(id: string) {
+    // id = fusionAuth userId
+
+    // 1) جب المستخدم من FusionAuth
+    let fusionUser: any;
+    try {
+      fusionUser = await this.authService.getUserById(id);
+    } catch (e) {
+      throw new NotFoundException('User not found in FusionAuth');
+    }
+
+    if (!fusionUser) {
+      throw new NotFoundException('User not found in FusionAuth');
+    }
+
+    // 2) استخرج الدور (doctor / patient)
+    let role: string | undefined;
+
+    // لو كنت مخزّن role في data.role مستقبلاً
+    if (fusionUser.data && fusionUser.data.role) {
+      role = String(fusionUser.data.role);
+    }
+
+    // أو من registrations[].roles
+    if (!role && Array.isArray(fusionUser.registrations)) {
+      for (const reg of fusionUser.registrations) {
+        if (Array.isArray(reg.roles) && reg.roles.length > 0) {
+          role = String(reg.roles[0]);
+          break;
+        }
+      }
+    }
+
+    if (!role) {
+      throw new BadRequestException('Cannot determine user role (doctor / patient)');
+    }
+
+    // 3) احذف المستخدم من FusionAuth (hard delete)
+    const deleteUrl = `${this.baseUrl}/api/user/${id}?hardDelete=true`;
+    console.log(deleteUrl)
+    const headers: Record<string, string> = {
+      Authorization: this.apiKey,
+    };
+    console.log(this.apiKey)
+    const tenantId = this.config.get<string>('FUSIONAUTH_TENANT_ID')||'5ba05e07-b2d6-4f53-f424-a986bd483e4d';
+    if (tenantId) {
+      headers['X-FusionAuth-TenantId'] = tenantId;
+    }
+
+    try {
+      await axios.delete(deleteUrl, {
+        headers,
+        timeout: 10000,
+      });
+    } catch (e: any) {
+      console.error(
+        'Failed to delete user from FusionAuth',
+        e?.response?.data || e?.message || e,
+      );
+      throw new InternalServerErrorException('Failed to delete user from FusionAuth');
+    }
+
+    // 4) احذف الـ profile من الداتا بيز
+    if (role === 'doctor') {
+      await db
+        .delete(schema.doctors)
+        .where(eq(schema.doctors.fusionAuthId, id));
+
+      return { message: 'doctor deleted' };
+    }
+
+    if (role === 'patient') {
+      await db
+        .delete(schema.patients)
+        .where(eq(schema.patients.fusionAuthId, id));
+
+      return { message: 'patient deleted' };
+    }
+
+    // لو لقيت دور غريب
+    return {
+      message:
+        'User deleted from FusionAuth, but no matching local profile (role was: ' +
+        role +
+        ')',
+    };
   }
 
   // ---------------------------
@@ -237,27 +327,46 @@ export class ProfileService {
     }));
   }
 
-  async upsertAvailabilities(doctorId: string, items: { dayOfWeek:number, startTime:string, endTime:string }[]) {
-    await db.transaction(async (tx) => {
-      const doctorExists = await tx.select().from(doctorProfile).where(eq(doctorProfile.fusionAuthId, doctorId)).limit(1);
-      if (!doctorExists || doctorExists.length === 0) {
-        throw new NotFoundException('Doctor not found');
-      }
+async upsertAvailabilities(
+  fusionAuthId: string,
+  items: { dayOfWeek: number; startTime: string; endTime: string }[],
+) {
+  await db.transaction(async (tx) => {
+    // 1) جيب الدكتور عن طريق fusionAuthId
+    const doctors = await tx
+      .select()
+      .from(doctorProfile)
+      .where(eq(doctorProfile.fusionAuthId, fusionAuthId))
+      .limit(1);
 
-      await tx.delete(appointments).where(eq(appointments.doctorId, doctorId));
-      if (items.length > 0) {
-        const rows = items.map(i => ({
-          doctorId,
-          dayOfWeek: i.dayOfWeek,
-          startTime: i.startTime,
-          endTime: i.endTime,
-        }));
-        await tx.insert(appointments).values(rows);
-      }
-    });
+    if (!doctors || doctors.length === 0) {
+      throw new NotFoundException('Doctor not found');
+    }
 
-    return { ok: true };
-  }
+    const doctor = doctors[0];
+    const doctorPk = doctor.fusionAuthId; // 👈 هذا اللي بدنا نستخدمه مع جدول appointments
+
+    // 2) احذف كل المواعيد القديمة لهذا الدكتور
+    await tx
+      .delete(appointments)
+      .where(eq(appointments.doctorId, doctorPk));
+
+    // 3) أضف المواعيد الجديدة
+    if (items.length > 0) {
+      const rows = items.map((i) => ({
+        doctorId: doctorPk,        // 👈 اربطها بالـ PK
+        dayOfWeek: i.dayOfWeek,
+        startTime: i.startTime,
+        endTime: i.endTime,
+      }));
+
+      await tx.insert(appointments).values(rows);
+    }
+  });
+
+  return { ok: true };
+}
+
 
   async deleteAvailability(doctorId: string, availabilityId: number) {
     const deleted = await db.delete(appointments).where(eq(appointments.id, availabilityId)).returning();

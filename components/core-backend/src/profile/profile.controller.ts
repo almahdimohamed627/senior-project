@@ -60,10 +60,10 @@ export class ProfileController {
 
   constructor(private readonly profileService: ProfileService) {}
 
-  @Post()
-  create(@Body() createProfileDto: CreateProfileDto) {
-    return this.profileService.create(createProfileDto);
-  }
+  // @Post()
+  // create(@Body() createProfileDto: CreateProfileDto) {
+  //   return this.profileService.create(createProfileDto);
+  // }
 
   // @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles(Role.PATIENT)
@@ -76,10 +76,7 @@ export class ProfileController {
   async findOne(@Param('id') id: string) {
     return await this.profileService.findOne(id);
   }
-  @Get('Doctor/:id')
-  async findOneByUserId(@Param('id') id: string) {
-    return await this.profileService.findOne(id);
-  }
+
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.DOCTOR, Role.PATIENT)
@@ -127,6 +124,11 @@ async updateMe(
   });
 }
 
+//delete user
+@Delete(":id")
+async deleteProfile(@Param('id') id:string){
+  await this.profileService.remove(id)
+}
 
   // -----------------------
   // Availabilities endpoints
@@ -139,14 +141,14 @@ async updateMe(
   }
 
   // استبدال كل الدوامات للطبيب (Doctor only) - upsert
-  @Post(':id/availabilities')
-  @HttpCode(HttpStatus.OK)
-  async upsertAvailabilities(
-    @Param('id') doctorId: string,
-    @Body(new ValidationPipe({ whitelist: true })) body: UpsertAvailabilitiesDto,
-  ) {
-    return await this.profileService.upsertAvailabilities(doctorId, body.items || []);
-  }
+@Post(':id/availabilities')
+@HttpCode(HttpStatus.OK)
+async upsertAvailabilities(
+  @Param('id') doctorId: string, // هذا fusionAuthId
+  @Body(new ValidationPipe({ whitelist: true })) body: UpsertAvailabilitiesDto,
+) {
+  return this.profileService.upsertAvailabilities(doctorId, body.items || []);
+}
 
   // حذف دوام واحد
   @Delete(':id/availabilities/:availabilityId')
@@ -168,54 +170,8 @@ async updateMe(
     return await this.profileService.updateAvailability(doctorId, Number(availabilityId), item);
   }
 
-  // -----------------------
-  // Update profile photo (current user) - authenticated
-  // -----------------------
-  // Endpoint: POST /profile/me/photo
-  // Form field: profilePhoto (file)
-  @UseGuards(JwtAuthGuard)
-  @Post('me/photo')
-  @UseInterceptors(
-    FileInterceptor('profilePhoto', {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          cb(null, UPLOADS_FOLDER);
-        },
-        filename: editFileName,
-      }),
-      fileFilter,
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
-    }),
-  )
-  async updateMyPhoto(@Req() req: any, @UploadedFile() file?: Express.Multer.File) {
-    const userId = req.user?.sub;
-    if (!userId) {
-      // should not happen if JwtAuthGuard worked, but just in case
-      throw new BadRequestException('User not authenticated');
-    }
 
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
 
-    // build stored path like 'uploads/filename.ext' (no leading slash)
-    const storedPath = `${UPLOADS_FOLDER}/${file.filename}`;
-
-    try {
-      const updated = await this.profileService.updateProfilePhoto(userId, storedPath);
-      return { ok: true, profilePhoto: updated };
-    } catch (err: any) {
-      // on error, attempt to remove uploaded file to avoid orphaning
-      try {
-        const { unlink } = await import('fs/promises');
-        const { join } = await import('path');
-        await unlink(join(process.cwd(), storedPath)).catch(() => null);
-      } catch (e) {
-        this.logger.warn('Failed to cleanup uploaded file after service error', e?.message || e);
-      }
-      throw err;
-    }
-  }
 }
 
 

@@ -8,7 +8,8 @@ export const schema = {
   doctors: doctorProfile,
   patients: patientProfile,
   posts:posts,
-  userSessions:userSessions
+  userSessions:userSessions,
+ // users:users
 };
 
 export type DatabaseSchema = typeof schema;

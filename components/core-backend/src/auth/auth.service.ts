@@ -5,6 +5,7 @@ import {
   ConflictException,
   InternalServerErrorException,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FusionAuthClientWrapper } from './fusion-auth.client';
@@ -52,65 +53,94 @@ export class AuthService {
     return url.toString();
   }
   // src/auth/auth.service.ts (أضف هذه الدالة داخل الكلاس)
-  async loginWithCredentials(
-    email: string,
-    password: string,
-    res: Response, // نستقبل res ونستخدمه لكتابة الكوكي كما فعلت
-    options?: { userAgent?: string; ip?: string | undefined },
-  ) {
-    // 1) تبليغ FusionAuth لينتج التوكنات
-    const tokens: any = await this.fusionClient.exchangePassword(
-      email,
-      password,
-      this.clientId,
-      this.clientSecret,
-    );
-  console.log(tokens.refresh_token)
-    if (!tokens || !tokens.access_token) {
-      throw new UnauthorizedException('Invalid credentials or no access token returned');
-    }
+async loginWithCredentials(
+  email: string,
+  password: string,
+  res: Response, // نستقبل res ونستخدمه لكتابة الكوكي كما فعلت
+  options?: { userAgent?: string; ip?: string | undefined },
+) {
+  // 1) طلب التوكنات من FusionAuth
+  const tokens: any = await this.fusionClient.exchangePassword(
+    email,
+    password,
+    this.clientId,
+    this.clientSecret,
+  );
 
-    // 2) استخراج userId من id_token أو access_token
- 
-    const payload = await this.getUserProfileFromIdToken(tokens.id_token || tokens.access_token);
-      
-    const userId = payload?.sub;
-    if (!userId) {
-      this.logger.warn('No subject (sub) found in id_token; userId missing');
-    }
-    console.log(tokens.refresh_token)
+  this.logger.debug('exchangePassword result', { hasAccessToken: !!tokens?.access_token, hasIdToken: !!tokens?.id_token });
 
-    // 3) إذا في refresh_token — خزّنه كهاش في جدول user_sessions
-    if (tokens.refresh_token && userId) {
-      try {
-        await this.createSessionForUser({
-          userId,
-          refreshToken: tokens.refresh_token,
-          userAgent: options?.userAgent || "",
-          ip: options?.ip ?? undefined, // pass undefined (not null) to match signature
-          expiresInSeconds: tokens.expires_in ?? null,
-        });
-
-        // set httpOnly secure cookie
-        // res.cookie('refresh_token', tokens.refresh_token, {
-        //   httpOnly: true,
-        //   secure: process.env.NODE_ENV === 'production',
-        //   sameSite: 'strict',
-        //   path: '/',
-        //   maxAge: tokens.expires_in ? tokens.expires_in * 1000 : 30 * 24 * 60 * 60 * 1000,
-        // });
-      } catch (e) {
-        this.logger.error('Failed to create session for user after password login', e?.message || e);
-      }
-    }
-
-    return {
-      access_token: tokens.access_token,
-      id_token: tokens.id_token,
-      refreshToken:tokens.refresh_token,
-      expires_in: tokens.expires_in,
-    };
+  if (!tokens || !tokens.access_token) {
+    throw new UnauthorizedException('Invalid credentials or no access token returned');
   }
+
+  // 2) استخراج userId من id_token أو access_token
+  const payload = await this.getUserProfileFromIdToken(tokens.id_token || tokens.access_token);
+  const userId = payload?.sub;
+  if (!userId) {
+    this.logger.warn('No subject (sub) found in id_token; userId missing');
+    throw new UnauthorizedException('Unable to determine user id from token');
+  }
+
+  // 2.b) تحقق من حالة التحقق (email verified) عبر FusionAuth
+  let fusionUserRaw: any = null;
+  try {
+    fusionUserRaw = await this.fusionClient.getUser(userId);
+
+    // unwrap common wrapper shapes
+    if (fusionUserRaw && fusionUserRaw.response && fusionUserRaw.response.user) {
+      fusionUserRaw = fusionUserRaw.response.user;
+    }
+    if (fusionUserRaw && fusionUserRaw.user) {
+      fusionUserRaw = fusionUserRaw.user;
+    }
+  } catch (e) {
+    this.logger.error(`Failed to fetch user ${userId} from FusionAuth to check verification`, e?.message || e);
+    // تحفظي: منع الدخول إذا تعذر التأكد من حالة التحقق
+    throw new UnauthorizedException('Could not verify email status; try again later');
+  }
+
+  // FusionAuth may call the flag `verified` or `emailVerified` depending on shape/version
+  const isVerified = !!(fusionUserRaw?.verified ?? fusionUserRaw?.emailVerified ?? false);
+
+  if (!isVerified) {
+    // منع الدخول حتى يفعّل المستخدم إيميله
+    this.logger.warn(`Login attempt for unverified user ${userId} (${email})`);
+    throw new ForbiddenException('Email not verified. Please verify your email before logging in.');
+  }
+
+  // 3) إذا في refresh_token — خزّنه كهاش في جدول user_sessions
+  if (tokens.refresh_token && userId) {
+    try {
+      await this.createSessionForUser({
+        userId,
+        refreshToken: tokens.refresh_token,
+        userAgent: options?.userAgent || '',
+        ip: options?.ip ?? undefined,
+        expiresInSeconds: tokens.expires_in ?? null,
+      });
+
+      // إذا أردت تفعيل الكوكي لاحقاً، يمكنك فكّ تعليق السطور التالية
+      // res.cookie('refresh_token', tokens.refresh_token, {
+      //   httpOnly: true,
+      //   secure: process.env.NODE_ENV === 'production',
+      //   sameSite: 'strict',
+      //   path: '/',
+      //   maxAge: tokens.expires_in ? tokens.expires_in * 1000 : 30 * 24 * 60 * 60 * 1000,
+      // });
+    } catch (e) {
+      this.logger.error('Failed to create session for user after password login', e?.message || e);
+      // لا نمنع المصادقة النهائية لمجرد فشل حفظ الجلسة، لكن نعلم الخادم
+    }
+  }
+
+  // 4) أعد التوكنات للعميل
+  return {
+    access_token: tokens.access_token,
+    id_token: tokens.id_token,
+    refreshToken: tokens.refresh_token,
+    expires_in: tokens.expires_in,
+  };
+}
   async handleCallback(code: string) {
     const tokens = await this.fusionClient.exchangeCodeForToken(
       code,
@@ -156,30 +186,16 @@ export class AuthService {
   // ------------------------------
   // registerUserAndProfile
   // ------------------------------
+// افترض أن هذه التعريفات مستوردة في أعلى الملف:
+// import axios from 'axios';
+// import { unlink } from 'fs/promises';
+// import { join } from 'path';
+// import { InternalServerErrorException, ConflictException } from '@nestjs/common';
+
 async registerUserAndProfile(dto: RegisterDto): Promise<string> {
   let fusionUserId: string | undefined;
   let createdUserResp: any;
   const DEFAULT_AVATAR = 'uploads/avatar.png';
-  // Helper: remove uploaded file if it points inside uploads folder
-  const removeUploadedFileIfSafe = async (maybePath?: string | null) => {
-    if (!maybePath) return;
-    try {
-      // normalize and ensure we only delete paths inside the project uploads folder
-      const normalized = maybePath.replace(/\\/g, '/'); // normalize Windows slashes
-      // accept values like 'uploads/filename.jpg' or '/uploads/filename.jpg'
-      const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
-      if (!trimmed.startsWith('uploads/')) {
-        // safety: do not unlink arbitrary paths
-        this.logger.warn(`Skip deleting uploaded file because path is outside uploads/: ${maybePath}`);
-        return;
-      }
-      const fullPath = join(process.cwd(), trimmed);
-      await unlink(fullPath).catch(() => null);
-      this.logger.warn(`Deleted uploaded file during rollback: ${fullPath}`);
-    } catch (e) {
-      this.logger.error('Error while trying to delete uploaded file', e?.message || e);
-    }
-  };
 
   // Validators (كما عندك)
   const validateDoctorPayload = (p: any) => {
@@ -191,7 +207,6 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
     if (typeof p.university === 'string' && p.university.length > 255) errs.push('university length > 255');
     if (!p.specialty) errs.push('specialty is missing');
     if (typeof p.specialty === 'string' && p.specialty.length > 255) errs.push('specialty length > 255');
-    if (p.profilePhoto !== null && p.profilePhoto !== undefined && typeof p.profilePhoto !== 'string') errs.push('profilePhoto must be string or null');
     if (!p.city) errs.push('city is missing');
     if (typeof p.city === 'string' && p.city.length > 100) errs.push('city length > 100');
     if (p.birthYear === undefined || p.birthYear === null || !Number.isInteger(p.birthYear)) errs.push('birthYear must be an integer');
@@ -210,7 +225,6 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
     if (typeof p.city === 'string' && p.city.length > 100) errs.push('city length > 100');
     if (!p.phoneNumber) errs.push('phoneNumber is missing');
     if (typeof p.phoneNumber === 'string' && p.phoneNumber.length > 20) errs.push('phoneNumber length > 20');
-    if (p.profilePhoto !== null && p.profilePhoto !== undefined && typeof p.profilePhoto !== 'string') errs.push('profilePhoto must be string or null');
     return errs;
   };
 
@@ -238,8 +252,6 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
     fusionUserId = createdUserResp.data?.user?.id || createdUserResp.data?.id;
     if (!fusionUserId) {
       this.logger.error('❌ Invalid FusionAuth response: no user id found', createdUserResp?.data || createdUserResp);
-      // If a file was uploaded by controller (dto.profilePhoto set) - delete it
-  
       throw new InternalServerErrorException('Invalid response from FusionAuth (no user id).');
     }
     this.logger.log(`✅ FusionAuth user created: ${fusionUserId}`);
@@ -283,18 +295,32 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
       } catch (delErr: any) {
         this.logger.error('Failed to rollback FusionAuth user after registration failure', delErr?.response?.data || delErr?.message || delErr);
       }
-      // cleanup uploaded file
       throw new InternalServerErrorException('Failed to add user registration in FusionAuth.');
     }
 
     this.logger.log(`✅ Registration added: ${JSON.stringify(regResp.data.registration)}`);
+
+    // -----------------------------
+    // 2.b) Request FusionAuth to send the registration verification email
+    // PUT /api/user/verify-registration?applicationId={applicationId}&email={email}
+    try {
+      const verifyUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/verify-registration?applicationId=${encodeURIComponent(this.clientId)}&email=${encodeURIComponent(dto.email)}`;
+      const verifyResp = await axios.put(verifyUrl, null, { headers: registrationHeaders, timeout: 10000 });
+      const verificationId = verifyResp?.data?.verificationId || verifyResp?.data?.registrationVerificationId || null;
+      if (verificationId) {
+        this.logger.log(`Verification email requested; verificationId=${verificationId}`);
+      } else {
+        this.logger.log('Requested verification email (no verificationId returned).');
+      }
+    } catch (verifyErr: any) {
+      // Don't rollback user creation on email send failure
+      this.logger.error('Failed to request verification email from FusionAuth', verifyErr?.response?.data || verifyErr?.message || verifyErr);
+    }
   } catch (err: any) {
     const status = err?.response?.status;
     const data = err?.response?.data;
     const msg = data?.message || err.message;
     this.logger.error('FusionAuth createUser/registration error', { status, message: msg, data: data || {} });
-
-    // If we failed before DB insert, make sure to remove uploaded file
 
     if (status === 401) {
       throw new InternalServerErrorException('Unauthorized: check FusionAuth API key.');
@@ -309,28 +335,28 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
     throw new InternalServerErrorException('Failed to create user or register in FusionAuth.');
   }
 
-  // 3️⃣ Prepare local profile data
+  // 3️⃣ Prepare local profile data (no profilePhoto in DTO; set default avatar)
   const birthYearNum = dto.birthYear ? Number(dto.birthYear) : 0;
 
-const newDoctor = {
-  fusionAuthId: fusionUserId,
-  gender: dto.gender || '',
-  university: dto.university || '',
-  specialty: dto.specialty || '',
-  city: dto.city || '',
-  birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
-  phoneNumber: dto.phoneNumber || '',
-  profilePhoto: DEFAULT_AVATAR, // <<<<<<<<<<
-};
+  const newDoctor = {
+    fusionAuthId: fusionUserId,
+    gender: dto.gender || '',
+    university: dto.university || '',
+    specialty: dto.specialty || '',
+    city: dto.city || '',
+    birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
+    phoneNumber: dto.phoneNumber || '',
+    profilePhoto: DEFAULT_AVATAR,
+  };
 
-const newPatient = {
-  fusionAuthId: fusionUserId,
-  birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
-  gender: dto.gender || '',
-  city: dto.city || '',
-  phoneNumber: dto.phoneNumber || '',
-  profilePhoto: DEFAULT_AVATAR, // <<<<<<<<<<
-};
+  const newPatient = {
+    fusionAuthId: fusionUserId,
+    birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
+    gender: dto.gender || '',
+    city: dto.city || '',
+    phoneNumber: dto.phoneNumber || '',
+    profilePhoto: DEFAULT_AVATAR,
+  };
 
   // 4️⃣ Insert into local DB
   try {
@@ -389,8 +415,6 @@ const newPatient = {
       this.logger.error('Failed to rollback FusionAuth user after DB insert error', delErr?.response?.data || delErr?.message || delErr);
     }
 
-    // cleanup uploaded file if existed
-
     const clientMsg = validationErrors.length > 0
       ? `Failed to create local profile; validation errors: ${validationErrors.join('; ')}`
       : 'Failed to create local profile; database insert failed (see server logs).';
@@ -398,8 +422,10 @@ const newPatient = {
     throw new InternalServerErrorException(clientMsg);
   }
 
+  // success
   return fusionUserId!;
 }
+
 
 
 
