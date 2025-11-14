@@ -1,34 +1,89 @@
 // src/auth/auth.controller.ts
-import { Controller, Get, Query, Res, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import {type Response } from 'express';
+import {
+  Controller,
+  Get,
+  Query,
+  Res,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Req,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+const UPLOADS_FOLDER = 'uploads';
+
+// ensure uploads folder exists (will create if missing)
+if (!existsSync(UPLOADS_FOLDER)) {
+  mkdirSync(UPLOADS_FOLDER, { recursive: true });
+}
+
+/**
+ * Helper: filter allowed mime types (jpg/jpeg/png) — throws BadRequestException on reject.
+ */
+function fileFilter(req: any, file: Express.Multer.File, cb: Function) {
+  if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
+    return cb(new BadRequestException('Unsupported file type. Only jpg/jpeg/png allowed.'), false);
+  }
+  cb(null, true);
+}
+
+/**
+ * Helper: create deterministic filename with timestamp to avoid collisions.
+ * You can replace with uuid if preferred.
+ */
+function editFileName(req: any, file: Express.Multer.File, callback: Function) {
+  const name = file.originalname
+    .replace(/\.[^/.]+$/, '') // remove extension
+    .replace(/\s+/g, '-')
+    .toLowerCase();
+  const fileExtName = extname(file.originalname).toLowerCase();
+  const timestamp = Date.now();
+  const finalName = `${name}-${timestamp}${fileExtName}`;
+  callback(null, finalName);
+}
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
   constructor(private authService: AuthService) {}
 
-  // يُعيد رابط الدخول إلى FusionAuth (frontend يوجه المستخدم إلى هذا الـ endpoint)
-  @Get('login')
-  login(@Query('state') state: string, @Res() res: Response) {
-    const url = this.authService.getAuthorizationUrl(state || 'state123');
-    return res.redirect(url);
-  }
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  async loginWithPassword(
+    @Body('email') email: string,
+    @Body('password') password: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    // لوق تشخيصي سريع
+    this.logger.debug('loginWithPassword called, email:', email, 'password present?', !!password);
 
-  // callback endpoint: FusionAuth يعيد المستخدم مع ?code=...
-  @Get('callback')
-  async callback(@Query('code') code: string, @Res() res: Response) {
-    if (!code) {
-      return res.status(400).json({ error: 'Code not found' });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'email and password required' });
     }
-    const tokens = await this.authService.handleCallback(code);
-    // هنا عندك خيارات:
-    // 1) تعيد الـ tokens للـ SPA (مع الحذر)
-    // 2) تحفظ جلسة server-side وتعيد cookie آمن httpOnly
-    // مؤقتاً نعيد الـ tokens كـ JSON
-    return res.json(tokens);
+
+    try {
+      const result = await this.authService.loginWithCredentials(email, password, res, {
+        userAgent: req.get('user-agent') || '',
+        ip: (req.ip as string) || (req.headers['x-forwarded-for'] as string) || undefined,
+      });
+      return res.json(result);
+    } catch (err: any) {
+      this.logger.error('Login failed', err?.message || err);
+      return res.status(401).json({ error: err?.message || 'Login failed' });
+    }
   }
 
-  // endpoint لاختبار introspect
   @Post('introspect')
   @HttpCode(HttpStatus.OK)
   async introspect(@Body('token') token: string) {
@@ -36,10 +91,70 @@ export class AuthController {
     return resp;
   }
 
-  // جلب بيانات المستخدم من id_token (مثال)
   @Post('profileFromIdToken')
   async profileFromIdToken(@Body('id_token') id_token: string) {
     const profile = await this.authService.getUserProfileFromIdToken(id_token);
     return profile;
+  }
+
+  // ------------------------
+  // Registration endpoint (no photo upload)
+  // ------------------------
+  @Post('register')
+  async register(@Body() body: RegisterDto) {
+  
+    const fusionId = await this.authService.registerUserAndProfile(body);
+    return { fusionId };
+  }
+
+  // Refresh endpoint (reads refresh token from httpOnly cookie)
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Req() req: Request, @Res() res: Response) {
+    const refreshToken = (req as any).body?.refreshToken || (req as any).cookies?.refresh_token;
+
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'No refresh token' });
+    }
+
+    try {
+      const tokens = await this.authService.refreshTokens(refreshToken);
+      // Set new refresh token cookie if rotation returned new one
+      if (tokens.refresh_token) {
+        res.cookie('refresh_token', tokens.refresh_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          path: '/',
+          maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days example
+        });
+      }
+      return res.json({ access_token: tokens.access_token, refresh_token: tokens.refresh_token, id_token: tokens.id_token });
+    } catch (err: any) {
+      this.logger.error('Refresh failed', err?.message || err);
+      return res.status(401).json({ error: err?.message || 'Could not refresh tokens' });
+    }
+  }
+
+  // Logout: revoke refresh token + delete session row + clear cookie
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Req() req: Request, @Res() res: Response) {
+    const refreshToken = (req as any).cookies?.refresh_token;
+    const userIdFromBody = (req as any).body?.userId;
+    const userIdFromReqUser = (req as any).user?.sub;
+    const userId = userIdFromBody || userIdFromReqUser;
+
+    if (refreshToken) {
+      try {
+        await this.authService.revokeRefreshToken(refreshToken, userId);
+      } catch (e) {
+        this.logger.error('Failed to revoke refresh token', e?.message || e);
+        // continue to clear cookie even if revoke fails
+      }
+    }
+
+    res.clearCookie('refresh_token', { path: '/' });
+    return res.json({ ok: true });
   }
 }

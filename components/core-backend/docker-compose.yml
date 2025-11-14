@@ -1,0 +1,26 @@
+# docker-compose.yml
+
+
+services:
+  nest-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nest-app
+    environment:
+      - PORT=3000
+    ports:
+      - '3000'
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nest-app.rule=Host(`${NEST_APP_DOMAIN}`)"
+      - "traefik.http.routers.nest-app.entrypoints=websecure"
+      - "traefik.http.routers.nest-app.tls=true"
+      - "traefik.http.routers.nest-app.tls.certresolver=le"
+
+networks:
+  proxy:
+    name: proxy
+    external: true

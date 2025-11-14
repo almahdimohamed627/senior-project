@@ -1,0 +1,277 @@
+def build() {
+    echo "🏗️ Starting build for core-backend component"
+    
+    // Use environment file for ALL stages if available
+    def credentialId = "core-backend.env"
+    def hasEnvFile = false
+    
+    // Check if environment file credential exists
+    try {
+        withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
+            hasEnvFile = true
+        }
+    } catch (Exception e) {
+        echo "⚠️ No credential found for ${credentialId}, proceeding without environment file"
+        hasEnvFile = false
+    }
+    
+    if (hasEnvFile) {
+        withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
+            sh """
+                cp "\$ENV_FILE" .env
+                chmod 600 .env
+            """
+            
+            stage('Validate Docker Compose') {
+                sh '''
+                    echo "Validating docker-compose.yml with environment file..."
+                    docker compose --env-file .env config
+                '''
+            }
+            
+            stage('Clean Previous Builds') {
+                sh '''
+                    echo "Cleaning up previous builds and images..."
+                    docker rmi --force core-backend-nest-app
+                    docker compose --env-file .env down --remove-orphans --rmi all 2>/dev/null || true
+                    docker image prune -f 2>/dev/null || true
+                    docker rmi -f $(docker images | grep "nest-app" | awk "{print \$3}") 2>/dev/null || true
+                '''
+            }
+            
+            stage('Pull Images') {
+                sh '''
+                    echo "Pulling Docker images from Docker Hub..."
+                    docker compose --env-file .env pull --ignore-pull-failures
+                '''
+            }
+            
+            stage('Build Services') {
+                // Check if we should build
+                def shouldBuild = fileExists('Dockerfile') || 
+                                 sh(script: 'docker compose --env-file .env config | grep -q "build:"', returnStatus: true) == 0
+                
+                if (shouldBuild) {
+                    sh '''
+                        echo "Building core-backend services..."
+                        # Build the specific service image directly, ensuring no-cache
+                        docker build --no-cache --pull -t core-backend-nest-app .
+
+                        # Even with direct build, try a final compose build to ensure service configuration is updated
+                        docker compose --env-file .env build --no-cache nest-app || echo "Compose build may be redundant but attempted."
+                    '''
+                } else {
+                    echo "⚠️ No build configuration found - skipping build"
+                }
+            }
+            
+            stage('Smoke Test') {
+                try {
+                    sh '''
+                        echo "Starting services for smoke test with environment file..."
+                        docker compose --env-file .env up -d
+                        
+                        # Wait for services to be ready
+                        sleep 30
+                        
+                        # Check if services are running
+                        docker compose --env-file .env ps
+                        
+                        # Run basic health checks (adjust based on your services)
+                        if docker compose --env-file .env ps | grep -q "Up"; then
+                            echo "✅ Services are running"
+                            
+                            # Additional health check for nest-app
+                            echo "Checking if nest-app is accessible..."
+                            for i in 1 2 3; do
+                                if curl -s -f http://localhost:3000/health >/dev/null 2>&1 || 
+                                   curl -s -f http://localhost:3000 >/dev/null 2>&1; then
+                                    echo "✅ Core-backend is accessible at http://localhost:3000"
+                                    break
+                                else
+                                    echo "⏳ Attempt $i: Core-backend not yet accessible, waiting..."
+                                    sleep 10
+                                fi
+                            done
+                        else
+                            echo "❌ Some services failed to start"
+                            echo "=== Container logs ==="
+                            docker compose --env-file .env logs || true
+                            exit 1
+                        fi
+                    '''
+                } catch (Exception e) {
+                    echo "❌ Smoke test failed: ${e.message}"
+                    sh '''
+                        echo "=== Debug Information ==="
+                        docker compose --env-file .env ps 2>/dev/null || true
+                        echo "=== Recent Logs ==="
+                        docker compose --env-file .env logs --tail=50 2>/dev/null || true
+                    '''
+                    throw e
+                } finally {
+                    sh '''
+                        echo "Stopping services after smoke test..."
+                        docker compose --env-file .env down 2>/dev/null || true
+                    '''
+                }
+            }
+            
+            stage('Save Compose Configuration') {
+                sh '''
+                    # Generate the final compose config for deployment
+                    docker compose --env-file .env config > docker-compose.resolved.yml
+                '''
+                archiveArtifacts artifacts: 'docker-compose.resolved.yml', fingerprint: true
+            }
+            
+            // Clean up environment file
+            sh "rm -f .env 2>/dev/null || true"
+        }
+    } else {
+        // Fallback: build without environment file
+        stage('Validate Docker Compose') {
+            sh '''
+                echo "Validating docker-compose.yml..."
+                docker compose config
+            '''
+        }
+        
+        stage('Clean Previous Builds') {
+            sh '''
+                echo "Cleaning up previous builds and images..."
+                docker rmi --force core-backend-nest-app
+                docker compose down --remove-orphans --rmi all 2>/dev/null || true
+                docker image prune -f 2>/dev/null || true
+                docker rmi -f $(docker images | grep "nest-app" | awk "{print \$3}") 2>/dev/null || true
+            '''
+        }
+        
+        stage('Pull Images') {
+            sh '''
+                echo "Pulling Docker images from Docker Hub..."
+                docker compose pull --ignore-pull-failures
+            '''
+        }
+        
+        stage('Build Services') {
+            def shouldBuild = fileExists('Dockerfile') || 
+                             sh(script: 'docker compose config | grep -q "build:"', returnStatus: true) == 0
+            
+            if (shouldBuild) {
+                sh '''
+                    echo "Building core-backend services..."
+                    docker build --no-cache --pull -t core-backend-nest-app .
+                    docker compose build --no-cache nest-app || echo "Compose build may be redundant but attempted."
+                '''
+            } else {
+                echo "⚠️ No build configuration found - skipping build"
+            }
+        }
+        
+        stage('Smoke Test') {
+            try {
+                sh '''
+                    echo "Starting services for smoke test..."
+                    docker compose up -d
+                    sleep 30
+                    docker compose ps
+                    if docker compose ps | grep -q "Up"; then
+                        echo "✅ Services are running"
+                    else
+                        echo "❌ Some services failed to start"
+                        exit 1
+                    fi
+                '''
+            } catch (Exception e) {
+                echo "❌ Smoke test failed: ${e.message}"
+                throw e
+            } finally {
+                sh '''
+                    echo "Stopping services after smoke test..."
+                    docker compose down
+                '''
+            }
+        }
+        
+        stage('Save Compose Configuration') {
+            sh '''
+                docker compose config > docker-compose.resolved.yml
+            '''
+            archiveArtifacts artifacts: 'docker-compose.resolved.yml', fingerprint: true
+        }
+    }
+    
+    echo "✅ core-backend build completed successfully"
+}
+
+def deploy() {
+    echo "🚀 Starting deployment for core-backend component"
+    
+    try {
+        withCredentials([file(credentialsId: "core-backend.env", variable: 'ENV_FILE')]) {
+            sh """
+                cp "\$ENV_FILE" .env
+                chmod 600 .env
+                docker compose --env-file .env config
+                docker compose --env-file .env down --remove-orphans 2>/dev/null || true
+                docker compose --env-file .env pull --ignore-pull-failures 2>/dev/null || true
+                docker compose --env-file .env up -d
+                sleep 60
+            """
+        }
+
+        sh """
+            docker compose --env-file .env ps || true
+            docker ps --filter "name=core-backend" --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" || true
+        """
+
+        // Custom health check for core-backend
+        sh '''
+            for i in 1 2 3; do
+                if curl -s -f http://localhost:3000/health >/dev/null 2>&1 || 
+                   curl -s -f http://localhost:3000 >/dev/null 2>&1; then
+                    echo "✅ Core-backend is accessible at http://localhost:3000"
+                    break
+                else
+                    echo "⏳ Attempt $i: Core-backend not yet accessible, waiting..."
+                    sleep 30
+                fi
+            done
+            if ! curl -s -f http://localhost:3000/health >/dev/null 2>&1 && 
+               ! curl -s -f http://localhost:3000 >/dev/null 2>&1; then
+                echo "⚠️ Core-backend not accessible, showing recent logs..."
+                docker compose --env-file .env logs --tail=50 nest-app || true
+            fi
+        '''
+
+        echo "✅ Core-backend deployment completed successfully"
+    } catch (Exception e) {
+        echo "❌ Deployment failed for core-backend: ${e.message}"
+        sh """
+            echo "=== Debug Information ==="
+            docker compose --env-file .env ps 2>/dev/null || true
+            echo "=== Recent Logs ==="
+            docker compose --env-file .env logs --tail=100 2>/dev/null || true
+        """
+        sh "rm -f .env 2>/dev/null || true"
+        throw e
+    }
+}
+
+// Optional: Add other utility methods
+def test() {
+    echo "🧪 Running tests for core-backend"
+    // Add your test logic here
+}
+
+def cleanup() {
+    echo "🧹 Cleaning up core-backend resources"
+    sh '''
+        docker compose down --remove-orphans --rmi all 2>/dev/null || true
+        docker rmi -f core-backend-nest-app 2>/dev/null || true
+    '''
+}
+
+// Return this library
+return this

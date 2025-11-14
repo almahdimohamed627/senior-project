@@ -1,3 +1,4 @@
+
 .env
 # Ignore the entire certs directory
 certs/
