@@ -1,0 +1,56 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    environment:
+      - OLLAMA_NUM_PARALLEL=1  # Reduced from 2
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_KEEP_ALIVE=60s
+    ports:
+      - "11434:11434"
+    networks:
+      - proxy
+    volumes:
+      - ollama_data:/root/.ollama
+      - /etc/ollama/model_files:/model_files  # Mount a directory for custom scripts and Modelfiles
+    tty: true
+    #mem_limit: 8G        # Hard limit on physical RAM
+    #memswap_limit: -1    # Total limit (RAM + Swap)
+
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/model_files/run_ollama.sh"]  # Custom script to run on start
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ollama.rule=Host(`${OLLAMA_DOMAIN}`)"
+      - "traefik.http.routers.ollama.entrypoints=websecure"
+      - "traefik.http.routers.ollama.tls=true"
+      - "traefik.http.routers.ollama.tls.certresolver=le"
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    volumes:
+      - open-webui_data:/app/backend/data
+    depends_on:
+      - ollama
+    ports:
+      - "3000:8080"
+    networks:
+      - proxy
+    environment:
+      - "OLLAMA_BASE_URL=${OLLAMA_BASE_URL}"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.open-webui.rule=Host(`${OPEN_WEBUI_DOMAIN}`)"
+      - "traefik.http.routers.open-webui.entrypoints=websecure"
+      - "traefik.http.routers.open-webui.tls=true"
+      - "traefik.http.routers.open-webui.tls.certresolver=le"
+
+volumes:
+  ollama_data:
+  open-webui_data:
+
+networks:
+  proxy:
+    name: proxy
