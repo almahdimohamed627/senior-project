@@ -9,7 +9,7 @@ pipeline {
     )
     booleanParam(
       name: 'DEPLOY',
-      defaultValue: false,
+      defaultValue: true,
       description: 'Deploy after successful build'
     )
   }
