@@ -6,7 +6,9 @@ entryPoints:
     address: ":80"
 
 providers:
-  docker: {}
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
 
 certificatesResolvers:
   letsencrypt:
