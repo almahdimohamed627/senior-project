@@ -7,6 +7,7 @@ services:
       search:
         condition: service_healthy
       db:
+        external: true
         condition: service_healthy
     environment:
       DATABASE_URL: jdbc:postgresql://db:5432/fusionauth
