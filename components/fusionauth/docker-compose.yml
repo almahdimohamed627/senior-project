@@ -6,6 +6,8 @@ services:
     depends_on:
       search:
         condition: service_healthy
+      db:
+        condition: service_healthy
     environment:
       DATABASE_URL: jdbc:postgresql://db:5432/fusionauth
       DATABASE_ROOT_USERNAME: ${POSTGRES_USER}
