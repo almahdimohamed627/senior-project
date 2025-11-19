@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
-import { posts } from 'src/db/schema/posts.schema';
+import { likes, posts } from 'src/db/schema/posts.schema';
 import { db } from 'src/auth/client';
 import schema from 'src/db/schema/schema';
 import { eq } from 'drizzle-orm'; // ✅ أهم import!
@@ -56,6 +56,17 @@ export class PostService {
 
       throw new InternalServerErrorException('Failed to create post; database insert failed.');
     }
+  }
+  async addlikeOrDelete(userId:string,postId:number){
+   let user=await db.select().from(likes).where(eq(likes.likedPy,userId))
+   if(user.length>0){
+    await db.delete(likes).where(eq(likes.likedPy,userId))
+    let numberOfLikes=await db.select({numberOfLikes:posts.numberOfLikes}).from(posts).where(eq(posts.id,postId))
+    return 'like deleted'
+   }
+   else{
+    
+   }
   }
 
    async findAll() {

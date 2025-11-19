@@ -91,7 +91,10 @@ export class PostController {
   findOneByPostOd(@Param('id') userId: string) {
     return this.postService.findOneByUserId(userId);
   }
- 
+  @Post()
+  addlike(@Body() userId:string,postId:string){
+   
+  }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {

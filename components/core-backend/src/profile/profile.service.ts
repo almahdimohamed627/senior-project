@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, NotFoundException, Logger, BadReques
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { db } from '../auth/client'; // تأكد المسار صحيح
-import { doctorProfile, patientProfile } from 'src/db/schema/profiles.schema';
+import { doctorProfile, patientProfile, users } from 'src/db/schema/profiles.schema';
 import { appointments } from '../db/schema/appointments';
 import { eq } from 'drizzle-orm';
 import { ConfigService } from '@nestjs/config';
@@ -44,56 +44,92 @@ export class ProfileService {
   private readonly logger = new Logger(ProfileService.name);
   // default photo URL (served via static)
   private readonly defaultPhoto = '/uploads/logo.png';
- private baseUrl: string=process.env.FUSIONAUTH_BASE_URL||"";
- private apiKey: string=process.env.FUSIONAUTH_API_KEY||"";
-  constructor(private config: ConfigService,@Inject() private authService: AuthService) {
+  private baseUrl: string = process.env.FUSIONAUTH_BASE_URL || '';
+  private apiKey: string = process.env.FUSIONAUTH_API_KEY || '';
+  constructor(private config: ConfigService, @Inject() private authService: AuthService) {
     const baseUrl = (this.config.get<string>('FUSIONAUTH_BASE_URL') || 'https://auth.almahdi.cloud').replace(/\/$/, '');
-    const apiKey = this.config.get<string>('FUSIONAUTH_API_KEY')||'aNnC27LYRSW8WBZdni-_kbcsc7O8c00PiMVDRIgcAua4hBD2OpnIMUb9';
+    const apiKey = this.config.get<string>('FUSIONAUTH_API_KEY') || 'aNnC27LYRSW8WBZdni-_kbcsc7O8c00PiMVDRIgcAua4hBD2OpnIMUb9';
     this.fusionClient = new FusionAuthClientWrapper(baseUrl, apiKey);
-  
-    
   }
 
   // create(createProfileDto: CreateProfileDto) {
   //   return 'This action adds a new profile';
   // }
 
-  async findAll() {
-    const profiles = await db.select().from(doctorProfile);
+async findAll() {
+  const profiles = await db.select().from(users);
 
-    const limit = pLimit(10);
-    const logger = this.logger;
+  const limit = pLimit(10);
+  const logger = this.logger;
 
-    const tasks = profiles.map((doctor) =>
-      limit(async () => {
-        let fusionUser: { firstName?: string; lastName?: string; email?: string } | null = null;
-        try {
-          fusionUser = await this.fusionClient.getUser(doctor.fusionAuthId);
-        } catch (err: any) {
-          logger.warn(`Failed to fetch fusion user ${doctor.fusionAuthId}: ${err?.message ?? err}`);
-        }
+  const tasks = profiles.map((user) =>
+    limit(async () => {
+      let fusionUser: { firstName?: string; lastName?: string; email?: string } | null = null;
+      try {
+        fusionUser = await this.fusionClient.getUser(user.fusionAuthId);
+      } catch (err: any) {
+        logger.warn(`Failed to fetch fusion user ${user.fusionAuthId}: ${err?.message ?? err}`);
+      }
 
-        // fallback photo logic: if DB value empty => return default
-        const photo = doctor.profilePhoto && String(doctor.profilePhoto).trim() !== ''
-          ? doctor.profilePhoto
+      // fallback photo logic: if DB value empty => return default
+      const photo =
+        user.profilePhoto && String(user.profilePhoto).trim() !== ''
+          ? user.profilePhoto
           : this.defaultPhoto;
 
-        return {
-          ...doctor,
-          firstName: fusionUser?.firstName ?? null,
-          lastName: fusionUser?.lastName ?? null,
-          email: fusionUser?.email ?? null,
-          profilePhoto: photo,
-        };
-      }),
-    );
+      // لو كان دكتور، جيب بيانات الدكتور من doctorProfile
+      let doctorRow: typeof doctorProfile.$inferSelect | null = null;
+      if (user.role === 'doctor') {
+        const doctorRows = await db
+          .select()
+          .from(doctorProfile)
+          .where(eq(doctorProfile.fusionAuthId, user.fusionAuthId))
+          .limit(1);
 
-    return await Promise.all(tasks);
-  }
+        doctorRow = doctorRows[0] ?? null;
+      }
+
+      return {
+        ...user,
+        // لو في سجل دكتور، نضيف حقوله بشكل مرتب (بدون ما نكسر id تبع users)
+        ...(doctorRow
+          ? {
+              doctorProfileId: doctorRow.id,
+              university: doctorRow.university,
+              specialty: doctorRow.specialty,
+            }
+          : {}),
+
+        // نعطي الأولوية لبيانات FusionAuth ثم بيانات users المحلية
+        firstName: fusionUser?.firstName ?? user.firstName ?? null,
+        lastName: fusionUser?.lastName ?? user.lastName ?? null,
+        email: fusionUser?.email ?? null,
+        profilePhoto: photo,
+      };
+    }),
+  );
+
+  return await Promise.all(tasks);
+}
+
 
   async findOne(id: string) {
+    // id هنا هو fusionAuthId
+
+    // 0) جلب السجل الأساسي من جدول users (لأنه يحتوي city, profilePhoto, ...الخ)
+    const userRows = await db
+      .select()
+      .from(users)
+      .where(eq(users.fusionAuthId, id))
+      .limit(1);
+
+    const baseUser = userRows[0];
+    if (!baseUser) {
+      throw new NotFoundException('User not found');
+    }
+
     // 1) جلب السجل المحلي (نبحث في doctorProfiles أولاً)
-    const profiles = await db
+    const doctorRows = await db
       .select()
       .from(doctorProfile)
       .where(eq(doctorProfile.fusionAuthId, id))
@@ -102,8 +138,8 @@ export class ProfileService {
     let local: any = null;
     let foundIn: 'doctor' | 'patient' | null = null;
 
-    if (profiles && profiles.length > 0) {
-      local = profiles[0];
+    if (doctorRows && doctorRows.length > 0) {
+      local = doctorRows[0];
       foundIn = 'doctor';
     } else {
       // try patient
@@ -136,9 +172,12 @@ export class ProfileService {
       fusionUserRaw = null;
     }
 
-    const firstNameFromFusion = (fusionUserRaw && (fusionUserRaw.firstName ?? fusionUserRaw['first_name'])) ?? null;
-    const lastNameFromFusion  = (fusionUserRaw && (fusionUserRaw.lastName  ?? fusionUserRaw['last_name']))  ?? null;
-    const emailFromFusion     = (fusionUserRaw && (fusionUserRaw.email     ?? fusionUserRaw['email']))      ?? null;
+    const firstNameFromFusion =
+      (fusionUserRaw && (fusionUserRaw.firstName ?? fusionUserRaw['first_name'])) ?? null;
+    const lastNameFromFusion =
+      (fusionUserRaw && (fusionUserRaw.lastName ?? fusionUserRaw['last_name'])) ?? null;
+    const emailFromFusion =
+      (fusionUserRaw && (fusionUserRaw.email ?? fusionUserRaw['email'])) ?? null;
 
     // 3) جلب المواعيد المرتبطة
     const availRows = await db
@@ -148,7 +187,7 @@ export class ProfileService {
       .orderBy(appointments.dayOfWeek, appointments.startTime);
 
     // تحويل الرقم إلى اسم اليوم
-    const availabilities = availRows.map(r => ({
+    const availabilities = availRows.map((r) => ({
       id: r.id,
       dayOfWeek: r.dayOfWeek,
       dayName: this.dayNameFromNumber(r.dayOfWeek),
@@ -158,15 +197,19 @@ export class ProfileService {
 
     // 4) تشكيل الـ profile النهائي — نعطي الأولوية لبيانات FusionAuth إن وُجدت
     const publicProfile: PublicProfile = {
-      id: local.id,
-      fusionAuthId: local.fusionAuthId,
-      firstName: firstNameFromFusion ?? (local as any).firstName ?? null,
-      lastName:  lastNameFromFusion  ?? (local as any).lastName  ?? null,
-      email:     emailFromFusion     ?? (local as any).email     ?? null,
-      city: local.city ?? null,
-      specialty: local.specialty ?? null,
+      // نستخدم id من doctorProfile/patientProfile إن وجد، وإلا من users
+      id: local.id ?? baseUser.id,
+      fusionAuthId: baseUser.fusionAuthId,
+      firstName: firstNameFromFusion ?? baseUser.firstName ?? null,
+      lastName: lastNameFromFusion ?? baseUser.lastName ?? null,
+      email: emailFromFusion ?? null,
+      city: baseUser.city ?? null,
+      specialty: (local as any).specialty ?? null, // موجودة فقط في doctorProfile
       // إذا الحقل فارغ أو null نعيد default
-      profilePhoto: local.profilePhoto && String(local.profilePhoto).trim() !== '' ? local.profilePhoto : this.defaultPhoto,
+      profilePhoto:
+        baseUser.profilePhoto && String(baseUser.profilePhoto).trim() !== ''
+          ? baseUser.profilePhoto
+          : this.defaultPhoto,
     };
 
     return {
@@ -175,54 +218,127 @@ export class ProfileService {
     };
   }
 
-   async updateMe({ type, dto, storedPath, fusionAuthId }: {
-  type: 'doctor' | 'patient';
-  dto: UpdateProfileDto;
-  storedPath?: string;
-  fusionAuthId: string;
-}) {
-  const table = type === 'doctor' ? doctorProfile : patientProfile;
-
-  // جيب السجل بهذا المستخدم
-  const rows = await db.select().from(table).where(eq(table.fusionAuthId, fusionAuthId)).limit(1);
-  const current = rows[0];
-  if (!current) throw new NotFoundException(`${type} profile not found`);
-
-  // تغييرات FusionAuth؟
-  const hasFusionChanges =
-    dto.firstName !== undefined ||
-    dto.lastName !== undefined ||
-    dto.email !== undefined ||
-    dto.password !== undefined;
-
-  if (hasFusionChanges) {
-    await this.fusionClient.updateUser(current.fusionAuthId, {
-      email: dto.email,
-      password: dto.password,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-    });
-  }
-
-  // تحديث محلي (صورة وأي محلي ثاني)
-  const localUpdates: Record<string, any> = { updatedAt: new Date() };
-  if (dto.profilePhoto) localUpdates.profilePhoto = dto.profilePhoto; // رابط
-  if (storedPath) localUpdates.profilePhoto = storedPath;            // ملف
-
-  if (Object.keys(localUpdates).length > 1) {
-    await db.update(table).set(localUpdates).where(eq(table.fusionAuthId, fusionAuthId));
-  }
-
-  const fresh = await db.select().from(table).where(eq(table.fusionAuthId, fusionAuthId));
-  return {
-    ok: true,
+  async updateMe({
     type,
-    profile: fresh[0],
-    fusionUpdated: !!hasFusionChanges,
-    photoUpdated: !!(storedPath || dto.profilePhoto),
-  };
-}
+    dto,
+    storedPath,
+    fusionAuthId,
+  }: {
+    type: 'doctor' | 'patient';
+    dto: UpdateProfileDto;
+    storedPath?: string;
+    fusionAuthId: string;
+  }) {
+    // أولاً نتأكد أن الـ user موجود في جدول users
+    const userRows = await db
+      .select()
+      .from(users)
+      .where(eq(users.fusionAuthId, fusionAuthId))
+      .limit(1);
+    const baseUser = userRows[0];
+    if (!baseUser) throw new NotFoundException('user not found');
 
+    // ثم نتأكد أن الـ profile الخاص بالدور موجود
+    if (type === 'doctor') {
+      const d = await db
+        .select()
+        .from(doctorProfile)
+        .where(eq(doctorProfile.fusionAuthId, fusionAuthId))
+        .limit(1);
+      if (!d[0]) throw new NotFoundException('doctor profile not found');
+    } else {
+      const p = await db
+        .select()
+        .from(patientProfile)
+        .where(eq(patientProfile.fusionAuthId, fusionAuthId))
+        .limit(1);
+      if (!p[0]) throw new NotFoundException('patient profile not found');
+    }
+
+    // تغييرات FusionAuth؟
+    const hasFusionChanges =
+      dto.firstName !== undefined ||
+      dto.lastName !== undefined ||
+      dto.email !== undefined ||
+      dto.password !== undefined;
+
+    if (hasFusionChanges) {
+      await this.fusionClient.updateUser(baseUser.fusionAuthId, {
+        email: dto.email,
+        password: dto.password,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+      });
+    }
+
+    // تحديث محلي (صورة وأي حقول عامة في جدول users)
+    const userUpdates: Record<string, any> = { updatedAt: new Date() };
+
+    if (dto.profilePhoto) userUpdates.profilePhoto = dto.profilePhoto; // رابط
+    if (storedPath) userUpdates.profilePhoto = storedPath; // ملف
+
+    // لو حابب تسمح بتعديل city / gender مثلاً
+    if (dto.city !== undefined) userUpdates.city = dto.city;
+    if (dto.gender !== undefined) userUpdates.gender = dto.gender;
+    if(dto.firstName!==undefined) userUpdates.firstName=dto.firstName
+    if(dto.lastName!==undefined) userUpdates.lastName=dto.lastName
+
+
+    if (Object.keys(userUpdates).length > 1) {
+      await db
+        .update(users)
+        .set(userUpdates)
+        .where(eq(users.fusionAuthId, fusionAuthId));
+    }
+
+    // نرجع النسخة المحدثة من users + بروفايل الدور
+    const freshUserRows = await db
+      .select()
+      .from(users)
+      .where(eq(users.fusionAuthId, fusionAuthId));
+    const freshUser = freshUserRows[0];
+
+    if(type==="doctor"){
+      const doctorUpdates: Record<string, any> = { updatedAt: new Date() };
+      console.log(dto.specialty)
+          if(dto.specialty!==undefined) doctorUpdates.specialty=dto.specialty
+         if(dto.university!==undefined) doctorUpdates.university=dto.university
+        if (Object.keys(doctorUpdates).length > 1) {
+      await db
+        .update(doctorProfile)
+        .set(doctorUpdates)
+        .where(eq(doctorProfile.fusionAuthId, fusionAuthId));
+    }
+
+    }
+    let extraProfile: any = null;
+    if (type === 'doctor') {
+      const d = await db
+        .select()
+        .from(doctorProfile)
+        .where(eq(doctorProfile.fusionAuthId, fusionAuthId))
+        .limit(1);
+      extraProfile = d[0] || null;
+    } else {
+      const p = await db
+        .select()
+        .from(patientProfile)
+        .where(eq(patientProfile.fusionAuthId, fusionAuthId))
+        .limit(1);
+      extraProfile = p[0] || null;
+    }
+
+    return {
+      ok: true,
+      type,
+      profile: {
+        ...freshUser,
+        ...extraProfile,
+      },
+      fusionUpdated: !!hasFusionChanges,
+      photoUpdated: !!(storedPath || dto.profilePhoto),
+    };
+  }
 
   async remove(id: string) {
     // id = fusionAuth userId
@@ -263,12 +379,14 @@ export class ProfileService {
 
     // 3) احذف المستخدم من FusionAuth (hard delete)
     const deleteUrl = `${this.baseUrl}/api/user/${id}?hardDelete=true`;
-    console.log(deleteUrl)
+    console.log(deleteUrl);
     const headers: Record<string, string> = {
       Authorization: this.apiKey,
     };
-    console.log(this.apiKey)
-    const tenantId = this.config.get<string>('FUSIONAUTH_TENANT_ID')||'5ba05e07-b2d6-4f53-f424-a986bd483e4d';
+    console.log(this.apiKey);
+    const tenantId =
+      this.config.get<string>('FUSIONAUTH_TENANT_ID') ||
+      '5ba05e07-b2d6-4f53-f424-a986bd483e4d';
     if (tenantId) {
       headers['X-FusionAuth-TenantId'] = tenantId;
     }
@@ -286,29 +404,26 @@ export class ProfileService {
       throw new InternalServerErrorException('Failed to delete user from FusionAuth');
     }
 
-    // 4) احذف الـ profile من الداتا بيز
-    if (role === 'doctor') {
-      await db
-        .delete(schema.doctors)
-        .where(eq(schema.doctors.fusionAuthId, id));
+    // 4) احذف المستخدم من الداتا بيز المحلية
+    // بسبب ON DELETE CASCADE على doctor_profiles و patient_profiles
+    // حذف السطر من users سيحذف البروفايل المرتبط تلقائياً
+    await db
+      .delete(schema.users)
+      .where(eq(schema.users.fusionAuthId, id));
 
+    if (role === 'doctor') {
       return { message: 'doctor deleted' };
     }
 
     if (role === 'patient') {
-      await db
-        .delete(schema.patients)
-        .where(eq(schema.patients.fusionAuthId, id));
-
       return { message: 'patient deleted' };
     }
 
     // لو لقيت دور غريب
     return {
       message:
-        'User deleted from FusionAuth, but no matching local profile (role was: ' +
-        role +
-        ')',
+        'User deleted from FusionAuth and local DB, but role was: ' +
+        role,
     };
   }
 
@@ -317,8 +432,12 @@ export class ProfileService {
   // ---------------------------
 
   async getAvailabilities(doctorId: string) {
-    const rows = await db.select().from(appointments).where(eq(appointments.doctorId, doctorId)).orderBy(appointments.dayOfWeek);
-    return rows.map(r => ({
+    const rows = await db
+      .select()
+      .from(appointments)
+      .where(eq(appointments.doctorId, doctorId))
+      .orderBy(appointments.dayOfWeek);
+    return rows.map((r) => ({
       id: r.id,
       dayOfWeek: r.dayOfWeek,
       dayName: this.dayNameFromNumber(r.dayOfWeek),
@@ -327,49 +446,49 @@ export class ProfileService {
     }));
   }
 
-async upsertAvailabilities(
-  fusionAuthId: string,
-  items: { dayOfWeek: number; startTime: string; endTime: string }[],
-) {
-  await db.transaction(async (tx) => {
-    // 1) جيب الدكتور عن طريق fusionAuthId
-    const doctors = await tx
-      .select()
-      .from(doctorProfile)
-      .where(eq(doctorProfile.fusionAuthId, fusionAuthId))
-      .limit(1);
+  async upsertAvailabilities(
+    fusionAuthId: string,
+    items: { dayOfWeek: number; startTime: string; endTime: string }[],
+  ) {
+    await db.transaction(async (tx) => {
+      // 1) جيب الدكتور عن طريق fusionAuthId
+      const doctors = await tx
+        .select()
+        .from(doctorProfile)
+        .where(eq(doctorProfile.fusionAuthId, fusionAuthId))
+        .limit(1);
 
-    if (!doctors || doctors.length === 0) {
-      throw new NotFoundException('Doctor not found');
-    }
+      if (!doctors || doctors.length === 0) {
+        throw new NotFoundException('Doctor not found');
+      }
 
-    const doctor = doctors[0];
-    const doctorPk = doctor.fusionAuthId; // 👈 هذا اللي بدنا نستخدمه مع جدول appointments
+      const doctor = doctors[0];
+      const doctorPk = doctor.fusionAuthId; // 👈 هذا اللي بدنا نستخدمه مع جدول appointments
 
-    // 2) احذف كل المواعيد القديمة لهذا الدكتور
-    await tx
-      .delete(appointments)
-      .where(eq(appointments.doctorId, doctorPk));
+      // 2) احذف كل المواعيد القديمة لهذا الدكتور
+      await tx.delete(appointments).where(eq(appointments.doctorId, doctorPk));
 
-    // 3) أضف المواعيد الجديدة
-    if (items.length > 0) {
-      const rows = items.map((i) => ({
-        doctorId: doctorPk,        // 👈 اربطها بالـ PK
-        dayOfWeek: i.dayOfWeek,
-        startTime: i.startTime,
-        endTime: i.endTime,
-      }));
+      // 3) أضف المواعيد الجديدة
+      if (items.length > 0) {
+        const rows = items.map((i) => ({
+          doctorId: doctorPk, // 👈 اربطها بالـ PK (هنا fusionAuthId حسب تصميمك)
+          dayOfWeek: i.dayOfWeek,
+          startTime: i.startTime,
+          endTime: i.endTime,
+        }));
 
-      await tx.insert(appointments).values(rows);
-    }
-  });
+        await tx.insert(appointments).values(rows);
+      }
+    });
 
-  return { ok: true };
-}
-
+    return { ok: true };
+  }
 
   async deleteAvailability(doctorId: string, availabilityId: number) {
-    const deleted = await db.delete(appointments).where(eq(appointments.id, availabilityId)).returning();
+    const deleted = await db
+      .delete(appointments)
+      .where(eq(appointments.id, availabilityId))
+      .returning();
     if (!deleted || (Array.isArray(deleted) && deleted.length === 0)) {
       throw new NotFoundException('Availability not found');
     }
@@ -379,13 +498,21 @@ async upsertAvailabilities(
     return { ok: true };
   }
 
-  async updateAvailability(doctorId: string, availabilityId: number, item: { dayOfWeek:number, startTime:string, endTime:string }) {
-    const rows = await db.update(appointments).set({
-      dayOfWeek: item.dayOfWeek,
-      startTime: item.startTime,
-      endTime: item.endTime,
-      updatedAt: new Date(),
-    }).where(eq(appointments.id, availabilityId)).returning();
+  async updateAvailability(
+    doctorId: string,
+    availabilityId: number,
+    item: { dayOfWeek: number; startTime: string; endTime: string },
+  ) {
+    const rows = await db
+      .update(appointments)
+      .set({
+        dayOfWeek: item.dayOfWeek,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        updatedAt: new Date(),
+      })
+      .where(eq(appointments.id, availabilityId))
+      .returning();
 
     if (!rows || (Array.isArray(rows) && rows.length === 0)) {
       throw new NotFoundException('Availability not found');
@@ -411,55 +538,55 @@ async upsertAvailabilities(
    * - deletes previous file if it was in uploads/ and not default logo
    * - updates DB and returns the new profilePhoto (string)
    */
-  async updateProfilePhoto(fusionAuthId: string, newPath: string): Promise<string> {
-    if (!newPath || typeof newPath !== 'string') {
-      throw new BadRequestException('Invalid newPath');
-    }
-    // Ensure path looks like 'uploads/...' (no leading slash) or '/uploads/...'
-    const normalized = newPath.replace(/\\/g, '/');
-    const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
-    if (!trimmed.startsWith('uploads/')) {
-      throw new BadRequestException('Invalid upload path');
-    }
+  // async updateProfilePhoto(fusionAuthId: string, newPath: string): Promise<string> {
+  //   if (!newPath || typeof newPath !== 'string') {
+  //     throw new BadRequestException('Invalid newPath');
+  //   }
+  //   // Ensure path looks like 'uploads/...' (no leading slash) or '/uploads/...'
+  //   const normalized = newPath.replace(/\\/g, '/');
+  //   const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+  //   if (!trimmed.startsWith('uploads/')) {
+  //     throw new BadRequestException('Invalid upload path');
+  //   }
 
-    // Try update doctor first
-    const doctorRows = await db.select().from(doctorProfile).where(eq(doctorProfile.fusionAuthId, fusionAuthId)).limit(1);
-    if (doctorRows && doctorRows.length > 0) {
-      const prev = doctorRows[0].profilePhoto || null;
-      // Update DB
-      await db.update(doctorProfile).set({ profilePhoto: trimmed }).where(eq(doctorProfile.fusionAuthId, fusionAuthId));
-      // remove previous file if safe and not default
-      await this.safeDeleteOldFile(prev);
-      return `/${trimmed}`; // return with leading slash to match existing API convention
-    }
+  //   // Try update doctor first
+  //   const doctorRows = await db.select().from(doctorProfile).where(eq(doctorProfile.fusionAuthId, fusionAuthId)).limit(1);
+  //   if (doctorRows && doctorRows.length > 0) {
+  //     const prev = doctorRows[0].profilePhoto || null;
+  //     // Update DB
+  //     await db.update(doctorProfile).set({ profilePhoto: trimmed }).where(eq(doctorProfile.fusionAuthId, fusionAuthId));
+  //     // remove previous file if safe and not default
+  //     await this.safeDeleteOldFile(prev);
+  //     return `/${trimmed}`; // return with leading slash to match existing API convention
+  //   }
 
-    // Else try patient
-    const patientRows = await db.select().from(patientProfile).where(eq(patientProfile.fusionAuthId, fusionAuthId)).limit(1);
-    if (patientRows && patientRows.length > 0) {
-      const prev = patientRows[0].profilePhoto || null;
-      await db.update(patientProfile).set({ profilePhoto: trimmed }).where(eq(patientProfile.fusionAuthId, fusionAuthId));
-      await this.safeDeleteOldFile(prev);
-      return `/${trimmed}`;
-    }
+  //   // Else try patient
+  //   const patientRows = await db.select().from(patientProfile).where(eq(patientProfile.fusionAuthId, fusionAuthId)).limit(1);
+  //   if (patientRows && patientRows.length > 0) {
+  //     const prev = patientRows[0].profilePhoto || null;
+  //     await db.update(patientProfile).set({ profilePhoto: trimmed }).where(eq(patientProfile.fusionAuthId, fusionAuthId));
+  //     await this.safeDeleteOldFile(prev);
+  //     return `/${trimmed}`;
+  //   }
 
-    throw new NotFoundException('Profile not found');
-  }
+  //   throw new NotFoundException('Profile not found');
+  // }
 
   // safe delete only inside uploads and not the default logo
-  private async safeDeleteOldFile(maybePath?: string | null) {
-    if (!maybePath) return;
-    try {
-      const normalized = maybePath.replace(/\\/g, '/');
-      const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
-      if (!trimmed.startsWith('uploads/')) return;
-      if (trimmed === 'uploads/logo.png') return; // do not delete default
-      const fullPath = join(process.cwd(), trimmed);
-      await unlink(fullPath).catch(() => null);
-      this.logger.log(`Deleted old profile photo: ${fullPath}`);
-    } catch (e) {
-      this.logger.warn('Failed to delete old profile photo', e?.message || e);
-    }
-  }
+  // private async safeDeleteOldFile(maybePath?: string | null) {
+  //   if (!maybePath) return;
+  //   try {
+  //     const normalized = maybePath.replace(/\\/g, '/');
+  //     const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+  //     if (!trimmed.startsWith('uploads/')) return;
+  //     if (trimmed === 'uploads/logo.png') return; // do not delete default
+  //     const fullPath = join(process.cwd(), trimmed);
+  //     await unlink(fullPath).catch(() => null);
+  //     this.logger.log(`Deleted old profile photo: ${fullPath}`);
+  //   } catch (e) {
+  //     this.logger.warn('Failed to delete old profile photo', e?.message || e);
+  //   }
+  // }
 
   // Helper: return day name from number
   private dayNameFromNumber(n: number): string {
@@ -470,4 +597,82 @@ async upsertAvailabilities(
     if (n >= 1 && n <= 7) return names[n - 1]; // treat 1->Monday
     return `Day ${n}`;
   }
+
+async createAvailabilities(
+  doctorId: string,
+  items: { dayOfWeek: number; startTime: string; endTime: string }[],
+) {
+  // 1) تأكد أن الدكتور موجود
+  const doctorRows = await db
+    .select()
+    .from(doctorProfile)
+    .where(eq(doctorProfile.fusionAuthId, doctorId))
+    .limit(1);
+
+  if (doctorRows.length === 0) {
+    throw new NotFoundException('Doctor not found');
+  }
+
+  // 2) جيب المواعيد القديمة
+  const existing = await db
+    .select()
+    .from(appointments)
+    .where(eq(appointments.doctorId, doctorId));
+
+  // لو ما في ولا موعد قديم → أدخل الكل
+  if (existing.length === 0) {
+    const rowsToInsert = items.map((i) => ({
+      doctorId: doctorId,
+      dayOfWeek: i.dayOfWeek,
+      startTime: i.startTime,
+      endTime: i.endTime,
+    }));
+
+    if (rowsToInsert.length > 0) {
+      await db.insert(appointments).values(rowsToInsert);
+    }
+
+    return {
+      inserted: rowsToInsert.length,
+      skipped: 0,
+      message: 'All availabilities inserted (no previous data).',
+    };
+  }
+
+  // 3) في مواعيد قديمة → نبني Set للمقارنة السريعة
+  const existingSet = new Set(
+    existing.map(
+      (a) => `${a.dayOfWeek}|${a.startTime}|${a.endTime}`, // مفتاح فريد لكل موعد
+    ),
+  );
+
+  // 4) نفلتر الـ items: نخلي بس المواعيد الجديدة (اللي مو موجودة في existingSet)
+  const newAvailabilities = items.filter((i) => {
+    const key = `${i.dayOfWeek}|${i.startTime}|${i.endTime}`;
+    return !existingSet.has(key);
+  });
+
+  // نجهز صفوف الإدخال
+  const rowsToInsert = newAvailabilities.map((i) => ({
+    doctorId: doctorId,
+    dayOfWeek: i.dayOfWeek,
+    startTime: i.startTime,
+    endTime: i.endTime,
+  }));
+
+  if (rowsToInsert.length > 0) {
+    await db.insert(appointments).values(rowsToInsert);
+  }
+
+  return {
+    inserted: rowsToInsert.length,
+    skipped: items.length - rowsToInsert.length,
+    message:
+      rowsToInsert.length === 0
+        ? 'All availabilities already exist.'
+        : 'New availabilities inserted; duplicates were skipped.',
+  };
 }
+
+   }
+

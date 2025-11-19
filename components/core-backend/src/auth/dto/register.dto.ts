@@ -18,6 +18,7 @@ export class RegisterDto {
   @IsString() @IsNotEmpty() firstName: string;
   @IsString() @IsNotEmpty() lastName: string;
 
+  @IsNotEmpty()
   @IsIn(['doctor', 'patient'])
   role: 'doctor' | 'patient';
 
@@ -28,8 +29,8 @@ export class RegisterDto {
 
 
   // gender, city يمكن أن تكون اختيارية أو مطلوبة حسب حاجتك — هنا جعلتها اختيارية
-  @IsOptional() @IsString() gender?: string;
-  @IsOptional() @IsString() city?: string;
+  @IsNotEmpty() @IsString() gender?: string;
+  @IsNotEmpty() @IsString() city?: string;
 
   // phoneNumber مطلوب لكلا الدورين بحسب منطقك السابق، لذا نحافظ عليه كحقل محتمل مطلوب
   // استخدمت IsPhoneNumber (يمكنك ضبط البلد إن أردت) — إن لم ترغب استخدم @IsString()
@@ -43,6 +44,7 @@ export class RegisterDto {
   // نستخدم class-transformer لتحويل القيمة إلى Number قبل التحقق
   // -------------------------
   @Type(() => Number)
+  @IsNotEmpty()
   @IsInt()
   birthYear: number;
 

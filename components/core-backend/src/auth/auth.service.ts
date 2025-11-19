@@ -198,35 +198,36 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
   const DEFAULT_AVATAR = 'uploads/avatar.png';
 
   // Validators (كما عندك)
-  const validateDoctorPayload = (p: any) => {
-    const errs: string[] = [];
-    if (!p.fusionAuthId) errs.push('fusionAuthId is missing');
-    if (!p.gender) errs.push('gender is missing');
-    if (typeof p.gender === 'string' && p.gender.length > 20) errs.push('gender length > 20');
-    if (!p.university) errs.push('university is missing');
-    if (typeof p.university === 'string' && p.university.length > 255) errs.push('university length > 255');
-    if (!p.specialty) errs.push('specialty is missing');
-    if (typeof p.specialty === 'string' && p.specialty.length > 255) errs.push('specialty length > 255');
-    if (!p.city) errs.push('city is missing');
-    if (typeof p.city === 'string' && p.city.length > 100) errs.push('city length > 100');
-    if (p.birthYear === undefined || p.birthYear === null || !Number.isInteger(p.birthYear)) errs.push('birthYear must be an integer');
-    if (!p.phoneNumber) errs.push('phoneNumber is missing');
-    if (typeof p.phoneNumber === 'string' && p.phoneNumber.length > 20) errs.push('phoneNumber length > 20');
-    return errs;
-  };
+  // const validateDoctorPayload = (p: any) => {
+  //   const errs: string[] = [];
+  //   if (!p.fusionAuthId) errs.push('fusionAuthId is missing');
+ 
+  //   if (!p.university) errs.push('university is missing');
+  //   if (typeof p.university === 'string' && p.university.length > 255) errs.push('university length > 255');
+  //   if (!p.specialty) errs.push('specialty is missing');
+  //   if (typeof p.specialty === 'string' && p.specialty.length > 255) errs.push('specialty length > 255');
+ 
+  //   return errs;
+  // };
 
-  const validatePatientPayload = (p: any) => {
-    const errs: string[] = [];
-    if (!p.fusionAuthId) errs.push('fusionAuthId is missing');
-    if (p.birthYear === undefined || p.birthYear === null || !Number.isInteger(p.birthYear)) errs.push('birthYear must be an integer');
-    if (!p.gender) errs.push('gender is missing');
-    if (typeof p.gender === 'string' && p.gender.length > 20) errs.push('gender length > 20');
-    if (!p.city) errs.push('city is missing');
-    if (typeof p.city === 'string' && p.city.length > 100) errs.push('city length > 100');
-    if (!p.phoneNumber) errs.push('phoneNumber is missing');
-    if (typeof p.phoneNumber === 'string' && p.phoneNumber.length > 20) errs.push('phoneNumber length > 20');
-    return errs;
-  };
+  // const validateUserPayload = (p: any) => {
+  //   const errs: string[] = [];
+  //   if (!p.fusionAuthId) errs.push('fusionAuthId is missing');
+  //   if (p.birthYear === undefined || p.birthYear === null || !Number.isInteger(p.birthYear)) errs.push('birthYear must be an integer');
+  //   if (!p.gender) errs.push('gender is missing');
+  //   if (typeof p.gender === 'string' && p.gender.length > 20) errs.push('gender length > 20');
+  //   if (!p.city) errs.push('city is missing');
+  //   if (typeof p.city === 'string' && p.city.length > 100) errs.push('city length > 100');
+  //   if (!p.phoneNumber) errs.push('phoneNumber is missing');
+  //   if (typeof p.phoneNumber === 'string' && p.phoneNumber.length > 20) errs.push('phoneNumber length > 20');
+  //   return errs;
+  // };
+  // const validatePatientPayload = (p: any) => {
+  //   const errs: string[] = [];
+  //   if (!p.fusionAuthId) errs.push('fusionAuthId is missing');
+
+  //   return errs;
+  // };
 
   try {
     // 1️⃣ Create user in FusionAuth
@@ -340,19 +341,21 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
 
   const newDoctor = {
     fusionAuthId: fusionUserId,
-    gender: dto.gender || '',
     university: dto.university || '',
     specialty: dto.specialty || '',
-    city: dto.city || '',
-    birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
-    phoneNumber: dto.phoneNumber || '',
-    profilePhoto: DEFAULT_AVATAR,
   };
 
   const newPatient = {
     fusionAuthId: fusionUserId,
+
+  };
+  const newUser = {
+    fusionAuthId: fusionUserId,
+    firstName:dto.firstName,
+    lastName:dto.lastName,
     birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
     gender: dto.gender || '',
+    role:dto.role,
     city: dto.city || '',
     phoneNumber: dto.phoneNumber || '',
     profilePhoto: DEFAULT_AVATAR,
@@ -362,10 +365,12 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
   try {
     this.logger.debug('Attempting DB insert. newDoctor:', JSON.stringify(newDoctor));
     this.logger.debug('Attempting DB insert. newPatient:', JSON.stringify(newPatient));
-
+     
+    await db.insert(schema.users).values(newUser);
+   
     if (dto.role === 'doctor') {
       await db.insert(schema.doctors).values(newDoctor);
-    } else {
+    }else if(dto.role === 'patient'){
       await db.insert(schema.patients).values(newPatient);
     }
 
@@ -380,16 +385,18 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
       constraint: dbErr?.constraint,
       stack: dbErr?.stack,
     });
+  // const validationErrors =
+  // dto.role === 'doctor'
+  //   ? validateDoctorPayload(newDoctor)
+  //   : dto.role === 'patient'
+  //     ? validatePatientPayload(newPatient)
+  //     : validateUserPayload(newUser);
 
-    const validationErrors = dto.role === 'doctor'
-      ? validateDoctorPayload(newDoctor)
-      : validatePatientPayload(newPatient);
-
-    if (validationErrors.length > 0) {
-      this.logger.error('Local payload validation failed:', validationErrors);
-    } else {
-      this.logger.log('Local payload validation passed (no obvious client-side issues).');
-    }
+  //   if (validationErrors.length > 0) {
+  //     this.logger.error('Local payload validation failed:', validationErrors);
+  //   } else {
+  //     this.logger.log('Local payload validation passed (no obvious client-side issues).');
+  //   }
 
     // Try rollback: delete registration and delete user from FusionAuth
     try {
@@ -415,11 +422,11 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
       this.logger.error('Failed to rollback FusionAuth user after DB insert error', delErr?.response?.data || delErr?.message || delErr);
     }
 
-    const clientMsg = validationErrors.length > 0
-      ? `Failed to create local profile; validation errors: ${validationErrors.join('; ')}`
-      : 'Failed to create local profile; database insert failed (see server logs).';
+    // const clientMsg = validationErrors.length > 0
+    //   ? `Failed to create local profile; validation errors: ${validationErrors.join('; ')}`
+    //   : 'Failed to create local profile; database insert failed (see server logs).';
 
-    throw new InternalServerErrorException(clientMsg);
+  //  throw new InternalServerErrorException(clientMsg);
   }
 
   // success
