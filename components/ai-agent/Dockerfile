@@ -9,10 +9,12 @@ COPY requirements.txt .
 
 # Install any needed dependencies specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-RUN python ingest.py
 
 # Copy the rest of your application code
 COPY . .
+
+RUN python ingest.py
+
 EXPOSE 8000
 
 # Run your application
