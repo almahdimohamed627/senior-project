@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dental RAG Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Manrope:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #0f172a;
+        --panel: rgba(248, 250, 252, 0.9);
+        --accent: #0ea5e9;
+        --accent-2: #22c55e;
+        --border: #e2e8f0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Cairo", "Manrope", system-ui, sans-serif;
+        background: radial-gradient(circle at 20% 20%, #e0f2fe, #e0f2fe00 30%),
+          radial-gradient(circle at 80% 0%, #d9f99d, #d9f99d00 32%),
+          radial-gradient(circle at 60% 60%, #eef2ff, #eef2ff00 40%),
+          #f8fafc;
+        color: var(--ink);
+      }
+      .shell {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 28px 22px 48px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      header .logo {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #0ea5e9, #22c55e);
+        display: grid;
+        place-items: center;
+        color: white;
+        font-weight: 700;
+        font-size: 18px;
+        letter-spacing: -0.4px;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 24px;
+        letter-spacing: -0.3px;
+      }
+      header p {
+        margin: 2px 0 0;
+        color: #475569;
+        font-size: 15px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        box-shadow: 0 15px 45px rgba(15, 23, 42, 0.08);
+        padding: 18px;
+        backdrop-filter: blur(6px);
+      }
+      form {
+        display: grid;
+        gap: 10px;
+      }
+      .row {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1fr 160px;
+      }
+      label {
+        font-weight: 600;
+        font-size: 14px;
+      }
+      input,
+      textarea,
+      button {
+        font-family: inherit;
+      }
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 14px;
+        background: white;
+        font-size: 15px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 3px #0ea5e933;
+      }
+      textarea {
+        min-height: 110px;
+        resize: vertical;
+      }
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      button {
+        border: none;
+        border-radius: 12px;
+        padding: 12px 18px;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        background: linear-gradient(135deg, #0ea5e9, #22c55e);
+        color: white;
+        transition: transform 0.08s ease, box-shadow 0.1s ease;
+        box-shadow: 0 10px 25px rgba(34, 197, 94, 0.25);
+      }
+      button:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      button:not(:disabled):active {
+        transform: translateY(1px);
+        box-shadow: 0 8px 18px rgba(14, 165, 233, 0.25);
+      }
+      .status {
+        font-size: 14px;
+        color: #0f172a;
+        min-height: 22px;
+      }
+      .chat {
+        margin-top: 18px;
+        display: grid;
+        gap: 12px;
+      }
+      .bubble {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+      }
+      .bubble .meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        color: #0ea5e9;
+        margin-bottom: 6px;
+      }
+      .bubble p {
+        margin: 0;
+        line-height: 1.6;
+      }
+      .sources {
+        margin-top: 10px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        border: 1px dashed #cbd5e1;
+        font-size: 14px;
+        color: #475569;
+      }
+      .sources span {
+        display: inline-block;
+        margin-inline-start: 6px;
+        padding: 4px 8px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+      }
+      .pill {
+        font-size: 13px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #0ea5e9;
+        background: #e0f2fe;
+        border-radius: 999px;
+        padding: 6px 10px;
+        border: 1px solid #bae6fd;
+      }
+      @media (max-width: 720px) {
+        .row {
+          grid-template-columns: 1fr;
+        }
+        .actions {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <div class="logo">DR</div>
+        <div>
+          <h1>Dental RAG Assistant</h1>
+          <p>واجهـة ويب بسيطة لتوجيه الأسئلة والشكوى إلى المساعد.</p>
+        </div>
+      </header>
+
+      <div class="panel">
+        <form id="chat-form">
+          <div class="row">
+            <div>
+              <label for="message">سؤال/شكوى المريض</label>
+              <textarea
+                id="message"
+                name="message"
+                placeholder="مثال: ألم حاد في الضرس الخلفي عند المضغ"
+                required
+              ></textarea>
+            </div>
+            <div>
+              <label for="age">عمر المريض (اختياري)</label>
+              <input
+                type="number"
+                id="age"
+                name="age"
+                min="1"
+                placeholder="مثال: 12"
+              />
+              <p style="margin: 6px 0 0; color: #475569; font-size: 13px">
+                يستخدم لتوجيه الاختصاص (أطفال دون 13 سنة).
+              </p>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="submit-btn" type="submit">اسأل المساعد</button>
+            <span class="pill">يتطلب Ollama شغّالاً على localhost:11434</span>
+          </div>
+          <div class="status" id="status"></div>
+        </form>
+      </div>
+
+      <div class="chat" id="chat-log"></div>
+    </div>
+
+    <script>
+      const form = document.getElementById("chat-form");
+      const messageInput = document.getElementById("message");
+      const ageInput = document.getElementById("age");
+      const statusEl = document.getElementById("status");
+      const submitBtn = document.getElementById("submit-btn");
+      const chatLog = document.getElementById("chat-log");
+      let sessionId = window.localStorage.getItem("dental_session_id") || null;
+
+      const addBubble = (title, body, sources = []) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "bubble";
+        wrapper.innerHTML = `
+          <div class="meta">${title}</div>
+          <p>${body.replace(/\n/g, "<br>")}</p>
+        `;
+
+        if (sources.length) {
+          const box = document.createElement("div");
+          box.className = "sources";
+          box.innerHTML = `المصادر: ${sources
+            .map((s) => `<span>${s.source}</span>`)
+            .join("")}`;
+          wrapper.appendChild(box);
+        }
+
+        chatLog.prepend(wrapper);
+      };
+
+      const setStatus = (text, color = "#0f172a") => {
+        statusEl.textContent = text;
+        statusEl.style.color = color;
+      };
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const message = messageInput.value.trim();
+        const ageRaw = ageInput.value.trim();
+        const age = ageRaw ? parseInt(ageRaw, 10) : null;
+
+        if (!message) {
+          setStatus("أدخل شكوى أو سؤالاً أولاً.", "#dc2626");
+          return;
+        }
+
+        submitBtn.disabled = true;
+        setStatus("المساعد يفكر...");
+
+        try {
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message, age, session_id: sessionId }),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || "فشل الطلب");
+          }
+
+          const data = await res.json();
+          if (data.session_id) {
+            sessionId = data.session_id;
+            window.localStorage.setItem("dental_session_id", sessionId);
+          }
+          addBubble("رد المساعد", data.answer || "—", data.sources || []);
+          if (data.need_age) {
+            setStatus("أدخل العمر أولاً ثم أرسل الشكوى.", "#0f172a");
+          } else {
+            setStatus("جاهز للإجابة");
+          }
+          messageInput.value = "";
+        } catch (err) {
+          setStatus(err.message || "حدث خطأ ما", "#dc2626");
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

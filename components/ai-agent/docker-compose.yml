@@ -1,4 +1,26 @@
 services:
+  langchain:
+    container_name: langchain
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000"
+      environment:
+        - OLLAMA_BASE_URL=http://ollama:11434  # Critical: points to the Ollama service by hostname
+        depends_on:
+          - ollama  # Ensures Ollama starts first
+    networks:
+      - proxy
+    volumes:
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.langchain.rule=Host(`${LANGCHAIN_DOMAIN}`)"
+      - "traefik.http.routers.langchain.entrypoints=websecure"
+      - "traefik.http.routers.langchain.tls=true"
+      - "traefik.http.routers.langchain.tls.certresolver=le"
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -54,3 +76,4 @@ volumes:
 networks:
   proxy:
     name: proxy
+    external: true
