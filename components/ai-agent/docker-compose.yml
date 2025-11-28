@@ -6,10 +6,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000"
-      environment:
-        - OLLAMA_BASE_URL=http://ollama:11434  # Critical: points to the Ollama service by hostname
-        depends_on:
-          - ollama  # Ensures Ollama starts first
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434  # Critical: points to the Ollama service by hostname
+    depends_on:
+      - ollama  # Ensures Ollama starts first
     networks:
       - proxy
     volumes:
