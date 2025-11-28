@@ -12,7 +12,7 @@ services:
       - ollama  # Ensures Ollama starts first
     networks:
       - proxy
-    volumes:
+    # volumes:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
