@@ -1,0 +1,9 @@
+langchain
+langchain-community
+langchain-chroma
+langchain-text-splitters
+langchain-ollama
+chromadb
+fastapi
+uvicorn[standard]
+python-dotenv
