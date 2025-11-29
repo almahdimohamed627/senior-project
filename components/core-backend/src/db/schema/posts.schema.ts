@@ -12,7 +12,7 @@ export const posts = pgTable('posts', {
   title: text('title').notNull(),
   content: text('content').notNull(),
 
-  userId: text('user_id')
+  userId: varchar('user_id')
     .notNull()
     .references(() => doctorProfile.fusionAuthId, { onDelete: 'cascade' }),
 
@@ -42,16 +42,14 @@ export const likes = pgTable(
     likedPy: varchar("liked_py", { length: 255 })
       .notNull()
       .references(() => users.fusionAuthId, { onDelete: "cascade" }),
-  },
-  (table) => ({
-    // ممنوع نفس المستخدم يعمل لايك لنفس البوست مرتين
-    postUserUnique: primaryKey({
-      columns: [table.postId, table.likedPy],
-    }),
-  })
+        createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  }
+
 )
 
 export default {
     posts,
-    postsRelations
+    postsRelations,
+    likes
 }

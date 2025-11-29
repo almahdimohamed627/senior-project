@@ -4,7 +4,7 @@ import { UpdatePostDto } from './dto/update-post.dto';
 import { likes, posts } from 'src/db/schema/posts.schema';
 import { db } from 'src/auth/client';
 import schema from 'src/db/schema/schema';
-import { eq } from 'drizzle-orm'; // ✅ أهم import!
+import { and, eq, sql } from 'drizzle-orm'; // ✅ أهم import!
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 @Injectable()
@@ -57,17 +57,58 @@ export class PostService {
       throw new InternalServerErrorException('Failed to create post; database insert failed.');
     }
   }
-  async addlikeOrDelete(userId:string,postId:number){
-   let user=await db.select().from(likes).where(eq(likes.likedPy,userId))
-   if(user.length>0){
-    await db.delete(likes).where(eq(likes.likedPy,userId))
-    let numberOfLikes=await db.select({numberOfLikes:posts.numberOfLikes}).from(posts).where(eq(posts.id,postId))
-    return 'like deleted'
-   }
-   else{
-    
-   }
-  }
+async  addLikeOrDelete(userId: string, postId: number) {
+  return await db.transaction(async (tx) => {
+    // 1) شوف إذا في لايك سابق
+    const existing = await tx
+      .select({ id: likes.id })
+      .from(likes)
+      .where(
+        and(
+          eq(likes.likedPy, userId),
+          eq(likes.postId, postId),
+        )
+      );
+
+    const alreadyLiked = existing.length > 0;
+
+    if (alreadyLiked) {
+      // 🧹 إلغاء لايك
+      await tx
+        .delete(likes)
+        .where(
+          and(
+            eq(likes.likedPy, userId),
+            eq(likes.postId, postId),
+          )
+        );
+
+      await tx
+        .update(posts)
+        .set({
+          numberOfLikes: sql`${posts.numberOfLikes} - 1`,
+        })
+        .where(eq(posts.id, postId));
+
+      return "like deleted";
+    } else {
+      // ✚ إضافة لايك
+      await tx.insert(likes).values({
+        postId,
+        likedPy: userId,
+      });
+
+      await tx
+        .update(posts)
+        .set({
+          numberOfLikes: sql`${posts.numberOfLikes} + 1`,
+        })
+        .where(eq(posts.id, postId));
+
+      return "like added";
+    }
+  });
+}
 
    async findAll() {
     // صح: استعمل from(posts)
@@ -79,6 +120,7 @@ export class PostService {
       title: r.title,
       content: r.content,
       userId: r.userId,   // أو authorId حسب سكيمتك
+      numberOfLikes:r.numberOfLikes,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
       photos: r.photos ? this.tryParsePhotos(r.photos) : [], // helper أدناه

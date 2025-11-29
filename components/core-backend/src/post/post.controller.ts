@@ -88,12 +88,13 @@ export class PostController {
     return this.postService.findOne(+id);
   }
   @Get('doctor/:userId')
-  findOneByPostOd(@Param('id') userId: string) {
+  findOneByPostOd(@Param('userId') userId: string) {
     return this.postService.findOneByUserId(userId);
   }
-  @Post()
-  addlike(@Body() userId:string,postId:string){
-   
+
+  @Post('/like')
+  async like(@Body() body: { userId: string; postId: number }){
+  return this.postService.addLikeOrDelete(body.userId, body.postId);
   }
 
   @Patch(':id')

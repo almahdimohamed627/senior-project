@@ -1,10 +1,27 @@
-import { pgTable, serial, varchar, text, integer, timestamp } from 'drizzle-orm/pg-core';
-import { doctorProfile, patientProfile } from './profiles.schema';
+import { pgTable, serial, varchar, text, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { doctorProfile, patientProfile, users } from './profiles.schema';
 
+export const status = pgEnum('status', ['pending', 'accepted', 'rejected']);
+export const requests = pgTable('requests', {
+  id: serial('id').primaryKey(),
 
-export const requests=pgTable('requests',{
-    id:serial('is').primaryKey(),
-    senderId:text("senderId").references(()=>doctorProfile.fusionAuthId),
-    receiverId:text("receiverId").references(()=>patientProfile.fusionAuthId),
-    status:text("")
-})
+  senderId: text("sender_id")
+    .notNull()
+    .references(() => users.fusionAuthId),
+
+  receiverId: text("receiver_id")
+    .notNull()
+    .references(() => users.fusionAuthId),
+
+  status: status("status")
+    .notNull()
+    .default('pending'),
+
+  createdAt: timestamp('created_at')
+    .notNull()
+    .defaultNow(),
+
+  updatedAt: timestamp('updated_at')
+    .notNull()
+    .defaultNow(),
+});
