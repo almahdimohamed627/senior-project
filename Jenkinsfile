@@ -447,24 +447,12 @@ def buildComponent(componentName) {
   }
 }
 
-/* ========================= UPDATED AUTO-BUILD WITH DOCKERFILE PRIORITY ========================= */
+/* ========================= FIXED AUTO-BUILD WITH ENV FILES ========================= */
 
 def autoBuildComponent(componentName) {
   echo "Auto-building component: ${componentName}"
 
-  // First check for Dockerfile and build it
-  if (fileExists('Dockerfile')) {
-    sh """
-      echo "📦 Dockerfile detected - building image for ${componentName}"
-      docker build -t ${componentName}:${env.BUILD_TAG} . || true
-      echo "✅ Docker image built: ${componentName}:${env.BUILD_TAG}"
-    """
-  }
-
-  // Then check for docker-compose
   if (fileExists('docker-compose.yml')) {
-    echo "🐳 Docker Compose detected for ${componentName}"
-    
     // Try to use environment file if credential exists
     def credentialId = "${componentName}.env"
     def useEnvFile = false
@@ -485,25 +473,12 @@ def autoBuildComponent(componentName) {
         sh """
           cp "\$ENV_FILE" .env
           chmod 600 .env
-          echo "Checking Docker Compose configuration"
+          echo "Docker Compose component detected with environment file"
           docker compose config || true
-          
-          # Check if images already exist before pulling
-          echo "🔍 Checking if images already exist locally..."
-          if docker compose images -q | grep -q .; then
-            echo "✅ Images already exist locally - skipping pull"
-          else
-            echo "📥 Pulling missing images..."
-            docker compose pull --ignore-pull-failures || true
-          fi
-          
-          # Build if there are build sections in compose file
+          docker compose pull --ignore-pull-failures || true
           if docker compose config | grep -q "build:"; then
-            echo "🏗️ Building services with docker-compose..."
             docker compose build --no-cache || true
           fi
-          
-          # Test the setup
           docker compose --env-file .env up -d || true
           sleep 10
           docker compose --env-file .env ps || true
@@ -513,25 +488,12 @@ def autoBuildComponent(componentName) {
       }
     } else {
       sh '''
-        echo "Checking Docker Compose configuration"
+        echo "Docker Compose component detected (no environment file)"
         docker compose config || true
-        
-        # Check if images already exist before pulling
-        echo "🔍 Checking if images already exist locally..."
-        if docker compose images -q | grep -q .; then
-          echo "✅ Images already exist locally - skipping pull"
-        else
-          echo "📥 Pulling missing images..."
-          docker compose pull --ignore-pull-failures || true
-        fi
-        
-        # Build if there are build sections in compose file
+        docker compose pull --ignore-pull-failures || true
         if docker compose config | grep -q "build:"; then
-          echo "🏗️ Building services with docker-compose..."
           docker compose build --no-cache || true
         fi
-        
-        # Test the setup
         docker compose up -d || true
         sleep 10
         docker compose ps || true
@@ -549,6 +511,11 @@ def autoBuildComponent(componentName) {
       echo "Java/Maven component detected"
       mvn -q -e -B clean compile || true
     '''
+  } else if (fileExists('Dockerfile')) {
+    sh """
+      echo "Docker image build detected"
+      docker build -t ${componentName}:${env.BUILD_TAG} . || true
+    """
   } else if (fileExists('build.gradle')) {
     sh '''
       echo "Gradle component detected"
@@ -623,23 +590,9 @@ def autoDeployComponent(componentName) {
       sh """
         cp "\$ENV_FILE" .env
         chmod 600 .env
-        
-        # Check configuration
         docker compose config
-        
-        # Stop existing services
         docker compose down --remove-orphans 2>/dev/null || true
-        
-        # Check if images exist before pulling
-        echo "🔍 Checking if images already exist locally..."
-        if docker compose images -q | grep -q .; then
-          echo "✅ Images already exist locally - skipping pull"
-        else
-          echo "📥 Pulling missing images..."
-          docker compose pull --ignore-pull-failures 2>/dev/null || true
-        fi
-        
-        # Deploy
+        docker compose pull --ignore-pull-failures 2>/dev/null || true
         docker compose --env-file .env up -d
         sleep 60
       """
