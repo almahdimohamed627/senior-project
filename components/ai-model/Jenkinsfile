@@ -11,8 +11,9 @@ def build() {
             hasEnvFile = true
         }
 
-        echo "⚠️ No credential found for ${credentialId}, proceeding without environment file"
         hasEnvFile = false
+    } catch(Exception e) {
+        echo "⚠️ No credential found for ${credentialId}, proceeding without environment file"
     }
     
     if (hasEnvFile) {

@@ -129,13 +129,14 @@ pipeline {
 // الكل يعتمد على traefik
 // fusionauth و core-backend يعتمدان أيضًا على db
 def deps() {
-  return [
-    'traefik'     : [],
-    'db'          : ['traefik'],
-    'fusionauth'  : ['db', 'traefik'],
-    'core-backend': ['db', 'traefik'],
-    'ai-agent'    : ['traefik']
-  ]
+    return [
+        'traefik'     : [],
+        'db'          : ['traefik'],
+        'fusionauth'  : ['db', 'traefik'],
+        'core-backend': ['db', 'traefik'],
+        'ai-agent'    : ['traefik']
+        'ai-model'    : ['traefik']
+    ]
 }
 
 /* ========================= Normalization helpers ========================= */
