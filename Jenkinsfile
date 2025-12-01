@@ -134,7 +134,7 @@ def deps() {
         'db'          : ['traefik'],
         'fusionauth'  : ['db', 'traefik'],
         'core-backend': ['db', 'traefik'],
-        'ai-agent'    : ['traefik']
+        'ai-agent'    : ['traefik'],
         'ai-model'    : ['traefik']
     ]
 }
