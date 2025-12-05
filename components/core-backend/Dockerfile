@@ -19,8 +19,13 @@ WORKDIR /app
 
 
 # Copy built application
-COPY . .
-COPY --from=builder /app/dist ./dist
+    # Copy necessary files from the builder stage with correct ownership
+    COPY --from=builder --chown=nestapp:nodejs /app/package*.json ./
+    COPY --from=builder --chown=nestapp:nodejs /app/node_modules ./node_modules
+    COPY --from=builder --chown=nestapp:nodejs /app/dist ./dist
+    # Copy configuration files required at runtime
+    COPY --from=builder --chown=nestapp:nodejs /app/drizzle.config.json ./
+    COPY --from=builder --chown=nestapp:nodejs /app/.env ./
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs
