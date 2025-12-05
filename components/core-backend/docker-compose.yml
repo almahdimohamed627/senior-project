@@ -15,10 +15,10 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.nest-app.rule=Host(`${NEST_APP_DOMAIN}`)"
-      - "traefik.http.routers.nest-app.entrypoints=websecure"
-      - "traefik.http.routers.nest-app.tls=true"
-      - "traefik.http.routers.nest-app.tls.certresolver=le"
+      - "traefik.http.routers.core-backend-nest-app.rule=Host(`${NEST_APP_DOMAIN}`)"
+      - "traefik.http.routers.core-backend-nest-app.entrypoints=websecure"
+      - "traefik.http.routers.core-backend-nest-app.tls=true"
+      - "traefik.http.routers.core-backend-nest-app.tls.certresolver=le"
 
 networks:
   proxy:

@@ -11,10 +11,10 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.ai-model.rule=Host(`${AI-MODEL_DOMAIN}`)"
-      - "traefik.http.routers.ai-model.entrypoints=websecure"
-      - "traefik.http.routers.ai-model.tls=true"
-      - "traefik.http.routers.ai-model.tls.certresolver=le"
+      - "traefik.http.routers.ai-model-ai-model.rule=Host(`${AI-MODEL_DOMAIN}`)"
+      - "traefik.http.routers.ai-model-ai-model.entrypoints=websecure"
+      - "traefik.http.routers.ai-model-ai-model.tls=true"
+      - "traefik.http.routers.ai-model-ai-model.tls.certresolver=le"
 
 networks:
   proxy:

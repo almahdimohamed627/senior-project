@@ -16,10 +16,10 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.langchain.rule=Host(`${LANGCHAIN_DOMAIN}`)"
-      - "traefik.http.routers.langchain.entrypoints=websecure"
-      - "traefik.http.routers.langchain.tls=true"
-      - "traefik.http.routers.langchain.tls.certresolver=le"
+      - "traefik.http.routers.ai-agent-langchain.rule=Host(`${LANGCHAIN_DOMAIN}`)"
+      - "traefik.http.routers.ai-agent-langchain.entrypoints=websecure"
+      - "traefik.http.routers.ai-agent-langchain.tls=true"
+      - "traefik.http.routers.ai-agent-langchain.tls.certresolver=le"
 
   ollama:
     image: ollama/ollama:latest
