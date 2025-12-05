@@ -17,15 +17,10 @@ RUN npm run build
 FROM node:20-alpine AS production
 WORKDIR /app
 
-# Copy package files AND node_modules from builder to ensure all deps are available
-COPY package*.json ./
-COPY tsconfig*.json ./
-
-# Install production dependencies but keep all transitive dependencies
-RUN npm ci --production --no-optional && npm cache clean --force
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
+COPY . .
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs
