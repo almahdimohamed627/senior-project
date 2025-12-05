@@ -19,8 +19,8 @@ WORKDIR /app
 
 
 # Copy built application
-COPY --from=builder /app/dist ./dist
 COPY . .
+COPY --from=builder /app/dist ./dist
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs
