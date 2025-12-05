@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 8000
 
 # Run your application
-CMD ["python", "app.py"]
+CMD ["python", "web_app.py"]
