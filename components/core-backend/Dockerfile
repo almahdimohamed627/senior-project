@@ -22,4 +22,6 @@ FROM node:20-alpine AS production
 WORKDIR /usr/src/app
 COPY --from=build /usr/src/app/node_modules ./node_modules
 COPY --from=build /usr/src/app/dist ./dist
+COPY .env ./.env
+RUN set -a && source .env && set +a
 CMD ["node", "dist/src/main.js"]
