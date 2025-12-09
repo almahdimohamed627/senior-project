@@ -1,38 +1,25 @@
-# Build stage
-FROM node:20-alpine AS builder
-WORKDIR /app
+    # Development stage
+    FROM node:20-alpine AS development
+    WORKDIR /usr/src/app
+    COPY package*.json ./
+    RUN npm ci
+    COPY . .
+    USER node
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig*.json ./
+    # Build stage
+    FROM node:20-alpine AS build
+    WORKDIR /usr/src/app
+    COPY package*.json ./
+    COPY --from=development /usr/src/app/node_modules ./node_modules
+    COPY . .
+    RUN npm run build
+    ENV NODE_ENV production
+    RUN npm ci --only=production && npm cache clean --force
+    USER node
 
-# Install ALL dependencies for build
-RUN npm ci
-
-# Copy source code and build
-COPY . .
-RUN npm run build
-
-# Production stage
-FROM node:20-alpine AS production
-WORKDIR /app
-
-
-# Copy built application
-    # Copy necessary files from the builder stage with correct ownership
-    COPY --from=builder --chown=nestapp:nodejs /app/package*.json ./
-    COPY --from=builder --chown=nestapp:nodejs /app/node_modules ./node_modules
-    COPY --from=builder --chown=nestapp:nodejs /app/dist ./dist
-    # Copy configuration files required at runtime
-    COPY --from=builder --chown=nestapp:nodejs /app/drizzle.config.json ./
-    COPY --from=builder --chown=nestapp:nodejs /app/.env ./
-    COPY /src ./src
-
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nestapp -u 1001
-RUN chown -R nestapp:nodejs /app
-USER nestapp
-
-EXPOSE 3000
-CMD [ "node", "dist/src/main" ]
+    # Production stage
+    FROM node:20-alpine AS production
+    WORKDIR /usr/src/app
+    COPY --from=build /usr/src/app/node_modules ./node_modules
+    COPY --from=build /usr/src/app/dist ./dist
+    CMD ["node", "dist/main.js"]

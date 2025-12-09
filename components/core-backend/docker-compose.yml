@@ -7,8 +7,6 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: nest-app
-    environment:
-      - PORT=3000
     ports:
       - '3000'
     networks:
