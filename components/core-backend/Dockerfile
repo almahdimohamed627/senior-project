@@ -22,4 +22,4 @@
     WORKDIR /usr/src/app
     COPY --from=build /usr/src/app/node_modules ./node_modules
     COPY --from=build /usr/src/app/dist ./dist
-    CMD ["node", "dist/main.js"]
+    CMD ["node", "dist/src/main.js"]
