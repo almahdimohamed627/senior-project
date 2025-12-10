@@ -14,8 +14,8 @@ RUN npm run build
 # Production
 FROM node:20-alpine AS production
 WORKDIR /usr/src/app
-ENV NODE_ENV=production \
-    DRIZZLE_CONFIG_PATH=/usr/src/app/drizzle.config.ts
+ENV NODE_ENV=production
+ENV DRIZZLE_CONFIG_PATH=/usr/src/app/drizzle.config.ts
 COPY package*.json ./
 COPY --from=build /usr/src/app/dist ./dist
 COPY --from=deps /usr/src/app/node_modules ./node_modules
