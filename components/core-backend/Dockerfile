@@ -1,25 +1,22 @@
-# Development stage
-FROM node:20-alpine AS development
+# Base deps
+FROM node:20-alpine AS deps
 WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm ci
-COPY . .
-USER node
 
-# Build stage
+# Build
 FROM node:20-alpine AS build
 WORKDIR /usr/src/app
-COPY package*.json ./
-COPY --from=development /usr/src/app/node_modules ./node_modules
+COPY --from=deps /usr/src/app/node_modules ./node_modules
 COPY . .
 RUN npm run build
-ENV NODE_ENV production
-RUN npm ci --only=production && npm cache clean --force
-USER node
 
-# Production stage
+# Production
 FROM node:20-alpine AS production
 WORKDIR /usr/src/app
-COPY --from=build /usr/src/app/node_modules ./node_modules
+ENV NODE_ENV=production \
+    DRIZZLE_CONFIG_PATH=/usr/src/app/drizzle.config.ts
+COPY package*.json ./
 COPY --from=build /usr/src/app/dist ./dist
-CMD ["node", "dist/main.js"]
+COPY --from=deps /usr/src/app/node_modules ./node_modules
+CMD ["node", "dist/src/main.js"]  # or dist/main.js if you set rootDir=./src in tsconfig
