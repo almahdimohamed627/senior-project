@@ -1,35 +1,35 @@
-    # ---- Build Stage ----
-    FROM node:22-bookworm AS builder
+FROM node:22-bookworm AS builder
 
-    WORKDIR /usr/src/app
+WORKDIR /usr/src/app
 
-    # Copy package files and install all dependencies
-    COPY package*.json ./
-    RUN npm ci
+# Copy package files and install all dependencies
+COPY package*.json ./
+RUN npm ci
 
-    # Copy all source code
-    COPY . .
+# Copy all source code
+COPY . .
 
-    # Build the application using the project's own build command
-    RUN npm run build
+# Build the application using the project's own build command
+RUN npm run build
 
-    # ---- Production Stage ----
-    FROM node:22-bookworm-slim
+# ---- Production Stage ----
+FROM node:22-bookworm-slim
 
-    WORKDIR /usr/src/app
+WORKDIR /usr/src/app
 
-    ENV NODE_ENV=production
+ENV NODE_ENV=production
 
-    # Install production dependencies only
-    COPY package*.json ./
-    RUN npm ci --omit=dev
+# Install production dependencies only
+COPY package*.json ./
+RUN npm ci --omit=dev
 
-    # Copy the entire dist folder from builder
-    COPY --from=builder /usr/src/app/dist ./dist
-    COPY --from=builder /usr/src/app/dist/drizzle.config.js ./
+# Copy the entire dist folder from builder
+COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/dist/drizzle.config.js ./
+RUN chown -R node:node /usr/src/app
 
-    # 🔥 CRITICAL: Use the correct entry point based on your actual structure
-    CMD ["node", "dist/src/main.js"]
+# 🔥 CRITICAL: Use the correct entry point based on your actual structure
+CMD ["node", "dist/src/main.js"]
 
-    EXPOSE 3000
-    USER node
+EXPOSE 3000
+USER node
