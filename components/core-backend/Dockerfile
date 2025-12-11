@@ -28,8 +28,6 @@
     COPY --from=builder /usr/src/app/dist ./dist
     COPY --from=builder /usr/src/app/dist/drizzle.config.js ./
 
-    # 🔥 CRITICAL: Give node user ownership of ENTIRE working directory
-    RUN chown -R node:node /usr/src/app
 
     EXPOSE 3000
     USER node
