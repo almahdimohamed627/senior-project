@@ -4,7 +4,7 @@ FROM node:22-bookworm AS builder
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-RUN npm ci --only=production=false
+RUN npm ci
 
 # Copy all source files
 COPY . .
@@ -31,7 +31,7 @@ WORKDIR /usr/src/app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # 3. Selectively copy only the runtime files we need
 # Copy the compiled application from src/ (now at dist/src)
