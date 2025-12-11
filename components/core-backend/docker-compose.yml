@@ -19,7 +19,6 @@ services:
       - "traefik.http.routers.core-backend-nest-app.entrypoints=websecure"
       - "traefik.http.routers.core-backend-nest-app.tls=true"
       - "traefik.http.routers.core-backend-nest-app.tls.certresolver=le"
-     command: ["node", "dist/src/main.js"]
 networks:
   proxy:
     name: proxy

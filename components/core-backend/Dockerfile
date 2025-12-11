@@ -1,22 +1,23 @@
-# Base deps
-FROM node:22-bookworm-slim AS deps
-WORKDIR /usr/src/app
-COPY package*.json ./
-RUN npm ci
+# Use the official Node.js image as the base image
+FROM node:20
 
-# Build
-FROM node:22-bookworm-slim AS build
+# Set the working directory inside the container
 WORKDIR /usr/src/app
-COPY --from=deps /usr/src/app/node_modules ./node_modules
+
+# Copy package.json and package-lock.json to the working directory
+COPY package*.json ./
+
+# Install the application dependencies
+RUN npm install
+
+# Copy the rest of the application files
 COPY . .
+
+# Build the NestJS application
 RUN npm run build
 
-# Production
-FROM node:22-bookworm-slim AS production
-WORKDIR /usr/src/app
-ENV NODE_ENV=production
-ENV DRIZZLE_CONFIG_PATH=/usr/src/app/drizzle.config.ts
-COPY package*.json ./
-COPY --from=build /usr/src/app/dist ./dist
-COPY --from=deps /usr/src/app/node_modules ./node_modules
-CMD ["node", "dist/src/main.js"]  # or dist/main.js if you set rootDir=./src in tsconfig
+# Expose the application port
+EXPOSE 3000
+
+# Command to run the application
+CMD ["node", "dist/main"]
