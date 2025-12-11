@@ -30,7 +30,6 @@
 
 
     EXPOSE 3000
-    USER node
 
     # Use the correct entry point
     CMD ["node", "dist/src/main.js"]
