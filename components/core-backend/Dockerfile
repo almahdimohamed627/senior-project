@@ -1,47 +1,37 @@
-# ---- Build Stage ----
-FROM node:22-bookworm AS builder
+    # Build stage
+    FROM node:22-bookworm AS builder
 
-WORKDIR /usr/src/app
+    WORKDIR /usr/src/app
 
-COPY package*.json ./
-RUN npm ci
+    # Copy package files and install all dependencies
+    COPY package*.json ./
+    RUN npm ci
 
-# Copy all source files
-COPY . .
+    # Copy all source code
+    COPY . .
 
-# 1. Temporarily override TypeScript's rootDir for a successful build
-# This creates a custom config that extends yours but sets rootDir to "."
-RUN echo ' \
-  { \
-    "extends": "./tsconfig.json", \
-    "compilerOptions": { \
-      "rootDir": "." \
-    } \
-  } \
-' > tsconfig.docker.json
+    # Build the application using the project's own build command
+    # If this fails, it will use a direct TypeScript compile as fallback
+    RUN npm run build || \
+    (echo "Standard build failed, trying direct compilation..." && \
+    npx tsc --project . --outDir ./dist)
 
-# 2. Build with the custom config
-RUN npx nest build --tsconfig tsconfig.docker.json
+    # Production stage  
+    FROM node:22-bookworm-slim
 
-# ---- Production Stage ----
-FROM node:22-bookworm-slim
+    WORKDIR /usr/src/app
 
-WORKDIR /usr/src/app
+    ENV NODE_ENV=production
 
-ENV NODE_ENV=production
+    # Install production dependencies only
+    COPY package*.json ./
+    RUN npm ci --omit=dev
 
-COPY package*.json ./
-RUN npm ci --omit=dev
+    # Copy the entire dist folder from builder
+    COPY --from=builder /usr/src/app/dist ./dist
 
-# 3. Selectively copy only the runtime files we need
-# Copy the compiled application from src/ (now at dist/src)
-COPY --from=builder /usr/src/app/dist/src ./dist
+    EXPOSE 3000
+    USER node
 
-# Copy specific compiled config/script files if your app needs them at runtime
-# Example: if your app expects drizzle.config.js in the root
-COPY --from=builder /usr/src/app/dist/drizzle.config.js ./
-
-EXPOSE 3000
-USER node
-
-CMD ["node", "dist/main.js"]
+    # Default command - will need adjustment after inspection
+    CMD ["node", "dist/main.js"]
