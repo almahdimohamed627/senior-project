@@ -8,6 +8,7 @@ export const users=pgTable('users',{
   fusionAuthId: varchar('fusion_auth_id', { length: 255 }).notNull().unique(),
   firstName:varchar('firstName'),
   lastName:varchar('lastName'),
+  email:varchar('email'),
   gender: varchar('gender', { length: 20 }).notNull(),
   profilePhoto: text('profile_photo'),
   city: varchar('city', { length: 100 }).notNull(),

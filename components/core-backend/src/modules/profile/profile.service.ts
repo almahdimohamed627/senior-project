@@ -3,16 +3,16 @@ import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { db } from '../auth/client'; // تأكد المسار صحيح
 import { doctorProfile, patientProfile, users } from 'src/db/schema/profiles.schema';
-import { appointments } from '../db/schema/appointments';
+import { appointments } from '../../db/schema/appointments.schema';
 import { eq } from 'drizzle-orm';
 import { ConfigService } from '@nestjs/config';
-import { FusionAuthClientWrapper } from 'src/auth/fusion-auth.client';
+import { FusionAuthClientWrapper } from 'src/modules/auth/fusion-auth.client';
 import pLimit from 'p-limit';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 import axios from 'axios';
 import schema from 'src/db/schema/schema';
-import { AuthService } from 'src/auth/auth.service';
+import { AuthService } from 'src/modules/auth/auth.service';
 
 interface FusionUser {
   firstName?: string | null;
@@ -30,6 +30,16 @@ type PublicProfile = {
   specialty?: string | null;
   profilePhoto?: string | null;
 };
+type publicDoctorProfile={
+    id: number;
+  fusionAuthId: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  city: string | null;
+  specialty: string | null;
+  profilePhoto?: string | null;
+}
 type UpdateArgs = {
   id: string;                         // profile id (رقمي من جدولك)
   type: 'doctor' | 'patient';
@@ -112,7 +122,22 @@ async findAll() {
   return await Promise.all(tasks);
 }
 
+ 
+  async getAllDoctors(){
+    let doctors= await db.select().from(doctorProfile)
+     doctors.map(async (doctor)=>{
+    let row=await db.select().from(users).where(eq(doctorProfile.fusionAuthId,doctor.fusionAuthId))
+    let publicProfile:publicDoctorProfile
 
+    return {
+      ...doctor,
+      ...row
+
+    }
+    
+    
+    })
+  }
   async findOne(id: string) {
     // id هنا هو fusionAuthId
 

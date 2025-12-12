@@ -7,9 +7,15 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
-import { db } from 'src/auth/client';
+import { db } from 'src/modules/auth/client';
 import { users } from 'src/db/schema/profiles.schema';
 import { desc, eq, or } from 'drizzle-orm';
+import { conversations } from 'src/db/schema/chat.schema';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/modules/auth/guards/role.guard';
+import { Roles } from 'src/modules/auth/decorators/role.decorator';
+import { Role } from 'src/enums/role.enum';
 
 @WebSocketGateway({
   cors: {
@@ -22,16 +28,28 @@ export class ChatGateway {
 
   constructor(private readonly chatService: ChatService) {}
 
-  @SubscribeMessage('join')
-  async handleJoin(
-    @MessageBody() data: { userId: string },
-    @ConnectedSocket() client: Socket,
-  ) {
+//   @UseGuards(JwtAuthGuard, RolesGuard)
+//   @Roles(Role.DOCTOR, Role.PATIENT)
+@SubscribeMessage('join')
+async handleJoin(
+  @MessageBody() data: { userId: string },
+  @ConnectedSocket() client: Socket,
+) {
+  const user = await db
+    .select()
+    .from(users)
+    .where(eq(users.fusionAuthId, data.userId))
+    .limit(1);
+
+  if (user.length === 0) {
     
-    db.select().from(users).where(eq(users.fusionAuthId,data.userId))
-    client.join(`user:${data.userId}`);
-    return { joined: true };
+    client.disconnected;
+   return { joined: false, reason: 'User not found' };
   }
+
+  client.join(`user:${data.userId}`);
+  return { joined: true };
+}
 
   @SubscribeMessage('send_message')
   async handleSendMessage(

@@ -23,9 +23,9 @@ import { existsSync, mkdirSync } from 'fs';
 const UPLOADS_FOLDER = 'uploads';
 
 // ensure uploads folder exists (will create if missing)
-if (!existsSync(UPLOADS_FOLDER)) {
-  mkdirSync(UPLOADS_FOLDER, { recursive: true });
-}
+// if (!existsSync(UPLOADS_FOLDER)) {
+//   mkdirSync(UPLOADS_FOLDER, { recursive: true });
+// }
 
 /**
  * Helper: filter allowed mime types (jpg/jpeg/png) — throws BadRequestException on reject.
@@ -57,6 +57,8 @@ export class AuthController {
   private readonly logger = new Logger(AuthController.name);
   constructor(private authService: AuthService) {}
 
+
+
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async loginWithPassword(
@@ -82,6 +84,10 @@ export class AuthController {
       this.logger.error('Login failed', err?.message || err);
       return res.status(401).json({ error: err?.message || 'Login failed' });
     }
+  }
+  @Post('checkemail')
+  async checkEmail(@Body('email') email:string){
+    return await this.authService.checkEmail(email)
   }
 
   @Post('introspect')

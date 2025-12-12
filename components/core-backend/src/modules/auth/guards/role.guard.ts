@@ -11,7 +11,7 @@ import { Reflector } from '@nestjs/core';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { AuthService } from '../auth.service';
-import { ROLES_KEY } from 'src/auth/decorators/role.decorator';
+import { ROLES_KEY } from 'src/modules/auth/decorators/role.decorator';
 import { Role } from 'src/enums/role.enum';
 
 @Injectable()

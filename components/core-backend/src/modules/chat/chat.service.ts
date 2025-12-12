@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { desc, eq, or } from 'drizzle-orm';
-import { db } from 'src/auth/client';
+import { db } from 'src/modules/auth/client';
 import { conversations, messages } from 'src/db/schema/chat.schema';
 import { users } from 'src/db/schema/profiles.schema';
 

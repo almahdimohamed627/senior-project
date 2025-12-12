@@ -2,7 +2,7 @@
 import 'dotenv/config'; // <--- يحمّل .env
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import schema from '../db/schema/schema';
+import schema from '../../db/schema/schema';
 import { ConfigService } from '@nestjs/config';
 
 let config=new ConfigService

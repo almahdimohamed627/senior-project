@@ -23,21 +23,17 @@ import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpsertAvailabilitiesDto } from './dto/availability.dto';
 import { AvailabilityItemDto } from './dto/availability.dto';
-import { Roles } from 'src/auth/decorators/role.decorator';
+import { Roles } from 'src/modules/auth/decorators/role.decorator';
 import { Role } from 'src/enums/role.enum';
-import { RolesGuard } from 'src/auth/guards/role.guard';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/modules/auth/guards/role.guard';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import path, { extname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
-import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator';
 const UPLOADS_FOLDER = 'uploads';
 
-// ensure uploads folder exists
-if (!existsSync(UPLOADS_FOLDER)) {
-  mkdirSync(UPLOADS_FOLDER, { recursive: true });
-}
+
 
 function fileFilter(req: any, file: Express.Multer.File, cb: Function) {
   if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
@@ -71,7 +67,10 @@ export class ProfileController {
   async findAll() {
     return await this.profileService.findAll();
   }
-
+  @Get('doctorsProfiles')
+ async getDoctors(){
+  return await this.profileService.getAllDoctors()
+  }
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return await this.profileService.findOne(id);

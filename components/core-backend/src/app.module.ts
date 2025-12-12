@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AuthModule } from './auth/auth.module';
-import { PostModule } from './post/post.module';
-import { ProfileModule } from './profile/profile.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { PostModule } from './modules/post/post.module';
+import { ProfileModule } from './modules/profile/profile.module';
 import { ConfigModule } from '@nestjs/config';
 import { CacheModule } from '@nestjs/cache-manager';
-import { RequestModule } from './request/request.module';
-import { ChatModule } from './chat/chat.module';
+import { RequestModule } from './modules/request/request.module';
+import { ChatModule } from './modules/chat/chat.module';
 @Module({
   imports: [AuthModule, PostModule, ProfileModule,  CacheModule.register({
       isGlobal: true,

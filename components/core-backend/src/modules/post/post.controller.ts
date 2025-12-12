@@ -2,10 +2,10 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, BadR
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
-import { Roles } from 'src/auth/decorators/role.decorator';
+import { Roles } from 'src/modules/auth/decorators/role.decorator';
 import { Role } from 'src/enums/role.enum';
-import { RolesGuard } from 'src/auth/guards/role.guard';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/modules/auth/guards/role.guard';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { existsSync, mkdirSync } from 'fs';
 import { extname } from 'path';
 import { FilesInterceptor } from '@nestjs/platform-express';
@@ -14,9 +14,7 @@ import { diskStorage } from 'multer';
 const UPLOADS_FOLDER = 'uploads';
 const POSTS_FOLDER = `${UPLOADS_FOLDER}/posts`;
 
-// Ensure directories exist
-if (!existsSync(UPLOADS_FOLDER)) mkdirSync(UPLOADS_FOLDER, { recursive: true });
-if (!existsSync(POSTS_FOLDER)) mkdirSync(POSTS_FOLDER, { recursive: true });
+
 
 function fileFilter(req: any, file: Express.Multer.File, cb: Function) {
   if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {

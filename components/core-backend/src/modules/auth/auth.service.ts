@@ -6,19 +6,21 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
   ForbiddenException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FusionAuthClientWrapper } from './fusion-auth.client';
 import { RegisterDto } from './dto/register.dto';
 // Drizzle imports
 import { db } from './client';
-  import { schema } from '../db/schema/schema';
+  import { schema } from '../../db/schema/schema';
 import * as bcrypt from 'bcrypt';
 import { eq, isNull, not, and } from 'drizzle-orm';
 import axios from 'axios';
 import { Response } from 'express';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
+import { doctorProfile, users } from 'src/db/schema/profiles.schema';
 @Injectable()
 export class AuthService {
   private fusionClient: FusionAuthClientWrapper;
@@ -157,6 +159,16 @@ async loginWithCredentials(
    // console.log(data)
     return data;
   }
+ async checkEmail(email: string) {
+  const row = await db.select().from(users).where(eq(users.email, email));
+
+  if (row.length === 0) {
+    // الإيميل غير موجود ⇒ 422
+    throw new UnprocessableEntityException('email not found');
+  }
+
+  return { exists: true, message: 'email exists' };
+}
 
   // Improved: handle base64url payload safely (padding + replacements)
   async getUserProfileFromIdToken(idToken: string) {
@@ -353,6 +365,7 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
     fusionAuthId: fusionUserId,
     firstName:dto.firstName,
     lastName:dto.lastName,
+    email:dto.email,
     birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
     gender: dto.gender || '',
     role:dto.role,
