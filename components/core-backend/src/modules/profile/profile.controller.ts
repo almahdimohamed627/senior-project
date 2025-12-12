@@ -63,7 +63,7 @@ export class ProfileController {
 
   // @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles(Role.PATIENT)
-  @Get()
+  @Get('profiles')
   async findAll() {
     return await this.profileService.findAll();
   }

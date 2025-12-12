@@ -31,13 +31,14 @@ type PublicProfile = {
   profilePhoto?: string | null;
 };
 type publicDoctorProfile={
-    id: number;
+ 
   fusionAuthId: string;
   firstName: string | null;
   lastName: string | null;
   email: string | null;
   city: string | null;
   specialty: string | null;
+  univercity: string | null;
   profilePhoto?: string | null;
 }
 type UpdateArgs = {
@@ -125,18 +126,30 @@ async findAll() {
  
   async getAllDoctors(){
     let doctors= await db.select().from(doctorProfile)
-     doctors.map(async (doctor)=>{
-    let row=await db.select().from(users).where(eq(doctorProfile.fusionAuthId,doctor.fusionAuthId))
-    let publicProfile:publicDoctorProfile
+    let publicProfile:publicDoctorProfile[]=await Promise.all(
+      doctors.map(async(doctor)=>{
+       const [user]=await db.select().from(users).where(eq(users.fusionAuthId,doctor.fusionAuthId))
+           const publicProfile: publicDoctorProfile = {
+         
+                fusionAuthId: user.fusionAuthId,
+                firstName: user.firstName  ,
+                lastName: user.lastName ,
+                email: user.email ,
+                city: user.city,
+                specialty: doctor.specialty,
+                univercity:doctor.university,
+                profilePhoto: user.profilePhoto, // لو عندك هيك حقل
+    };
+   return publicProfile;
+      })
+    )
+    
+    return publicProfile
 
-    return {
-      ...doctor,
-      ...row
-
-    }
+   
     
     
-    })
+   
   }
   async findOne(id: string) {
     // id هنا هو fusionAuthId

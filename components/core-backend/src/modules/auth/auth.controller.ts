@@ -19,7 +19,7 @@ import { LoginDto } from './dto/login.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, } from 'fs';
 const UPLOADS_FOLDER = 'uploads';
 
 // ensure uploads folder exists (will create if missing)

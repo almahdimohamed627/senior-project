@@ -84,31 +84,31 @@ async loginWithCredentials(
   }
 
   // 2.b) تحقق من حالة التحقق (email verified) عبر FusionAuth
-  let fusionUserRaw: any = null;
-  try {
-    fusionUserRaw = await this.fusionClient.getUser(userId);
+  // let fusionUserRaw: any = null;
+  // try {
+  //   fusionUserRaw = await this.fusionClient.getUser(userId);
 
-    // unwrap common wrapper shapes
-    if (fusionUserRaw && fusionUserRaw.response && fusionUserRaw.response.user) {
-      fusionUserRaw = fusionUserRaw.response.user;
-    }
-    if (fusionUserRaw && fusionUserRaw.user) {
-      fusionUserRaw = fusionUserRaw.user;
-    }
-  } catch (e) {
-    this.logger.error(`Failed to fetch user ${userId} from FusionAuth to check verification`, e?.message || e);
-    // تحفظي: منع الدخول إذا تعذر التأكد من حالة التحقق
-    throw new UnauthorizedException('Could not verify email status; try again later');
-  }
+  //   // unwrap common wrapper shapes
+  //   if (fusionUserRaw && fusionUserRaw.response && fusionUserRaw.response.user) {
+  //     fusionUserRaw = fusionUserRaw.response.user;
+  //   }
+  //   if (fusionUserRaw && fusionUserRaw.user) {
+  //     fusionUserRaw = fusionUserRaw.user;
+  //   }
+  // } catch (e) {
+  //   this.logger.error(`Failed to fetch user ${userId} from FusionAuth to check verification`, e?.message || e);
+  //   // تحفظي: منع الدخول إذا تعذر التأكد من حالة التحقق
+  //   throw new UnauthorizedException('Could not verify email status; try again later');
+  // }
 
   // FusionAuth may call the flag `verified` or `emailVerified` depending on shape/version
-  const isVerified = !!(fusionUserRaw?.verified ?? fusionUserRaw?.emailVerified ?? false);
+  //const isVerified = !!(fusionUserRaw?.verified ?? fusionUserRaw?.emailVerified ?? false);
 
-  if (!isVerified) {
-    // منع الدخول حتى يفعّل المستخدم إيميله
-    this.logger.warn(`Login attempt for unverified user ${userId} (${email})`);
-    throw new ForbiddenException('Email not verified. Please verify your email before logging in.');
-  }
+  // if (!isVerified) {
+  //   // منع الدخول حتى يفعّل المستخدم إيميله
+  //   this.logger.warn(`Login attempt for unverified user ${userId} (${email})`);
+  //   throw new ForbiddenException('Email not verified. Please verify your email before logging in.');
+  // }
 
   // 3) إذا في refresh_token — خزّنه كهاش في جدول user_sessions
   if (tokens.refresh_token && userId) {

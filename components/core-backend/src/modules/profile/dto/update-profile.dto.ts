@@ -3,7 +3,7 @@ import { PartialType } from '@nestjs/mapped-types';
 import { CreateProfileDto } from './create-profile.dto';
 import { IsEmail, IsOptional, IsString, IsUrl, MinLength, ValidateIf } from 'class-validator';
 
-export class UpdateProfileDto extends PartialType(CreateProfileDto) {
+export class UpdateProfileDto  {
   @IsString()
   @IsOptional()
   firstName?: string;

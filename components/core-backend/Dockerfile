@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Copy package files
@@ -14,7 +14,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 WORKDIR /app
 
 # Copy package files AND node_modules from builder to ensure all deps are available
@@ -33,5 +33,6 @@ RUN adduser -S nestapp -u 1001
 RUN chown -R nestapp:nodejs /app
 USER nestapp
 
-EXPOSE 3000
-CMD [ "node", "dist/src/main" ]
+
+EXPOSE 3000 4000
+CMD [ "node", "dist/src/main.js" ]
