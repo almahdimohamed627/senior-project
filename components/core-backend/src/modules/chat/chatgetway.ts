@@ -7,7 +7,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
-import { db } from 'src/modules/auth/client';
+import { db } from 'src/db/client';
 import { users } from 'src/db/schema/profiles.schema';
 import { desc, eq, or } from 'drizzle-orm';
 import { conversations } from 'src/db/schema/chat.schema';
@@ -43,7 +43,7 @@ async handleJoin(
 
   if (user.length === 0) {
     
-    client.disconnected;
+    client.disconnect();
    return { joined: false, reason: 'User not found' };
   }
 

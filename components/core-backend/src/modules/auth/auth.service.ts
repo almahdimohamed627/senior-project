@@ -12,7 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { FusionAuthClientWrapper } from './fusion-auth.client';
 import { RegisterDto } from './dto/register.dto';
 // Drizzle imports
-import { db } from './client';
+import { db } from '../../db/client';
   import { schema } from '../../db/schema/schema';
 import * as bcrypt from 'bcrypt';
 import { eq, isNull, not, and } from 'drizzle-orm';
@@ -198,11 +198,7 @@ async loginWithCredentials(
   // ------------------------------
   // registerUserAndProfile
   // ------------------------------
-// افترض أن هذه التعريفات مستوردة في أعلى الملف:
-// import axios from 'axios';
-// import { unlink } from 'fs/promises';
-// import { join } from 'path';
-// import { InternalServerErrorException, ConflictException } from '@nestjs/common';
+
 
 async registerUserAndProfile(dto: RegisterDto): Promise<string> {
   let fusionUserId: string | undefined;

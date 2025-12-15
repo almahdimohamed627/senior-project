@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { db } from '../modules/auth/client';
+import { db } from '../db/client';
 import { datasetImages } from 'src/db/schema/dataset_images.schema';
 
 @Injectable()

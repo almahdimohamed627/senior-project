@@ -1,5 +1,5 @@
 // scripts/test-insert.ts
-import { db } from '../src/modules/auth/client';
+import { db } from '../src/db/client';
 import { schema } from '../src/db/schema/schema';
 
 async function run() {

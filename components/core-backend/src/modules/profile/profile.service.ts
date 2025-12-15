@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, NotFoundException, Logger, BadRequestException, ForbiddenException, Inject, InternalServerErrorException } from '@nestjs/common';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { db } from '../auth/client'; // تأكد المسار صحيح
+import { db } from '../../db/client'; // تأكد المسار صحيح
 import { doctorProfile, patientProfile, users } from 'src/db/schema/profiles.schema';
 import { appointments } from '../../db/schema/appointments.schema';
 import { eq } from 'drizzle-orm';
@@ -254,6 +254,22 @@ async findAll() {
       profile: publicProfile,
       availabilities,
     };
+  }
+
+  async updateFusionInformation(fusionAuthId:string,dto:{firstName ,lastName,email,password}){
+       const userRows = await db
+      .select()
+      .from(users)
+      .where(eq(users.fusionAuthId, fusionAuthId))
+      .limit(1);
+    const baseUser = userRows[0];
+    if (!baseUser) throw new NotFoundException('user not found');
+    return this.fusionClient.updateUser(baseUser.fusionAuthId, {
+        email: dto.email,
+        password: dto.password,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+      })
   }
 
   async updateMe({
