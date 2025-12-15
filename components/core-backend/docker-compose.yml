@@ -12,8 +12,8 @@ services:
     environment:
       - PORT=3000
     ports:
-      - '3000:3000'
-      - '4000:4000'
+      - '3000'
+      - '4000'
     networks:
       - proxy
     labels:
@@ -22,6 +22,7 @@ services:
       - "traefik.http.routers.nest-app.entrypoints=websecure"
       - "traefik.http.routers.nest-app.tls=true"
       - "traefik.http.routers.nest-app.tls.certresolver=le"
+      - "traefik.http.services.nest-app.loadbalancer.server.port=3000"
 
 networks:
   proxy:
