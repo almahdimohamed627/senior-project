@@ -115,6 +115,7 @@ async updateMe(
   const storedPath = file ? path.join(UPLOADS_FOLDER, file.filename) : undefined;
 
   // تحديث بالاعتماد على fusionAuthId وليس id من الباث
+
   return this.profileService.updateMe({
     type,
     dto,
@@ -123,6 +124,15 @@ async updateMe(
   });
 }
 
+@UseGuards(JwtAuthGuard)
+@Patch('fusionInformation')
+async updateFusionInformation(  @CurrentUser() user: any,
+  @Body() dto: {firstName ,lastName,email,password}){
+     const fusionAuthId: string | undefined = user?.sub;
+  const roles: string[] = Array.isArray(user?.roles) ? user.roles : [];
+  if (!fusionAuthId) throw new BadRequestException('Invalid access token (missing sub).');
+ return this.profileService.updateFusionInformation(fusionAuthId,dto)
+}
 //delete user
 @Delete(":id")
 async deleteProfile(@Param('id') id:string){

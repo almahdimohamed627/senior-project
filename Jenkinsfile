@@ -155,7 +155,6 @@ def normalizeComponent(String name) {
 def normalizeComponents(List list) {
   return list.collect { normalizeComponent(it) }.unique()
 }
-
 /* ========================= Layering utilities ========================= */
 
 def layerize(List wanted, Map depmap) {

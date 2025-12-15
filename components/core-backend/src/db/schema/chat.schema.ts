@@ -42,5 +42,50 @@ export const messages = pgTable('messages', {
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+export const aiConversationStatus = pgEnum('ai_conversation_status', [
+  'in_progress',
+  'completed',
+]);
 
+export const aiMessageRole = pgEnum('ai_message_role', ['human', 'ai']);
+
+export const conversationAI = pgTable('conversation_ai', {
+  id: serial('id').primaryKey(),
+
+  // المستخدم اللي عم يحكي مع البوت
+  userId: varchar('user_id', { length: 255 })
+    .notNull()
+    .references(() => users.fusionAuthId),
+
+  // ممكن تخزن ملخص التشخيص اللي يطلع بالبهاية
+  diagnosis: text('diagnosis'),
+
+  status: aiConversationStatus('status')
+    .notNull()
+    .default('in_progress'),
+
+  createdAt: timestamp('created_at')
+    .notNull()
+    .defaultNow(),
+
+  updatedAt: timestamp('updated_at')
+    .notNull()
+    .defaultNow(),
+});
+export const conversationAiMessages = pgTable('conversation_ai_messages', {
+  id: serial('id').primaryKey(),
+
+  conversationId: integer('conversation_id')
+    .notNull()
+    .references(() => conversationAI.id, { onDelete: 'cascade' }),
+
+  // human = المريض، ai = البوت
+  role: aiMessageRole('role').notNull(),
+
+  text: text('text').notNull(),
+
+  createdAt: timestamp('created_at')
+    .notNull()
+    .defaultNow(),
+});
 

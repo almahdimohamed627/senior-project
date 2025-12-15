@@ -11,6 +11,7 @@ export class FusionAuthClientWrapper {
     private apiKey?: string,
     private clientId?: string,
     private clientSecret?: string,
+    private tenantId?:string,
    private logger = new Logger(FusionAuthClientWrapper.name)
   ) {}
 
@@ -64,28 +65,27 @@ return resp.data;
     return resp.data;
   }
     async updateUser(userId: string, payload: {
-    email?: string;
-    password?: string;
-    firstName?: string;
-    lastName?: string;
-  }) {
-    const url = `${this.baseUrl}/api/user/${userId}`;
-    const body = {
-      user: {
-        email: payload.email,
-        password: payload.password, // FusionAuth يقبلها نصياً وسيقوم بالتخزين الآمن
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-      },
-    };
-    const resp = await axios.patch(url, body, {
-      headers: {
-        Authorization: this.apiKey || '',
-        'Content-Type': 'application/json',
-      },
-    });
-    return resp.data?.user;
+  email?: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+}) {
+  if (!this.apiKey) {
+    throw new Error('FusionAuth API key is missing');
   }
+
+  const url = `${this.baseUrl}/api/user/${userId}`;
+  const body = { user: { ...payload } };
+
+  const headers: Record<string, string> = {
+    Authorization: this.apiKey, // admin API key
+    'Content-Type': 'application/json',
+  };
+  if (this.tenantId) headers['X-FusionAuth-TenantId'] = this.tenantId;
+
+  const resp = await axios.patch(url, body, { headers });
+  return resp.data?.user;
+}
   // جلب بيانات المستخدم من FusionAuth
   async getUser(userId: string) {
     const url = `${this.baseUrl}/api/user/${userId}`;
