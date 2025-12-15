@@ -4,11 +4,9 @@
 // import { drizzle } from 'drizzle-orm/postgres-js';
 // import schema from '../../db/schema/schema';
 // import { ConfigService } from '@nestjs/config';
-
 // let config=new ConfigService()
 // const connectionString = config.get<string>('DATABASE_URL') || 'postgresql://postgres:123456@localhost:5432/senior_project';
 // const sql = postgres(connectionString, { max: 10 });
-
 // export const db = drizzle(sql, { schema });
 import 'dotenv/config';
 import postgres from 'postgres';
