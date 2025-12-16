@@ -1,1 +1,0 @@
-ALTER TABLE "likes" DROP CONSTRAINT "likes_post_id_liked_py_pk";
