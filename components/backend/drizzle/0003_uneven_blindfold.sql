@@ -1,29 +1,29 @@
 
 
 -- Ensure enum types exist before tables that use them
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ai_conversation_status') THEN
-    CREATE TYPE "ai_conversation_status" AS ENUM ('in_progress', 'completed');
-  END IF;
+-- DO $$
+-- BEGIN
+--   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ai_conversation_status') THEN
+--     CREATE TYPE "ai_conversation_status" AS ENUM ('in_progress', 'completed');
+--   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ai_message_role') THEN
-    CREATE TYPE "ai_message_role" AS ENUM ('human', 'ai');
-  END IF;
+--   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ai_message_role') THEN
+--     CREATE TYPE "ai_message_role" AS ENUM ('human', 'ai');
+--   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'message_type') THEN
-    CREATE TYPE "message_type" AS ENUM ('text', 'audio');
-  END IF;
+--   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'message_type') THEN
+--     CREATE TYPE "message_type" AS ENUM ('text', 'audio');
+--   END IF;
 
-  -- These two are referenced in your SQL too:
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'status') THEN
-    CREATE TYPE "status" AS ENUM ('pending', 'accepted', 'rejected'); -- عدّل القيم حسب تعريفك الحقيقي
-  END IF;
+--   -- These two are referenced in your SQL too:
+--   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'status') THEN
+--     CREATE TYPE "status" AS ENUM ('pending', 'accepted', 'rejected'); -- عدّل القيم حسب تعريفك الحقيقي
+--   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role') THEN
-    CREATE TYPE "role" AS ENUM ('patient', 'doctor', 'admin'); -- حسب enum Role عندك
-  END IF;
-END$$;
+--   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role') THEN
+--     CREATE TYPE "role" AS ENUM ('patient', 'doctor', 'admin'); -- حسب enum Role عندك
+--   END IF;
+-- END$$;
 
 CREATE TABLE "conversation_ai" (
 	"id" serial PRIMARY KEY NOT NULL,

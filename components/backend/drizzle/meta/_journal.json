@@ -29,6 +29,13 @@
       "when": 1765888483814,
       "tag": "0003_uneven_blindfold",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1765896523374,
+      "tag": "0004_lying_chamber",
+      "breakpoints": true
     }
   ]
 }
