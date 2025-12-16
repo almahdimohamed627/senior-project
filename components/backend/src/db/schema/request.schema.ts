@@ -1,7 +1,7 @@
 import { pgTable, serial, varchar, text, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core';
 import { doctorProfile, patientProfile, users } from './profiles.schema';
 
-export const status = pgEnum('status', ['pending', 'accepted', 'rejected']);
+export const requeststatus = pgEnum('status', ['pending', 'accepted', 'rejected']);
 export const requests = pgTable('requests', {
   id: serial('id').primaryKey(),
 
@@ -13,7 +13,7 @@ export const requests = pgTable('requests', {
     .notNull()
     .references(() => users.fusionAuthId,{onDelete:"cascade"}),
 
-  status: status("status")
+  status: requeststatus("status")
     .notNull()
     .default('pending'),
 
