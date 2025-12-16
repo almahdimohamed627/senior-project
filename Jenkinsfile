@@ -4,7 +4,7 @@ pipeline {
   parameters {
     choice(
       name: 'COMPONENT',
-      choices: ['all', 'traefik', 'db', 'fusionauth', 'core-backend', 'ai-agent'],
+      choices: ['all', 'traefik', 'db', 'fusionauth', 'backend', 'ai-agent'],
       description: 'Select component to build/deploy (its prerequisites will be included automatically)'
     )
     booleanParam(
@@ -127,13 +127,13 @@ pipeline {
 
 /* ========================= GLOBAL DEPENDENCIES ========================= */
 // الكل يعتمد على traefik
-// fusionauth و core-backend يعتمدان أيضًا على db
+// fusionauth و backend يعتمدان أيضًا على db
 def deps() {
     return [
         'traefik'     : [],
         'db'          : ['traefik'],
         'fusionauth'  : ['db', 'traefik'],
-        'core-backend': ['db', 'traefik'],
+        'backend': ['db', 'traefik'],
         'ai-agent'    : ['traefik'],
         'ai-model'    : ['traefik']
     ]
@@ -148,7 +148,7 @@ def normalizeComponent(String name) {
   n = n.toLowerCase()
   // aliases
   if (n == 'fusionauth' || n == 'fusion-auth' || n == 'fusionauth/') n = 'fusionauth'
-  if (n == 'corebackend' || n == 'core_backend') n = 'core-backend'
+  if (n == 'corebackend' || n == 'core_backend') n = 'backend'
   return n
 }
 
@@ -367,15 +367,15 @@ def findComponents() {
       // If no components found with structure, fall back to default list
       if (components.isEmpty()) {
         echo "No components discovered by structure, using default components"
-        components = ['traefik', 'db', 'fusionauth', 'core-backend', 'ai-agent']
+        components = ['traefik', 'db', 'fusionauth', 'backend', 'ai-agent']
       }
     } else {
       echo "No components directory found, using default components"
-      components = ['traefik', 'db', 'fusionauth', 'core-backend', 'ai-agent']
+      components = ['traefik', 'db', 'fusionauth', 'backend', 'ai-agent']
     }
   } catch (Exception e) {
     echo "Error discovering components: ${e.message}, using default components"
-    components = ['traefik', 'db', 'fusionauth', 'core-backend', 'ai-agent']
+    components = ['traefik', 'db', 'fusionauth', 'backend', 'ai-agent']
   }
   
   // Remove any null or empty values and normalize
@@ -680,21 +680,21 @@ def performComponentHealthCheck(componentName) {
       '''
       break
       
-    case 'core-backend':
+    case 'backend':
       sh '''
         for i in 1 2 3; do
           if curl -s -f http://localhost:3000/health >/dev/null 2>&1 || 
              curl -s -f http://localhost:3000 >/dev/null 2>&1; then
-            echo "✅ Core-backend is accessible at http://localhost:3000"
+            echo "✅ backend is accessible at http://localhost:3000"
             break
           else
-            echo "⏳ Attempt $i: Core-backend not yet accessible, waiting..."
+            echo "⏳ Attempt $i: backend not yet accessible, waiting..."
             sleep 30
           fi
         done
         if ! curl -s -f http://localhost:3000/health >/dev/null 2>&1 && 
            ! curl -s -f http://localhost:3000 >/dev/null 2>&1; then
-          echo "⚠️ Core-backend not accessible, showing recent logs..."
+          echo "⚠️ backend not accessible, showing recent logs..."
           docker compose logs --tail=50 nest-app || true
         fi
       '''
