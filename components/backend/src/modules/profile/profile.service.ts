@@ -11,7 +11,7 @@ import pLimit from 'p-limit';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 import axios from 'axios';
-import schema from 'src/db/schema/schema';
+import {schema} from 'src/db/schema/schema';
 import { AuthService } from 'src/modules/auth/auth.service';
 
 interface FusionUser {

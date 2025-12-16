@@ -3,7 +3,7 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { likes, posts } from 'src/db/schema/posts.schema';
 import { db } from 'src/db/client';
-import schema from 'src/db/schema/schema';
+import {schema} from 'src/db/schema/schema';
 import { and, eq, sql } from 'drizzle-orm'; // ✅ أهم import!
 import { unlink } from 'fs/promises';
 import { join } from 'path';

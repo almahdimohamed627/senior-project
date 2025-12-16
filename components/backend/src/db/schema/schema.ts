@@ -12,8 +12,8 @@ import { requests } from './request.schema';
 import { conversationAI, messages, conversations, conversationAiMessages } from './chat.schema';
 
 export const schema = {
-  doctorProfile,
-  patientProfile,
+  doctors:doctorProfile,
+  patients:patientProfile,
   posts,
   users,
   userSessions,
