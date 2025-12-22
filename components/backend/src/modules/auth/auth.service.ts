@@ -446,7 +446,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
   }
 
   // success
-  return {...dto,fusionUserId,storedPath};
+  return {fusionUserId,...dto,storedPath};
 }
 
 
