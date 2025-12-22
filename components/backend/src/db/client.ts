@@ -15,7 +15,9 @@ import {schema} from './schema/schema';
 
 const connectionString =
   process.env.DATABASE_URL ??
-  'postgresql://postgres:123456@localhost:5432/senior_project';
+  '';
+ const u = new URL(process.env.DATABASE_URL ?? '');
+console.log('DB:', { host: u.host, user: u.username, db: u.pathname });
 
 const sql = postgres(connectionString, { max: 10 });
 

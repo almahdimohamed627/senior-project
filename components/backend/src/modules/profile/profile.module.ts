@@ -8,5 +8,6 @@ import { AuthService } from 'src/modules/auth/auth.service';
 @Module({
   controllers: [ProfileController],
   providers: [ProfileService,JwtStrategy,ConfigService,AuthService],
+  exports: [ProfileService],  
 })
 export class ProfileModule {}
