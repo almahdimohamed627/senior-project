@@ -11,6 +11,8 @@ import {
   Req,
   Logger,
   BadRequestException,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -18,7 +20,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import path, { extname, join } from 'path';
 import { existsSync, mkdirSync, } from 'fs';
 const UPLOADS_FOLDER = 'uploads';
 
@@ -106,11 +108,31 @@ export class AuthController {
   // ------------------------
   // Registration endpoint (no photo upload)
   // ------------------------
+  @UseInterceptors(FileInterceptor('profilePhoto', {
+    storage: diskStorage({
+      destination: (_req, _file, cb) => cb(null, UPLOADS_FOLDER),
+      filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+      },
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+      const ext = path.extname(file.originalname).toLowerCase();
+      if (!allowed.includes(ext)) {
+        return cb(new BadRequestException('Only images are allowed (.jpg .jpeg .png .webp)'), false);
+      }
+      cb(null, true);
+    },
+  }))
   @Post('register')
-  async register(@Body() body: RegisterDto) {
-  
-    const fusionId = await this.authService.registerUserAndProfile(body);
-    return { fusionId };
+  async register(@Body() body: RegisterDto,@UploadedFile() file?: Express.Multer.File) {
+   let storedPath = file ? path.join(UPLOADS_FOLDER, file.filename) : undefined ;
+  console.log('file:', file?.originalname, file?.mimetype, file?.size);
+console.log('body keys:', Object.keys(body));
+    const user = await this.authService.registerUserAndProfile(body,storedPath);
+    return  user ;
   }
 
   // Refresh endpoint (reads refresh token from httpOnly cookie)

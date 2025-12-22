@@ -8,11 +8,13 @@ import { JwtStrategy } from './jwt.strategy'; // يمكنك إبقاؤه أو ح
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/role.guard';
 import { Reflector } from '@nestjs/core';
+import { ProfileModule } from '../profile/profile.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     HttpModule.register({ timeout: 5000 }),
+    ProfileModule
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard, Reflector],

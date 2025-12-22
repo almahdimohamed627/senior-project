@@ -134,9 +134,12 @@ async loginWithCredentials(
       // لا نمنع المصادقة النهائية لمجرد فشل حفظ الجلسة، لكن نعلم الخادم
     }
   }
+  let user=await db.select().from(users).where(eq(users.fusionAuthId,userId))
+  console.log(user)
 
   // 4) أعد التوكنات للعميل
   return {
+    user:user,
     access_token: tokens.access_token,
     id_token: tokens.id_token,
     refreshToken: tokens.refresh_token,
@@ -200,10 +203,14 @@ async loginWithCredentials(
   // ------------------------------
 
 
-async registerUserAndProfile(dto: RegisterDto): Promise<string> {
+async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Promise<object> {
   let fusionUserId: string | undefined;
   let createdUserResp: any;
-  const DEFAULT_AVATAR = 'uploads/avatar.png';
+
+  
+  if(!storedPath){
+    storedPath='uploads/avatar.png'
+  }
 
   // Validators (كما عندك)
   // const validateDoctorPayload = (p: any) => {
@@ -367,7 +374,7 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
     role:dto.role,
     city: dto.city || '',
     phoneNumber: dto.phoneNumber || '',
-    profilePhoto: DEFAULT_AVATAR,
+    profilePhoto: storedPath,
   };
 
   // 4️⃣ Insert into local DB
@@ -439,16 +446,10 @@ async registerUserAndProfile(dto: RegisterDto): Promise<string> {
   }
 
   // success
-  return fusionUserId!;
+  return {...dto,fusionUserId,storedPath};
 }
 
 
-
-
-async login(email:string,password:string){
-
-
-}
 
 
   // ------------------------------

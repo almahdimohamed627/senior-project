@@ -9,6 +9,7 @@ import {
   IsPhoneNumber,
   Min,
   Max,
+  IsUrl,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -48,6 +49,11 @@ export class RegisterDto {
   @IsInt()
   birthYear: number;
 
+
+   @IsString()
+    @IsUrl()
+    @IsOptional()
+    profilePhoto?: string;
   // -------------------------
   // حقول خاصة بالطبيب (validated only if role === 'doctor')
   // -------------------------
