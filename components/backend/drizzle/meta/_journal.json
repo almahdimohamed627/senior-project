@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1760255011428,
-      "tag": "0000_nappy_colossus",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1760515640063,
-      "tag": "0001_lyrical_revanche",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1765874421727,
-      "tag": "0002_glamorous_ricochet",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1765888483814,
-      "tag": "0003_uneven_blindfold",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1765896523374,
-      "tag": "0004_lying_chamber",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1766381549095,
-      "tag": "0005_uneven_thena",
+      "when": 1766496960946,
+      "tag": "0000_nervous_raza",
       "breakpoints": true
     }
   ]

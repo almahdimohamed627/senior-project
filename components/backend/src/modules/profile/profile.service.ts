@@ -26,7 +26,7 @@ type PublicProfile = {
   firstName: string | null;
   lastName: string | null;
   email: string | null;
-  city?: string | null;
+  city?: number | null;
   specialty?: string | null;
   profilePhoto?: string | null;
 };
@@ -36,7 +36,7 @@ type publicDoctorProfile={
   firstName: string | null;
   lastName: string | null;
   email: string | null;
-  city: string | null;
+  city: number | null;
   specialty: string | null;
   univercity: string | null;
   profilePhoto?: string | null;
