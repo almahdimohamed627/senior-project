@@ -22,6 +22,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import path, { extname, join } from 'path';
 import { existsSync, mkdirSync, } from 'fs';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 const UPLOADS_FOLDER = 'uploads';
 
 // ensure uploads folder exists (will create if missing)
@@ -134,6 +135,16 @@ console.log('body keys:', Object.keys(body));
     const user = await this.authService.registerUserAndProfile(body,storedPath);
     return  user ;
   }
+
+@Post('send-email-otp')
+async sendEmailOtp(@Body() dto: { email: string }) {
+  return this.authService.sendEmailOtp(dto.email);
+}
+
+@Post('verify-email-otp')
+async verifyEmailOtp(@Body() dto: { email: string; code: string }) {
+  return this.authService.verifyEmailOtp(dto.email, dto.code);
+}
 
   // Refresh endpoint (reads refresh token from httpOnly cookie)
   @Post('refresh')

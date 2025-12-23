@@ -1,6 +1,6 @@
 // src/db/schema/profiles.ts
 import { pgTable, serial, varchar, text, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core';
-
+import { cities } from './cities.schema';
 export const role = pgEnum('role', ['admin', 'doctor', 'patient']);
 
 export const users=pgTable('users',{
@@ -11,7 +11,7 @@ export const users=pgTable('users',{
   email:varchar('email'),
   gender: varchar('gender', { length: 20 }).notNull(),
   profilePhoto: text('profile_photo'),
-  city: varchar('city', { length: 100 }).notNull(),
+  city: integer('city').references(()=>cities.id,{onDelete:'set null'}).default(0),
   birthYear: integer('birth_year').notNull(),
   phoneNumber: varchar('phone_number', { length: 20 }).notNull(),
   role:role('role'),

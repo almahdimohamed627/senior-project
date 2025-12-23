@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
   UnprocessableEntityException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FusionAuthClientWrapper } from './fusion-auth.client';
@@ -26,14 +27,17 @@ export class AuthService {
   private fusionClient: FusionAuthClientWrapper;
   private baseUrl: string;
   private clientId: string;
+  private tenantId: string;
   private clientSecret: string;
   private redirectUri: string;
   private apiKey?: string;
   private logger = new Logger(AuthService.name);
+  private sessions = new Map<string, { verificationId: string; createdAt: number }>();
 
   constructor(private config: ConfigService) {
     this.baseUrl = this.config.get<string>('FUSIONAUTH_BASE_URL') || '';
     this.clientId = this.config.get<string>('FUSIONAUTH_CLIENT_ID') || '';
+    this.tenantId = this.config.get<string>('FUSIONAUTH_TENANT_ID') || '';
     this.clientSecret =
       this.config.get<string>('FUSIONAUTH_CLIENT_SECRET') || '';
     this.redirectUri =
@@ -84,31 +88,36 @@ async loginWithCredentials(
   }
 
   // 2.b) تحقق من حالة التحقق (email verified) عبر FusionAuth
-  // let fusionUserRaw: any = null;
-  // try {
-  //   fusionUserRaw = await this.fusionClient.getUser(userId);
+  let fusionUserRaw: any = null;
+  try {
+    fusionUserRaw = await this.fusionClient.getUser(userId);
 
-  //   // unwrap common wrapper shapes
-  //   if (fusionUserRaw && fusionUserRaw.response && fusionUserRaw.response.user) {
-  //     fusionUserRaw = fusionUserRaw.response.user;
-  //   }
-  //   if (fusionUserRaw && fusionUserRaw.user) {
-  //     fusionUserRaw = fusionUserRaw.user;
-  //   }
-  // } catch (e) {
-  //   this.logger.error(`Failed to fetch user ${userId} from FusionAuth to check verification`, e?.message || e);
-  //   // تحفظي: منع الدخول إذا تعذر التأكد من حالة التحقق
-  //   throw new UnauthorizedException('Could not verify email status; try again later');
-  // }
+    // unwrap common wrapper shapes
+    if (fusionUserRaw && fusionUserRaw.response && fusionUserRaw.response.user) {
+      fusionUserRaw = fusionUserRaw.response.user;
+    }
+    if (fusionUserRaw && fusionUserRaw.user) {
+      fusionUserRaw = fusionUserRaw.user;
+    }
+  } catch (e) {
+    this.logger.error(`Failed to fetch user ${userId} from FusionAuth to check verification`, e?.message || e);
+    // تحفظي: منع الدخول إذا تعذر التأكد من حالة التحقق
+    throw new UnauthorizedException('Could not verify email status; try again later');
+  }
 
-  // FusionAuth may call the flag `verified` or `emailVerified` depending on shape/version
-  //const isVerified = !!(fusionUserRaw?.verified ?? fusionUserRaw?.emailVerified ?? false);
+  //FusionAuth may call the flag `verified` or `emailVerified` depending on shape/version
+  const identityEmailVerified =
+  Array.isArray(fusionUserRaw?.identities) &&
+  fusionUserRaw.identities.some((i: any) => i?.type === 'email' && i?.verified === true);
 
-  // if (!isVerified) {
-  //   // منع الدخول حتى يفعّل المستخدم إيميله
-  //   this.logger.warn(`Login attempt for unverified user ${userId} (${email})`);
-  //   throw new ForbiddenException('Email not verified. Please verify your email before logging in.');
-  // }
+const isVerified = !!(fusionUserRaw?.verified ?? fusionUserRaw?.emailVerified ?? identityEmailVerified ?? false);
+
+
+  if (!isVerified) {
+    // منع الدخول حتى يفعّل المستخدم إيميله
+    this.logger.warn(`Login attempt for unverified user ${userId} (${email})`);
+    throw new ForbiddenException('Email not verified. Please verify your email before logging in.');
+  }
 
   // 3) إذا في refresh_token — خزّنه كهاش في جدول user_sessions
   if (tokens.refresh_token && userId) {
@@ -172,6 +181,88 @@ async loginWithCredentials(
 
   return { exists: true, message: 'email exists' };
 }
+async sendEmailOtp(emailRaw: string) {
+    const email = emailRaw.trim().toLowerCase();
+    const url = `${this.baseUrl.replace(/\/$/, '')}/api/user/verify-email`;
+
+    try {
+      const resp = await axios.put(url, null, {
+        params: {
+          applicationId: this.clientId,
+          email,
+          sendVerifyEmail: true, // يرسل الإيميل
+        },
+        headers: {
+          Authorization: this.apiKey,
+          ...(this.tenantId ? { 'X-FusionAuth-TenantId': this.tenantId } : {}),
+        },
+        timeout: 10000,
+      });
+
+      const verificationId = resp.data?.verificationId;
+      if (!verificationId) {
+        // إذا ما رجّع body: غالباً لأن الطلب مو authenticated بـ API key
+        throw new Error('Missing verificationId in response');
+      }
+
+      // خزّنها بقاعدة البيانات عندك (بدل الـ Map)
+      this.sessions.set(email, { verificationId, createdAt: Date.now() });
+
+      return { ok: true };
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.generalErrors?.[0]?.message ||
+        e?.response?.data?.fieldErrors?.email?.[0]?.message ||
+        e?.message ||
+        'Failed to send verification code';
+      throw new BadRequestException(msg);
+    }
+  }
+
+  /**
+   * العميل يرسل email + otp فقط
+   * السيرفر يطلع verificationId المخزن وينادي FusionAuth verify
+   */
+  async verifyEmailOtp(emailRaw: string, codeRaw: string) {
+    const email = emailRaw.trim().toLowerCase();
+    const code = codeRaw.trim();
+
+    const session = this.sessions.get(email);
+    if (!session) {
+      throw new BadRequestException('No pending verification session for this email');
+    }
+
+    const url = `${this.baseUrl.replace(/\/$/, '')}/api/user/verify-email`;
+
+    try {
+      await axios.post(
+        url,
+        {
+          verificationId: session.verificationId,
+          oneTimeCode: code,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.tenantId ? { 'X-FusionAuth-TenantId': this.tenantId } : {}),
+          },
+          timeout: 10000,
+        },
+      );
+
+      // نجاح: امسح الجلسة
+      this.sessions.delete(email);
+
+      return { ok: true };
+    } catch (e: any) {
+      const msg =
+        e?.response?.data?.generalErrors?.[0]?.message ||
+        e?.response?.data?.message ||
+        e?.message ||
+        'Invalid code';
+      throw new BadRequestException(msg);
+    }
+  }
 
   // Improved: handle base64url payload safely (padding + replacements)
   async getUserProfileFromIdToken(idToken: string) {
@@ -212,37 +303,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
     storedPath='uploads/avatar.png'
   }
 
-  // Validators (كما عندك)
-  // const validateDoctorPayload = (p: any) => {
-  //   const errs: string[] = [];
-  //   if (!p.fusionAuthId) errs.push('fusionAuthId is missing');
- 
-  //   if (!p.university) errs.push('university is missing');
-  //   if (typeof p.university === 'string' && p.university.length > 255) errs.push('university length > 255');
-  //   if (!p.specialty) errs.push('specialty is missing');
-  //   if (typeof p.specialty === 'string' && p.specialty.length > 255) errs.push('specialty length > 255');
- 
-  //   return errs;
-  // };
 
-  // const validateUserPayload = (p: any) => {
-  //   const errs: string[] = [];
-  //   if (!p.fusionAuthId) errs.push('fusionAuthId is missing');
-  //   if (p.birthYear === undefined || p.birthYear === null || !Number.isInteger(p.birthYear)) errs.push('birthYear must be an integer');
-  //   if (!p.gender) errs.push('gender is missing');
-  //   if (typeof p.gender === 'string' && p.gender.length > 20) errs.push('gender length > 20');
-  //   if (!p.city) errs.push('city is missing');
-  //   if (typeof p.city === 'string' && p.city.length > 100) errs.push('city length > 100');
-  //   if (!p.phoneNumber) errs.push('phoneNumber is missing');
-  //   if (typeof p.phoneNumber === 'string' && p.phoneNumber.length > 20) errs.push('phoneNumber length > 20');
-  //   return errs;
-  // };
-  // const validatePatientPayload = (p: any) => {
-  //   const errs: string[] = [];
-  //   if (!p.fusionAuthId) errs.push('fusionAuthId is missing');
-
-  //   return errs;
-  // };
 
   try {
     // 1️⃣ Create user in FusionAuth
@@ -316,22 +377,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
 
     this.logger.log(`✅ Registration added: ${JSON.stringify(regResp.data.registration)}`);
 
-    // -----------------------------
-    // 2.b) Request FusionAuth to send the registration verification email
-    // PUT /api/user/verify-registration?applicationId={applicationId}&email={email}
-    try {
-      const verifyUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/verify-registration?applicationId=${encodeURIComponent(this.clientId)}&email=${encodeURIComponent(dto.email)}`;
-      const verifyResp = await axios.put(verifyUrl, null, { headers: registrationHeaders, timeout: 10000 });
-      const verificationId = verifyResp?.data?.verificationId || verifyResp?.data?.registrationVerificationId || null;
-      if (verificationId) {
-        this.logger.log(`Verification email requested; verificationId=${verificationId}`);
-      } else {
-        this.logger.log('Requested verification email (no verificationId returned).');
-      }
-    } catch (verifyErr: any) {
-      // Don't rollback user creation on email send failure
-      this.logger.error('Failed to request verification email from FusionAuth', verifyErr?.response?.data || verifyErr?.message || verifyErr);
-    }
+ 
   } catch (err: any) {
     const status = err?.response?.status;
     const data = err?.response?.data;
@@ -372,7 +418,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
     birthYear: Number.isFinite(birthYearNum) ? birthYearNum : 0,
     gender: dto.gender || '',
     role:dto.role,
-    city: dto.city || '',
+    city: dto.city,
     phoneNumber: dto.phoneNumber || '',
     profilePhoto: storedPath,
   };
@@ -401,20 +447,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
       constraint: dbErr?.constraint,
       stack: dbErr?.stack,
     });
-  // const validationErrors =
-  // dto.role === 'doctor'
-  //   ? validateDoctorPayload(newDoctor)
-  //   : dto.role === 'patient'
-  //     ? validatePatientPayload(newPatient)
-  //     : validateUserPayload(newUser);
-
-  //   if (validationErrors.length > 0) {
-  //     this.logger.error('Local payload validation failed:', validationErrors);
-  //   } else {
-  //     this.logger.log('Local payload validation passed (no obvious client-side issues).');
-  //   }
-
-    // Try rollback: delete registration and delete user from FusionAuth
+ 
     try {
       const delRegUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/${fusionUserId}/registration/${this.clientId}`;
       const delHeaders: Record<string, string> = { 'Authorization': this.apiKey || '' };
@@ -444,8 +477,9 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
 
   //  throw new InternalServerErrorException(clientMsg);
   }
-
+  
   // success
+  //await db.select().from(schema.cities).where(eq(schema.cities.id,dto.city?.toString()??1))
   return {fusionUserId,...dto,storedPath};
 }
 

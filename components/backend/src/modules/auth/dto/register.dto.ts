@@ -31,7 +31,7 @@ export class RegisterDto {
 
   // gender, city يمكن أن تكون اختيارية أو مطلوبة حسب حاجتك — هنا جعلتها اختيارية
   @IsNotEmpty() @IsString() gender?: string;
-  @IsNotEmpty() @IsString() city?: string;
+  @IsNotEmpty() @IsString() city?: number;
 
   // phoneNumber مطلوب لكلا الدورين بحسب منطقك السابق، لذا نحافظ عليه كحقل محتمل مطلوب
   // استخدمت IsPhoneNumber (يمكنك ضبط البلد إن أردت) — إن لم ترغب استخدم @IsString()
