@@ -1,0 +1,41 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.ipynb_checkpoints/
+
+# Virtual environments & local config
+.venv/
+.env
+.env.*
+.python-version
+pip-wheel-metadata/
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Tooling / IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated vector DB / caches
+chroma_db/
+
+# Logs
+*.log
+
+# Coverage / reports
+.coverage
+coverage.xml
+htmlcov/
+
+# Local dev data/artifacts
+*.sqlite
+*.db

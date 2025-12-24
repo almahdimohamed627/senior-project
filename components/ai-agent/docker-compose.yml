@@ -1,0 +1,23 @@
+services:
+  langchain:
+    container_name: langchain
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000"
+    networks:
+      - proxy
+    # volumes:
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ai-agent-langchain.rule=Host(`${LANGCHAIN_DOMAIN}`)"
+      - "traefik.http.routers.ai-agent-langchain.entrypoints=websecure"
+      - "traefik.http.routers.ai-agent-langchain.tls=true"
+      - "traefik.http.routers.ai-agent-langchain.tls.certresolver=le"
+
+networks:
+  proxy:
+    name: proxy
+    external: true
