@@ -1,6 +1,6 @@
 {
-  "id": "d1e0019b-7e76-4318-aad9-a923ee8e53cc",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "d2cce0cf-c8eb-45d6-b003-0a47fed7b043",
+  "prevId": "d1e0019b-7e76-4318-aad9-a923ee8e53cc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -396,15 +396,7 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "cities_id_unique": {
-          "name": "cities_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "id"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

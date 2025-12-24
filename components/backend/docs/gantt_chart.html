@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Senior Project Timeline</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 25px 0;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-top: 8px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        #chart_div {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            border-radius: 3px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .filter-btn {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .filter-btn.active {
+            background: #6a11cb;
+            color: white;
+            border-color: #6a11cb;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            color: #666;
+            font-size: 0.9rem;
+            border-top: 1px solid #eee;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Senior Project Development Plan</h1>
+            <div class="subtitle">Interactive Gantt Chart with Progress Tracking</div>
+        </header>
+
+        <div class="controls">
+            <div>
+                <button class="filter-btn active" data-filter="all">All Tasks</button>
+                <button class="filter-btn" data-filter="UI/UX">UI/UX</button>
+                <button class="filter-btn" data-filter="Frontend">Frontend</button>
+                <button class="filter-btn" data-filter="Backend">Backend</button>
+                <button class="filter-btn" data-filter="AI">AI</button>
+                <button class="filter-btn" data-filter="DevOps">DevOps</button>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div id="chart_div"></div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: rgb(165, 39, 20);"></div>
+                <span>UI/UX</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #34A853;"></div>
+                <span>Frontend</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: rgb(80, 20, 116);"></div>
+                <span>Backend</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #FBBC05;"></div>
+                <span>AI</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: rgb(42, 86, 198);"></div>
+                <span>DevOps</span>
+            </div>
+        </div>
+
+        <footer>
+            <p>Project Timeline | Last Updated: October 2025</p>
+        </footer>
+    </div>
+
+    <script type="text/javascript">
+        google.charts.load('current', { 'packages': ['gantt'] });
+        google.charts.setOnLoadCallback(drawChart);
+
+        function daysToMilliseconds(days) {
+            return days * 24 * 60 * 60 * 1000;
+        }
+
+        function drawChart() {
+            var data = new google.visualization.DataTable();
+            data.addColumn('string', 'Task ID');
+            data.addColumn('string', 'Task Name');
+            data.addColumn('string', 'Resource');
+            data.addColumn('date', 'Start Date');
+            data.addColumn('date', 'End Date');
+            data.addColumn('number', 'Duration');
+            data.addColumn('number', 'Percent Complete');
+            data.addColumn('string', 'Dependencies');
+
+            var startDate = new Date(2025, 9, 27);
+            var projectEnd = new Date(2025, 11, 15);
+
+            data.addRows([
+                // Week 0 Tasks - Foundation
+                ['SystemSetup', 'System Setup', 'DevOps', startDate, new Date(2025, 10, 18), null, 90, null],
+                ['IntegrationTesting', 'Integration Testing', 'DevOps', new Date(2025, 10, 18), projectEnd, null, 10, 'SystemSetup'],
+                ['SignUpUI', 'Sign In/Up UI/UX', 'UI/UX', startDate, new Date(2025, 10, 4), null, 100, null],
+                ['AIResearch', 'AI Research', 'AI', startDate, new Date(2025, 10, 11), null, 85, null],
+
+                // Week 1 Tasks - Authentication & Core Setup
+                ['AuthBack', 'Authentication Backend', 'Backend', new Date(2025, 10, 4), new Date(2025, 10, 11), null, 100, null],
+                ['AuthFront', 'Auth Front End', 'Frontend', new Date(2025, 10, 11), new Date(2025, 10, 18), null, 70, null],
+                ['BrowseUI', 'Browse Page UI/UX', 'UI/UX', new Date(2025, 10, 11), new Date(2025, 10, 18), null, 100, 'ProfileUI'],
+                ['ChatUI', 'Chat Page UI/UX', 'UI/UX', new Date(2025, 10, 18), new Date(2025, 10, 25), null, 20, 'BrowseUI'],
+
+                // Week 2 Tasks - Backend Development & AI
+                // ['BrowseBack', 'Browse Page Backend', 'Backend', new Date(2025, 9, 17), new Date(2025, 9, 24), null, 0,null ],
+                ['ChatBack', 'Chat Backend', 'Backend', new Date(2025, 11, 1), new Date(2025, 11, 15), null, 0, 'HomeBack'],
+                ['AIModel', 'AI Model Development', 'AI', new Date(2025, 10, 11), projectEnd, null, 40, 'AIResearch'],
+                ['Chatbot', 'Chatbot Development', 'AI', new Date(2025, 10, 11), projectEnd, null, 30, 'AIResearch'],
+
+                // Week 3 Tasks - Frontend & Additional Backend
+                // ['BrowseFront', 'Browse Page Frontend', 'Frontend', new Date(2025, 9, 17), new Date(2025, 9, 24), null, 0, null],
+                ['RequestBack', 'Request/Session Backend', 'Backend', new Date(2025, 10, 18), new Date(2025, 10, 25), null, 80, 'ProfileBack'],
+                // ['ChatFront', 'Chat Front End', 'Frontend', new Date(2025, 9, 24), new Date(2025, 9, 31), null, 0, null],
+                ['ProfileUI', 'Profile UI/UX', 'UI/UX', new Date(2025, 10, 4), new Date(2025, 10, 11), null, 80, 'SignUpUI'],
+
+                // Week 4 Tasks - Profile & Testing
+                ['ProfileBack', 'Profile Backend', 'Backend', new Date(2025, 10, 11), new Date(2025, 10, 18), null, 90, 'AuthBack'],
+                ['ProfileFront', 'Profile Frontend', 'Frontend', new Date(2025, 10, 18), new Date(2025, 10, 25), null, 50, 'AuthFront'],
+                // ['AIPageUI', 'AI Page UI/UX', 'UI/UX', new Date(2025, 9, 31), new Date(2025, 10, 7), null, 0, null],
+
+                // Week 5 Tasks - API Integration & Home Page
+                // ['AIPageBack', 'AI Page Backend', 'Backend', new Date(2025, 10, 7), new Date(2025, 10, 14), null, 0, null],
+                ['HomeBack', 'Home Page Backend', 'Backend', new Date(2025, 10, 25), new Date(2025, 11, 1), null, 60, 'RequestBack'],
+                ['BurgerMenu', 'Burger Menu Frontend', 'Frontend', new Date(2025, 10, 25), new Date(2025, 11, 1), null, 0, 'ProfileFront'],
+                // ['AIPageFront', 'AI Page Front End', 'Frontend', new Date(2025, 10, 7), new Date(2025, 10, 14), null, 0, null],
+                ['HomeUI', 'Homepage UI/UX', 'UI/UX', new Date(2025, 10, 25), new Date(2025, 11, 1), null, 100, 'ChatUI'],
+                // ['AIAPI', 'AI API', 'AI', new Date(2025, 10, 7), new Date(2025, 10, 14), null, 85, null],
+                // ['ChatbotAPI', 'Chatbot API', 'AI', new Date(2025, 10, 7), new Date(2025, 10, 14), null, 0, null],
+
+                // Week 6 Tasks - Final Integration & Optimization
+                ['HomeFront', 'Home Page Front End', 'Frontend', new Date(2025, 11, 1), new Date(2025, 11, 8), null, 0, 'BurgerMenu'],
+                // ['AIOptimize', 'AI Optimization', 'AI', new Date(2025, 10, 14), projectEnd, null, 0, null],
+                // ['ChatbotOptimize', 'Chatbot Optimization', 'AI', new Date(2025, 10, 14), projectEnd, null, 0, null],
+
+                // Admin Dashboard at the bottom as requested
+                ['AdminStart', 'Admin Dashboard', 'Frontend', new Date(2025, 10, 4), projectEnd, null, 10, null]
+            ]);
+
+            var options = {
+                height: 730,
+                gantt: {
+                    trackHeight: 35,
+                    barHeight: 25,
+                    labelStyle: {
+                        fontName: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+                        fontSize: 16,  // Increased font size for task names
+                        color: '#000000',
+                        bold: true
+                    },
+                    barCornerRadius: 3,
+                    shadowEnabled: true,
+                    shadowColor: 'rgba(0,0,0,0.2)',
+                    percentEnabled: true,
+                    percentStyle: {
+                        fill: '#ffffff'
+                    },
+                    innerGridHorizLine: {
+                        stroke: '#f0f0f0',
+                        strokeWidth: 1
+                    },
+                    innerGridTrack: {
+                        fill: '#f8f9fa'
+                    },
+                    innerGridDarkTrack: {
+                        fill: '#e9ecef'
+                    }
+                }
+            };
+
+            var chart = new google.visualization.Gantt(document.getElementById('chart_div'));
+            chart.draw(data, options);
+
+            // Store original data for filtering
+            const originalData = data.clone();
+
+            // Add filter functionality
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    // Remove active class from all buttons
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    // Add active class to clicked button
+                    this.classList.add('active');
+
+                    // Get the filter value
+                    const filterValue = this.getAttribute('data-filter');
+
+                    // Create a new data table for filtering
+                    const filteredData = new google.visualization.DataTable();
+                    filteredData.addColumn('string', 'Task ID');
+                    filteredData.addColumn('string', 'Task Name');
+                    filteredData.addColumn('string', 'Resource');
+                    filteredData.addColumn('date', 'Start Date');
+                    filteredData.addColumn('date', 'End Date');
+                    filteredData.addColumn('number', 'Duration');
+                    filteredData.addColumn('number', 'Percent Complete');
+                    filteredData.addColumn('string', 'Dependencies');
+
+                    // Add rows based on filter
+                    if (filterValue === 'all') {
+                        // Add all rows
+                        for (let i = 0; i < originalData.getNumberOfRows(); i++) {
+                            filteredData.addRow([
+                                originalData.getValue(i, 0),
+                                originalData.getValue(i, 1),
+                                originalData.getValue(i, 2),
+                                originalData.getValue(i, 3),
+                                originalData.getValue(i, 4),
+                                originalData.getValue(i, 5),
+                                originalData.getValue(i, 6),
+                                originalData.getValue(i, 7)
+                            ]);
+                        }
+                    } else {
+                        // Add only rows that match the filter
+                        for (let i = 0; i < originalData.getNumberOfRows(); i++) {
+                            const resource = originalData.getValue(i, 2);
+                            if (resource === filterValue) {
+                                filteredData.addRow([
+                                    originalData.getValue(i, 0),
+                                    originalData.getValue(i, 1),
+                                    originalData.getValue(i, 2),
+                                    originalData.getValue(i, 3),
+                                    originalData.getValue(i, 4),
+                                    originalData.getValue(i, 5),
+                                    originalData.getValue(i, 6),
+                                    originalData.getValue(i, 7)
+                                ]);
+                            }
+                        }
+                    }
+
+                    // Redraw the chart with filtered data
+                    chart.draw(filteredData, options);
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>

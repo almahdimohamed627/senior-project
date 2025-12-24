@@ -446,6 +446,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
       hint: dbErr?.hint,
       constraint: dbErr?.constraint,
       stack: dbErr?.stack,
+      
     });
  
     try {

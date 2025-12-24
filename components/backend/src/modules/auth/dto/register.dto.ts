@@ -6,16 +6,20 @@ import {
   IsInt,
   IsNotEmpty,
   ValidateIf,
-  IsPhoneNumber,
-  Min,
-  Max,
   IsUrl,
+  IsEmail,
+  Length,
+  MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class RegisterDto {
-  @IsString() @IsNotEmpty() email: string;
-  @IsString() @IsNotEmpty() password: string;
+  @IsString() @IsNotEmpty()@IsEmail()email: string;
+
+ @IsString()
+@IsNotEmpty()
+@MinLength(8)
+password: string;
   @IsString() @IsNotEmpty() firstName: string;
   @IsString() @IsNotEmpty() lastName: string;
 
@@ -29,7 +33,6 @@ export class RegisterDto {
   // profilePhoto ممكن تكون اختيارية للجميع
 
 
-  // gender, city يمكن أن تكون اختيارية أو مطلوبة حسب حاجتك — هنا جعلتها اختيارية
   @IsNotEmpty() @IsString() gender?: string;
   @IsNotEmpty() @IsString() city?: number;
 
