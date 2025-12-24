@@ -1,10 +1,6 @@
 {
-<<<<<<< HEAD
-  "id": "6351763c-f156-4f22-9844-f9ecd77c990a",
-=======
-  "id": "d1e0019b-7e76-4318-aad9-a923ee8e53cc",
->>>>>>> 1fd9d049f194e78d82dab626df17aa68bc83b9ae
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "d2cce0cf-c8eb-45d6-b003-0a47fed7b043",
+  "prevId": "d1e0019b-7e76-4318-aad9-a923ee8e53cc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -400,15 +396,7 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "cities_id_unique": {
-          "name": "cities_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "id"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -747,12 +735,7 @@
           "name": "city",
           "type": "integer",
           "primaryKey": false,
-<<<<<<< HEAD
-          "notNull": false,
-          "default": 0
-=======
           "notNull": false
->>>>>>> 1fd9d049f194e78d82dab626df17aa68bc83b9ae
         },
         "birth_year": {
           "name": "birth_year",

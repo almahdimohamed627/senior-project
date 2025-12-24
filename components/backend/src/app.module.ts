@@ -16,7 +16,11 @@ import { LocationsModule } from './locations/modules/locations/locations.module'
       isGlobal: true,
       ttl: 60,    // القيمة الافتراضية لكل المفاتيح بالثواني
       max: 1000,  // حد أقصى لمفاتيح الذاكرة (اختياري)
+<<<<<<< HEAD
     }),  ConfigModule.forRoot({ isGlobal: true }), RequestModule, ChatModule, AiAgentModule, LocationsModule,
+=======
+    }),  ConfigModule.forRoot({ isGlobal: true }), RequestModule, ChatModule, AiAgentModule, LocationsModule
+>>>>>>> 1fd9d049f194e78d82dab626df17aa68bc83b9ae
     ],
   controllers: [AppController],
   providers: [AppService],

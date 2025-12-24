@@ -3,4 +3,8 @@
 # Ignore the entire certs directory
 certs/
 # Ignore the entire dynamic directory
+<<<<<<< HEAD
 dynamic/
+=======
+dynamic/
+>>>>>>> 1fd9d049f194e78d82dab626df17aa68bc83b9ae
