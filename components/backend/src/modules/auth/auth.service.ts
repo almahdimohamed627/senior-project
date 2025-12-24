@@ -446,10 +446,6 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
       hint: dbErr?.hint,
       constraint: dbErr?.constraint,
       stack: dbErr?.stack,
-<<<<<<< HEAD
-=======
-      
->>>>>>> 1fd9d049f194e78d82dab626df17aa68bc83b9ae
     });
  
     try {

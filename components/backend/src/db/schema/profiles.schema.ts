@@ -11,11 +11,7 @@ export const users=pgTable('users',{
   email:varchar('email'),
   gender: varchar('gender', { length: 20 }).notNull(),
   profilePhoto: text('profile_photo'),
-<<<<<<< HEAD
-  city: integer('city').references(()=>cities.id,{onDelete:'set null'}).default(0),
-=======
   city: integer('city').references(()=>cities.id,{onDelete:'set null'}),
->>>>>>> 1fd9d049f194e78d82dab626df17aa68bc83b9ae
   birthYear: integer('birth_year').notNull(),
   phoneNumber: varchar('phone_number', { length: 20 }).notNull(),
   role:role('role'),
