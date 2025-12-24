@@ -1,0 +1,22 @@
+services:
+  ai-model:
+    container_name: ai-model
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000"
+    networks:
+      - proxy
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ai-model-ai-model.rule=Host(`${AI_MODEL_DOMAIN}`)"
+      - "traefik.http.routers.ai-model-ai-model.entrypoints=websecure"
+      - "traefik.http.routers.ai-model-ai-model.tls=true"
+      - "traefik.http.routers.ai-model-ai-model.tls.certresolver=le"
+
+networks:
+  proxy:
+    name: proxy
+    external: true
