@@ -1,0 +1,607 @@
+/* Dracula Theme for exported Org-mode HTML */
+
+:root {
+  /* Dracula Color Palette */
+  --dracula-bg: #282a36;
+  --dracula-bg-alt: #44475a;
+  --dracula-bg-focus: #44475a;
+  --dracula-fg: #f8f8f2;
+  --dracula-fg-alt: #e9e9f3;
+  --dracula-comment: #6272a4;
+  --dracula-cyan: #8be9fd;
+  --dracula-green: #50fa7b;
+  --dracula-orange: #ffb86c;
+  --dracula-pink: #ff79c6;
+  --dracula-purple: #bd93f9;
+  --dracula-red: #ff5555;
+  --dracula-yellow: #f1fa8c;
+  --dracula-selection: #44475a;
+  --dracula-current-line: #44475a;
+}
+
+/* General Styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--dracula-bg);
+  color: var(--dracula-fg);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+  font-size: 16px;
+  overflow-x: hidden;
+}
+
+/* Container */
+.content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: var(--dracula-bg);
+}
+
+/* Headers */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--dracula-pink);
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--dracula-purple);
+  padding-bottom: 0.5rem;
+}
+
+h1 {
+  color: var(--dracula-cyan);
+  font-size: 2.5rem;
+  text-align: center;
+  border-bottom: 3px solid var(--dracula-cyan);
+  margin-bottom: 2rem;
+}
+
+h2 {
+  color: var(--dracula-purple);
+  font-size: 2rem;
+}
+
+h3 {
+  color: var(--dracula-green);
+  font-size: 1.5rem;
+}
+
+h4 {
+  color: var(--dracula-orange);
+  font-size: 1.3rem;
+}
+
+h5, h6 {
+  color: var(--dracula-yellow);
+  font-size: 1.1rem;
+}
+
+/* Paragraphs */
+p {
+  margin-bottom: 1rem;
+  color: var(--dracula-fg);
+}
+
+/* Links */
+a {
+  color: var(--dracula-cyan);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--dracula-cyan);
+  transition: all 0.3s ease;
+}
+
+a:hover {
+  color: var(--dracula-pink);
+  border-bottom: 1px solid var(--dracula-pink);
+  background-color: var(--dracula-selection);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+a:visited {
+  color: var(--dracula-purple);
+}
+
+/* Lists */
+ul, ol {
+  margin-bottom: 1rem;
+  padding-left: 2rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+  color: var(--dracula-fg);
+}
+
+li::marker {
+  color: var(--dracula-pink);
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+  background-color: var(--dracula-bg-alt);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+th, td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--dracula-comment);
+}
+
+th {
+  background-color: var(--dracula-purple);
+  color: var(--dracula-bg);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+td {
+  color: var(--dracula-fg);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover {
+  background-color: var(--dracula-selection);
+}
+
+/* Code Blocks */
+pre, code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+pre {
+  background-color: var(--dracula-bg-alt);
+  border: 1px solid var(--dracula-comment);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--dracula-fg);
+}
+
+code {
+  background-color: var(--dracula-bg-alt);
+  color: var(--dracula-pink);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  border: 1px solid var(--dracula-comment);
+}
+
+/* Blockquotes */
+blockquote {
+  border-left: 4px solid var(--dracula-purple);
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  background-color: var(--dracula-bg-alt);
+  color: var(--dracula-fg-alt);
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+}
+
+blockquote p {
+  margin: 0;
+}
+
+/* Horizontal Rules */
+hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--dracula-purple), transparent);
+  margin: 2rem 0;
+}
+
+/* TOC (Table of Contents) - Side Panel */
+#table-of-contents {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100vh;
+  background-color: var(--dracula-bg-alt);
+  border-right: 2px solid var(--dracula-purple);
+  padding: 2rem 1.5rem;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 4px 0 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
+}
+
+#table-of-contents h2 {
+  color: var(--dracula-cyan);
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--dracula-purple);
+  text-align: center;
+  font-size: 1.3rem;
+  padding-bottom: 0.5rem;
+}
+
+#table-of-contents ul {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+#table-of-contents li {
+  margin-bottom: 0.8rem;
+  line-height: 1.4;
+}
+
+#table-of-contents a {
+  color: var(--dracula-green);
+  text-decoration: none;
+  border-bottom: none;
+  display: block;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+#table-of-contents a:hover {
+  color: var(--dracula-pink);
+  background-color: var(--dracula-selection);
+  transform: translateX(4px);
+}
+
+#table-of-contents .toc-h2-link {
+  font-weight: 600;
+  color: var(--dracula-cyan);
+  font-size: 1rem;
+}
+
+#table-of-contents .toc-h3-link {
+  margin-left: 1rem;
+  font-weight: 400;
+  color: var(--dracula-green);
+  font-size: 0.9rem;
+}
+
+#table-of-contents .toc-h4-link {
+  margin-left: 2rem;
+  font-weight: 400;
+  color: var(--dracula-orange);
+  font-size: 0.85rem;
+}
+
+/* Main content adjustment for side panel */
+.content {
+  margin-left: 320px;
+  padding: 2rem;
+  min-height: 100vh;
+  box-sizing: border-box;
+  width: calc(100% - 320px);
+}
+
+/* Target the main content wrapper that Org-mode creates */
+#content,
+#postamble,
+#preamble,
+main,
+.content,
+body > div:not(#table-of-contents):not(.toc-toggle) {
+  margin-left: 320px;
+  padding: 2rem;
+  box-sizing: border-box;
+  width: calc(100% - 320px);
+}
+
+/* Ensure any direct content in body is also shifted */
+body > h1,
+body > h2,
+body > h3,
+body > h4,
+body > h5,
+body > h6,
+body > p,
+body > ul,
+body > ol,
+body > table,
+body > blockquote,
+body > pre {
+  margin-left: 320px;
+  margin-right: 2rem;
+  padding-left: 0;
+  max-width: calc(100% - 340px);
+}
+
+body > h1 {
+  text-align: left;
+  margin-left: 320px;
+}
+
+/* Ensure body has no default margin/padding */
+body {
+  background-color: var(--dracula-bg);
+  color: var(--dracula-fg);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+  font-size: 16px;
+  overflow-x: hidden;
+}
+
+/* Mobile toggle button */
+.toc-toggle {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1001;
+  background-color: var(--dracula-purple);
+  color: var(--dracula-bg);
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.toc-toggle:hover {
+  background-color: var(--dracula-pink);
+  transform: scale(1.05);
+}
+
+/* Hide TOC on mobile by default */
+@media (max-width: 768px) {
+  #table-of-contents {
+    transform: translateX(-100%);
+  }
+  
+  #table-of-contents.toc-visible {
+    transform: translateX(0);
+  }
+  
+  .content,
+  #content,
+  #postamble,
+  #preamble,
+  main,
+  body > div:not(#table-of-contents):not(.toc-toggle) {
+    margin-left: 0 !important;
+    padding: 1rem;
+    padding-top: 4rem;
+    width: 100% !important;
+  }
+  
+  body > h1,
+  body > h2,
+  body > h3,
+  body > h4,
+  body > h5,
+  body > h6,
+  body > p,
+  body > ul,
+  body > ol,
+  body > table,
+  body > blockquote,
+  body > pre {
+    margin-left: 1rem !important;
+    margin-right: 1rem !important;
+    padding-left: 0 !important;
+    max-width: none !important;
+  }
+  
+  .toc-toggle {
+    display: block;
+  }
+}
+
+@media (max-width: 1024px) {
+  #table-of-contents {
+    width: 250px;
+  }
+  
+  .content,
+  #content,
+  #postamble,
+  #preamble,
+  main,
+  body > div:not(#table-of-contents):not(.toc-toggle) {
+    margin-left: 290px;
+    width: calc(100% - 290px);
+  }
+  
+  body > h1,
+  body > h2,
+  body > h3,
+  body > h4,
+  body > h5,
+  body > h6,
+  body > p,
+  body > ul,
+  body > ol,
+  body > table,
+  body > blockquote,
+  body > pre {
+    margin-left: 290px;
+    margin-right: 2rem;
+    max-width: calc(100% - 310px);
+  }
+}
+
+/* Org-mode specific styles */
+.outline-2, .outline-3, .outline-4 {
+  margin-bottom: 2rem;
+}
+
+.outline-text {
+  margin-left: 1rem;
+}
+
+/* Example blocks */
+.example {
+  background-color: var(--dracula-bg-alt);
+  border: 1px solid var(--dracula-green);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.example pre {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Source code blocks */
+.src {
+  background-color: var(--dracula-bg-alt);
+  border: 1px solid var(--dracula-cyan);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.src::before {
+  content: attr(data-language);
+  color: var(--dracula-cyan);
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+/* Footnotes */
+.footnotes {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--dracula-comment);
+}
+
+.footnotes h2 {
+  color: var(--dracula-orange);
+  font-size: 1.2rem;
+}
+
+.footnote {
+  color: var(--dracula-comment);
+  font-size: 0.9rem;
+}
+
+/* Tags and metadata */
+.tag {
+  background-color: var(--dracula-purple);
+  color: var(--dracula-bg);
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  margin-right: 0.5rem;
+}
+
+.timestamp {
+  color: var(--dracula-comment);
+  font-style: italic;
+}
+
+/* Special elements for this project */
+.emoji {
+  font-size: 1.2rem;
+  vertical-align: middle;
+  margin-right: 0.3rem;
+}
+
+/* Checkbox lists */
+input[type="checkbox"] {
+  margin-right: 0.5rem;
+  accent-color: var(--dracula-green);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--dracula-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--dracula-purple);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dracula-pink);
+}
+
+/* Selection styling */
+::selection {
+  background-color: var(--dracula-purple);
+  color: var(--dracula-bg);
+}
+
+/* Focus styling */
+:focus {
+  outline: 2px solid var(--dracula-cyan);
+  outline-offset: 2px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .content {
+    padding: 1rem;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  table {
+    font-size: 0.9rem;
+  }
+  
+  th, td {
+    padding: 0.5rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background-color: white;
+    color: black;
+  }
+  
+  a {
+    color: black;
+    text-decoration: underline;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    color: black;
+    border-color: black;
+  }
+}
