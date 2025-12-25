@@ -1,5 +1,5 @@
 #+TITLE: Senior Project: AI-Powered Dental Care Management System
-#+AUTHOR: Senior Project Team
+#+AUTHOR: Mohamed Almahdi, Mustafa Aboud, Amer Habanakeh, Rami Maghrabi, Ahmad Almnsi
 #+DATE: 2025
 #+OPTIONS: toc:2 num:t
 
