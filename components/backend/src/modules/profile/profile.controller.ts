@@ -79,7 +79,7 @@ export class ProfileController {
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.DOCTOR, Role.PATIENT)
-@Patch('me')
+@Patch('updateprofile')
 @UseInterceptors(FileInterceptor('profilePhoto', {
   storage: diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOADS_FOLDER),

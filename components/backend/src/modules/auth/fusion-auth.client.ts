@@ -19,10 +19,10 @@ export class FusionAuthClientWrapper {
   async exchangePassword(email: string, password: string, clientId: string, clientSecret: string) {
     const params = new URLSearchParams();
     params.append('grant_type', 'password');
-params.append('username', email);
-params.append('password', password);
-params.append('client_id', clientId);
-params.append('client_secret', clientSecret);
+    params.append('username', email);
+    params.append('password', password);
+    params.append('client_id', clientId);
+    params.append('client_secret', clientSecret);
 // اطلب offline_access للحصول على refresh token، وopenid إذا تريد id_token
 params.append('scope', 'offline_access openid');
 
