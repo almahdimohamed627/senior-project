@@ -23,6 +23,7 @@ import { diskStorage } from 'multer';
 import path, { extname, join } from 'path';
 import { existsSync, mkdirSync, } from 'fs';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResetPasswordDto } from './dto/resetpassword.dto';
 const UPLOADS_FOLDER = 'uploads';
 
 // ensure uploads folder exists (will create if missing)
@@ -99,6 +100,13 @@ export class AuthController {
     const resp = await this.authService.introspectAccessToken(token);
     return resp;
   }
+  // @Post('reset-password')
+  // async resetPssword(@Body() resetPassword:ResetPasswordDto){
+  //  if(resetPassword.newPassword != resetPassword.confirmNewPassword){
+  //   throw new BadRequestException('confirmNewPassword must match newPassword');
+  //  }
+  //  return this.authService.restPassword(resetPassword)
+  // }
 
   @Post('profileFromIdToken')
   async profileFromIdToken(@Body('id_token') id_token: string) {
