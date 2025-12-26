@@ -34,7 +34,7 @@ password: string;
 
 
   @IsNotEmpty() @IsString() gender?: string;
-  @IsNotEmpty() @IsString() city?: number;
+  @IsNotEmpty()  city?: number;
 
   // phoneNumber مطلوب لكلا الدورين بحسب منطقك السابق، لذا نحافظ عليه كحقل محتمل مطلوب
   // استخدمت IsPhoneNumber (يمكنك ضبط البلد إن أردت) — إن لم ترغب استخدم @IsString()
