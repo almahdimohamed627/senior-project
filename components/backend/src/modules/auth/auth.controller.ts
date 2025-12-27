@@ -137,7 +137,8 @@ export class AuthController {
   }))
   @Post('register')
   async register(@Body() body: RegisterDto,@UploadedFile() file?: Express.Multer.File) {
-   let storedPath = file ? path.join(UPLOADS_FOLDER, file.filename) : undefined ;
+   let storedPath = file ? `/uploads/${file.filename}` : undefined;
+if (!storedPath) storedPath = '/uploads/avatar.png';
   console.log('file:', file?.originalname, file?.mimetype, file?.size);
 console.log('body keys:', Object.keys(body));
     const user = await this.authService.registerUserAndProfile(body,storedPath);
