@@ -300,9 +300,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
   let createdUserResp: any;
 
   
-  if(!storedPath){
-    storedPath='uploads/avatar.png'
-  }
+
 
 
 
@@ -411,6 +409,8 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
     fusionAuthId: fusionUserId,
 
   };
+  // storedPath=`app.almahdi.cloud/${storedPath}`
+  //console.log(storedPath)
   const newUser = {
     fusionAuthId: fusionUserId,
     firstName:dto.firstName,

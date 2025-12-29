@@ -3,7 +3,7 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { likes, posts } from 'src/db/schema/posts.schema';
 import { db } from 'src/db/client';
-import {schema} from 'src/db/schema/schema';
+import {schema, users} from 'src/db/schema/schema';
 import { and, eq, sql } from 'drizzle-orm'; // ✅ أهم import!
 import { unlink } from 'fs/promises';
 import { join } from 'path';
@@ -136,8 +136,12 @@ async findOne(id: number) {
   return result[0];
 }
 async findOneByUserId(id: string) {
+  let user=await db.select().from(users).where(eq(users.fusionAuthId,id))
+  if(!user[0]){
+    throw new NotFoundException(`there is no user`)
+  }
   const result = await db.select().from(posts).where(eq(posts.userId, id));
-  if (!result.length) throw new NotFoundException(`Post with id ${id} not found`);
+  if (!result.length) throw new NotFoundException(`there is no post for this user`);
   return result;
 }
 

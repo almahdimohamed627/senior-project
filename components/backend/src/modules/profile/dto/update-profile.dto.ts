@@ -25,11 +25,18 @@ export class UpdateProfileDto  {
   @IsString()
   @IsUrl()
   @IsOptional()
-  profilePhoto?: string; // في حال جاء كرابط جاهز
+  profilePhoto?: string; 
 
     @IsOptional()
   @IsString()
   city?: string;
+
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
+  @IsOptional()
+  @IsString()
+  birthYear?: string;
 
   @IsOptional()
   @IsString()

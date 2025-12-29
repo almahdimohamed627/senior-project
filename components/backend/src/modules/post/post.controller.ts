@@ -54,6 +54,7 @@ export class PostController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     const authorId = req.user?.sub || req.user?.userId;
+    console.log(authorId)
     if (!authorId) {
       // Shouldn't happen if JwtAuthGuard valid
       throw new BadRequestException('User not authenticated');
