@@ -30,6 +30,7 @@ COPY --from=builder /app/dist ./dist
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nestapp -u 1001
+RUN mkdir /app/uploads
 RUN chown -R nestapp:nodejs /app
 USER nestapp
 
