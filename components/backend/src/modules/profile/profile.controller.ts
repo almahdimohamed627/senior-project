@@ -114,7 +114,6 @@ async updateMe(
 
   const storedPath = file ? path.join(UPLOADS_FOLDER, file.filename) : undefined;
 
-  // تحديث بالاعتماد على fusionAuthId وليس id من الباث
 
   return this.profileService.updateMe({
     type,

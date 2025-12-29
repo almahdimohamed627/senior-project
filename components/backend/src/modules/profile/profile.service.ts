@@ -11,7 +11,7 @@ import pLimit from 'p-limit';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 import axios from 'axios';
-import {schema} from 'src/db/schema/schema';
+import {cities, schema} from 'src/db/schema/schema';
 import { AuthService } from 'src/modules/auth/auth.service';
 
 interface FusionUser {
@@ -241,7 +241,7 @@ async findAll() {
       firstName: firstNameFromFusion ?? baseUser.firstName ?? null,
       lastName: lastNameFromFusion ?? baseUser.lastName ?? null,
       email: emailFromFusion ?? null,
-      city: baseUser.city ?? null,
+      city: userRows[0].city ,
       specialty: (local as any).specialty ?? null, // موجودة فقط في doctorProfile
       // إذا الحقل فارغ أو null نعيد default
       profilePhoto:
@@ -249,7 +249,17 @@ async findAll() {
           ? baseUser.profilePhoto
           : this.defaultPhoto,
     };
-
+    if(publicProfile.city){
+      let city=await db.select().from(cities).where(eq(cities.id,publicProfile.city))
+      console.log(city[0])
+        return {
+      profile: publicProfile,
+      availabilities,
+      city:city[0]
+    };
+    }
+    
+    
     return {
       profile: publicProfile,
       availabilities,
@@ -336,6 +346,8 @@ async findAll() {
     if (dto.gender !== undefined) userUpdates.gender = dto.gender;
     if(dto.firstName!==undefined) userUpdates.firstName=dto.firstName
     if(dto.lastName!==undefined) userUpdates.lastName=dto.lastName
+    if(dto.phoneNumber!==undefined) userUpdates.phoneNumber=dto.phoneNumber
+    if(dto.birthYear!==undefined) userUpdates.birthYear=dto.birthYear
 
 
     if (Object.keys(userUpdates).length > 1) {
