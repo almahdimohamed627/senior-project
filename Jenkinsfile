@@ -122,7 +122,6 @@ pipeline {
         sendTelegramNotification("unstable")
       }
     }
-    }
     always {
       script { currentBuild.description = "Components: ${env.COMPONENTS_STRING ?: env.DISCOVERED_COMPONENTS}" }
       cleanWs()
