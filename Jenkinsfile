@@ -73,13 +73,11 @@ pipeline {
 
           def layers = layerize(components, deps())
           echo "Build layers: ${layers}"
-          runLayered(layers, 'build')
+          def buildResults = [:]
+          runLayered(layers, 'build', buildResults)
+          env.BUILD_RESULTS = buildResults.inspect()
         }
       }
-    }
-
-    stage('Integration Test') {
-      steps { script { runIntegrationTests() } }
     }
 
     stage('Deploy (layered waves)') {
@@ -92,9 +90,15 @@ pipeline {
 
           def layers = layerize(components, deps())
           echo "Deploy layers: ${layers}"
-          runLayered(layers, 'deploy')
+          def deployResults = [:]
+          runLayered(layers, 'deploy', deployResults)
+          env.DEPLOY_RESULTS = deployResults.inspect()
         }
       }
+    }
+
+    stage('Integration Test') {
+      steps { script { runIntegrationTests() } }
     }
   }
 
@@ -117,6 +121,7 @@ pipeline {
         echo "⚠️ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
         sendTelegramNotification("unstable")
       }
+    }
     }
     always {
       script { currentBuild.description = "Components: ${env.COMPONENTS_STRING ?: env.DISCOVERED_COMPONENTS}" }
@@ -170,7 +175,7 @@ def layerize(List wanted, Map depmap) {
   return layers
 }
 
-def runLayered(List layers, String op /* 'build' or 'deploy' */) {
+def runLayered(List layers, String op /* 'build' or 'deploy' */, Map results) {
   layers.eachWithIndex { layer, idx ->
     stage("${op.capitalize()} Wave ${idx+1}") {
       echo "${op.capitalize()} in parallel for: ${layer}"
@@ -178,8 +183,15 @@ def runLayered(List layers, String op /* 'build' or 'deploy' */) {
       layer.each { comp ->
         par["${op}_${comp}"] = {
           stage("${op.capitalize()} ${comp}") {
-            if (op == 'build') buildComponent(comp)
-            else               deployComponent(comp)
+            try {
+              if (op == 'build') buildComponent(comp)
+              else if (op == 'deploy') deployComponent(comp)
+              results[comp] = 'success'
+            } catch (Exception e) {
+              results[comp] = 'failed'
+              echo "❌ ${op.capitalize()} failed for ${comp}: ${e.message}"
+              // Continue with others, don't fail pipeline
+            }
           }
         }
       }
@@ -248,7 +260,7 @@ def sendTelegramNotification(String status) {
       def componentDetails = getComponentDetails()
 
       if (status == "success") {
-        emoji = "✅"
+        emoji = "🎉"
         message = """
 ${emoji} *🚀 Build Success*
 
@@ -260,16 +272,18 @@ ${emoji} *🚀 Build Success*
 *🏗 Component Details:*
 ${componentDetails}
 
+*Component Status:*
+${getComponentStatuses()}
+
 *📊 Build Stages:*
-• 🔍 Discover Components - ✅ Completed
 • 🏗 Build - ✅ Done
+• 🚀 Deployment - ✅ Deployed
 • 🧪 Integration Test - ✅ Passed
-• 🚀 Deployment - ${params.DEPLOY ? '✅ Deployed' : '⏸️ Not Deployed'}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 """
       } else {
-        emoji = "❌"
+        emoji = "💥"
         message = """
 ${emoji} *💥 Build Failed*
 
@@ -281,11 +295,40 @@ ${emoji} *💥 Build Failed*
 *🏗 Component Details:*
 ${componentDetails}
 
+*Component Status:*
+${getComponentStatuses()}
+
 *📊 Build Stages:*
-• 🔍 Discover Components - ✅ Completed
 • 🏗 Build - ❌ Failed
-• 🧪 Integration Test - ⏸️ Skipped
 • 🚀 Deployment - ⏸️ Skipped
+• 🧪 Integration Test - ⏸️ Skipped
+
+*🔍 Recent Changes:*
+${getRecentChanges()}
+
+*🔗 Build URL:* [View Build](${env.BUILD_URL})
+*📝 Console Log:* [View Log](${env.BUILD_URL}console)
+"""
+      } else if (status == "unstable") {
+        emoji = "⚠️"
+        message = """
+${emoji} *⚠️ Build Unstable*
+
+*📋 Job:* ${env.JOB_NAME}
+*🔢 Build:* #${env.BUILD_NUMBER}
+*🌿 Branch:* ${branch}
+*⏱️ Duration:* ${duration}
+
+*🏗 Component Details:*
+${componentDetails}
+
+*Component Status:*
+${getComponentStatuses()}
+
+*📊 Build Stages:*
+• 🏗 Build - ⚠️ Unstable
+• 🚀 Deployment - ⏸️ Skipped
+• 🧪 Integration Test - ⏸️ Skipped
 
 *🔍 Recent Changes:*
 ${getRecentChanges()}
@@ -330,6 +373,23 @@ def getComponentDetails() {
     details = "• ${env.COMPONENTS_STRING ?: 'No components discovered'}\n"
   }
   return details
+}
+
+def getComponentStatuses() {
+  def status = ""
+  try {
+    def buildResults = env.BUILD_RESULTS ? evaluate(env.BUILD_RESULTS) : [:]
+    def deployResults = env.DEPLOY_RESULTS ? evaluate(env.DEPLOY_RESULTS) : [:]
+    def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').collect { it.trim() } : []
+    components.each { comp ->
+      def buildStatus = buildResults[comp] == 'success' ? '✅' : '❌'
+      def deployStatus = deployResults[comp] == 'success' ? '✅' : '❌'
+      status += "${comp}: ${buildStatus} build, ${deployStatus} deploy\n"
+    }
+  } catch (Exception e) {
+    status = "Status unavailable\n"
+  }
+  return status
 }
 
 def getComponentType(componentName) {
@@ -538,6 +598,8 @@ def autoBuildComponent(componentName) {
 
 def runIntegrationTests() {
   echo "Running integration tests"
+  // TODO: Implement actual integration test logic (e.g., API calls between components, health checks)
+  // TODO: Set integration test status in env for Telegram notifications
   sh '''
     echo "Running integration tests between components"
     # TODO: add real integration tests here
