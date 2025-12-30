@@ -122,7 +122,6 @@ pipeline {
         sendTelegramNotification("unstable")
       }
     }
-    }
     always {
       script { currentBuild.description = "Components: ${env.COMPONENTS_STRING ?: env.DISCOVERED_COMPONENTS}" }
       cleanWs()
@@ -282,7 +281,7 @@ ${getComponentStatuses()}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 """
-      } else {
+      } else if (status == "failure") {
         emoji = "💥"
         message = """
 ${emoji} *💥 Build Failed*
