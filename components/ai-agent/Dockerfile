@@ -1,4 +1,3 @@
-stoped
 # Use an official Python runtime as a base image
 FROM python:3.10-slim
 
