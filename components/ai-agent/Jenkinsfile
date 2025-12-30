@@ -86,9 +86,9 @@ def build() {
                             # Additional health check for langchain
                             echo "Checking if langchain is accessible..."
                             for i in 1 2 3; do
-                                if curl -s -f http://localhost:3000/health >/dev/null 2>&1 || 
-                                   curl -s -f http://localhost:3000 >/dev/null 2>&1; then
-                                    echo "✅ ai-agent is accessible at http://localhost:3000"
+                                if curl -s -f http://localhost:8000/health >/dev/null 2>&1 ||
+                                   curl -s -f http://localhost:8000 >/dev/null 2>&1; then
+                                    echo "✅ ai-agent is accessible at http://localhost:8000"
                                     break
                                 else
                                     echo "⏳ Attempt $i: ai-agent not yet accessible, waiting..."
@@ -232,17 +232,17 @@ def deploy() {
         // Custom health check for ai-agent
         sh '''
             for i in 1 2 3; do
-                if curl -s -f http://localhost:3000/health >/dev/null 2>&1 || 
-                   curl -s -f http://localhost:3000 >/dev/null 2>&1; then
-                    echo "✅ ai-agent is accessible at http://localhost:3000"
+                if curl -s -f http://localhost:8000/health >/dev/null 2>&1 ||
+                   curl -s -f http://localhost:8000 >/dev/null 2>&1; then
+                    echo "✅ ai-agent is accessible at http://localhost:8000"
                     break
                 else
                     echo "⏳ Attempt $i: ai-agent not yet accessible, waiting..."
                     sleep 30
                 fi
             done
-            if ! curl -s -f http://localhost:3000/health >/dev/null 2>&1 && 
-               ! curl -s -f http://localhost:3000 >/dev/null 2>&1; then
+            if ! curl -s -f http://localhost:8000/health >/dev/null 2>&1 &&
+               ! curl -s -f http://localhost:8000 >/dev/null 2>&1; then
                 echo "⚠️ ai-agent not accessible, showing recent logs..."
                 docker compose --env-file .env logs --tail=50 langchain || true
             fi

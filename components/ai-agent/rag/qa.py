@@ -1,8 +1,16 @@
+"""QA chain logic: detects if query is dental, routes children, asks for triggers,
+and uses LangChain (Ollama LLM + Chroma retriever) to triage to the closest specialty."""
+
+import os
+
 from langchain_ollama import OllamaLLM
+from langchain_groq import ChatGroq
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda
 from langchain_chroma import Chroma
+
+from .reranker import rerank
 
 LLM_MODEL_NAME = "llama3.1"
 
@@ -65,6 +73,37 @@ CHILD_KEYWORDS = [
 ]
 
 
+def get_llm(backend: str = "groq"):
+    """
+    Return the configured LLM client; groq is default backend.
+    Switch via env DENTAL_LLM_BACKEND=groq|ollama (defaults to groq).
+    """
+    backend = (backend or "groq").lower()
+
+    if backend == "groq":
+        api_key = os.getenv("GROQ_API_KEY", "").strip()
+        if not api_key:
+            raise ValueError("GROQ_API_KEY is not set in environment")
+
+        model_name = os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
+
+        return ChatGroq(
+            api_key=api_key,
+            model_name=model_name,
+            temperature=0.0,
+        )
+
+    elif backend == "ollama":
+        ollama_model = os.getenv("OLLAMA_LLM_MODEL", "llama3.1")
+        return OllamaLLM(
+            model=ollama_model,
+            temperature=0.0,
+        )
+
+    else:
+        raise ValueError(f"Unsupported LLM backend: {backend}")
+
+
 def _normalize(text: str) -> str:
     return (
         text.replace("أ", "ا")
@@ -91,16 +130,26 @@ def _is_child(text: str) -> bool:
     return any(k in norm for k in CHILD_KEYWORDS)
 
 
-def create_qa_chain(vectordb: Chroma) -> RunnableLambda:
+def create_qa_chain(vectordb: Chroma, backend: str = "groq") -> RunnableLambda:
+    rerank_enabled = (os.getenv("DENTAL_USE_RERANKER", "false") or "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    rerank_candidates = int(os.getenv("DENTAL_RERANK_CANDIDATES", "8"))
+    rerank_topk = int(os.getenv("DENTAL_RERANK_TOPK", "4"))
+    rerank_model = os.getenv(
+        "DENTAL_RERANK_MODEL", "Omartificial-Intelligence-Space/ARA-Reranker-V1"
+    )
+    if rerank_enabled:
+        print(f"🔁 Reranker enabled: {rerank_model}")
+
     retriever = vectordb.as_retriever(
         search_type="similarity_score_threshold",
-        search_kwargs={"k": 8, "score_threshold": 0.4},
+        search_kwargs={"k": rerank_candidates, "score_threshold": 0.4},
     )
 
-    llm = OllamaLLM(
-        model=LLM_MODEL_NAME,
-        temperature=0.0,
-    )
+    llm = get_llm(backend=backend)
     parser = StrOutputParser()
 
     rewrite_prompt = PromptTemplate(
@@ -216,6 +265,12 @@ def create_qa_chain(vectordb: Chroma) -> RunnableLambda:
         rewritten = rewrite_chain.invoke({"question": question})
 
         docs = retriever.invoke(rewritten)
+
+        if rerank_enabled and docs:
+            before = len(docs)
+            docs = rerank(question, docs, top_k=rerank_topk)
+            print(f"🔁 Reranked docs: before={before}, after={len(docs)}")
+
         context = "\n\n".join(doc.page_content for doc in docs)
 
         if not docs or not context.strip():

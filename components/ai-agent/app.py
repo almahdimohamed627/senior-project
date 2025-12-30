@@ -1,3 +1,4 @@
+import os
 import sys
 
 from rag.vectorstore import get_or_create_vectorstore
@@ -11,6 +12,8 @@ def main():
     print("🦷 Dental RAG Assistant")
     print("-----------------------")
 
+    backend = os.getenv("DENTAL_LLM_BACKEND", "groq")
+
     try:
         vectordb = get_or_create_vectorstore()
     except Exception as e:
@@ -18,7 +21,7 @@ def main():
         print(e)
         sys.exit(1)
 
-    qa = create_qa_chain(vectordb)
+    qa = create_qa_chain(vectordb, backend=backend)
 
     patient_age = None
     while patient_age is None:
