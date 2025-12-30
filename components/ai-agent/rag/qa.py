@@ -3,7 +3,6 @@ and uses LangChain (Ollama LLM + Chroma retriever) to triage to the closest spec
 
 import os
 
-from langchain_ollama import OllamaLLM
 from langchain_groq import ChatGroq
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
@@ -93,12 +92,6 @@ def get_llm(backend: str = "groq"):
             temperature=0.0,
         )
 
-    elif backend == "ollama":
-        ollama_model = os.getenv("OLLAMA_LLM_MODEL", "llama3.1")
-        return OllamaLLM(
-            model=ollama_model,
-            temperature=0.0,
-        )
 
     else:
         raise ValueError(f"Unsupported LLM backend: {backend}")

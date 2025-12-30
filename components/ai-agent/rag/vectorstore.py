@@ -12,31 +12,6 @@ EMBED_MODEL_NAME = "nomic-embed-text"
 HF_EMBED_MODEL = "intfloat/multilingual-e5-base"
 
 
-class SafeOllamaEmbeddings(OllamaEmbeddings):
-    """Work around intermittent embed_documents failures by calling embed per text batch."""
-
-    def embed_documents(self, texts):
-        if not self._client:
-            msg = (
-                "Ollama client is not initialized. "
-                "Please ensure Ollama is running and the model is loaded."
-            )
-            raise ValueError(msg)
-        embeddings = []
-        for text in texts:
-            resp = self._client.embed(
-                self.model,
-                [text],
-                options=self._default_params,
-                keep_alive=self.keep_alive,
-            )
-            embeddings.append(resp["embeddings"][0])
-        return embeddings
-
-    def embed_query(self, text: str):
-        return self.embed_documents([text])[0]
-
-
 class E5Embeddings(HuggingFaceEmbeddings):
     """Wrapper to add required E5 prefixes."""
 
@@ -69,9 +44,6 @@ def get_embeddings():
     backend, model_name = _get_embed_backend_and_model()
     if backend == "huggingface":
         return E5Embeddings(model_name=model_name)
-    if backend == "ollama":
-        base_url = os.getenv("OLLAMA_HOST") or "http://127.0.0.1:11434"
-        return SafeOllamaEmbeddings(model=EMBED_MODEL_NAME, base_url=base_url)
     raise ValueError(f"Unsupported embedding backend: {backend}")
 
 
