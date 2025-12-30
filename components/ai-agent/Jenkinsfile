@@ -57,8 +57,6 @@ def build() {
                         # Build the specific service image directly, ensuring no-cache
                         docker build --no-cache --pull -t ai-agent-langchain .
 
-                        # Even with direct build, try a final compose build to ensure service configuration is updated
-                        docker compose --env-file .env build --no-cache langchain || echo "Compose build may be redundant but attempted."
                         echo "running python ingest.py"
                         docker run ai-agent-langchain python ingest.py
                     '''
@@ -164,7 +162,6 @@ def build() {
                 sh '''
                     echo "Building ai-agent services..."
                     docker build --no-cache --pull -t ai-agent-langchain .
-                    docker compose build --no-cache langchain || echo "Compose build may be redundant but attempted."
                 '''
             } else {
                 echo "⚠️ No build configuration found - skipping build"
