@@ -751,16 +751,16 @@ def performComponentHealthCheck(componentName) {
     case 'traefik':
       sh '''
         for i in 1 2 3; do
-          if curl -s -f http://localhost:2468/ >/dev/null; then
-            echo "✅ Traefik dashboard is accessible at http://localhost:2468"
+          if curl -s -f https://whoami.almahdi.cloud/ >/dev/null 2>&1; then
+            echo "✅ Traefik public routing working - whoami.almahdi.cloud accessible"
             break
           else
-            echo "⏳ Attempt $i: Traefik not yet accessible, waiting..."
+            echo "⏳ Attempt $i: Traefik public routing not ready, waiting..."
             sleep 15
           fi
         done
-        if ! curl -s -f http://localhost:2468/ >/dev/null; then
-          echo "⚠️ Traefik not accessible, showing recent logs..."
+        if ! curl -s -f https://whoami.almahdi.cloud/ >/dev/null 2>&1; then
+          echo "⚠️ Traefik public routing not working, showing recent logs..."
           docker compose logs --tail=50 traefik || true
         fi
       '''
