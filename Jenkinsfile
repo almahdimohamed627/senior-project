@@ -412,11 +412,6 @@ def getComponentStatuses() {
   }
   return status
 }
-  } catch (Exception e) {
-    status = "Status unavailable\n"
-  }
-  return status
-}
 
 def getIntegrationTestStatus() {
   def status = env.INTEGRATION_TEST_STATUS ?: 'unknown'
