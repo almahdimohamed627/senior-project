@@ -495,18 +495,13 @@ def buildComponent(componentName) {
   }
 
   dir("components/${componentName}") {
-    try {
-      if (fileExists('Jenkinsfile')) {
-        echo "Loading component-specific Jenkinsfile for ${componentName}"
-        def componentLib = load 'Jenkinsfile'
-        componentLib.build()  // Call the build method
-      } else {
-        echo "No Jenkinsfile found for ${componentName}, using auto-build"
-        autoBuildComponent(componentName)
-      }
-    } catch (Exception e) {
-      echo "❌ Failed to build ${componentName}: ${e.message}"
-      // Don't fail the entire pipeline for one component
+    if (fileExists('Jenkinsfile')) {
+      echo "Loading component-specific Jenkinsfile for ${componentName}"
+      def componentLib = load 'Jenkinsfile'
+      componentLib.build()  // Call the build method
+    } else {
+      echo "No Jenkinsfile found for ${componentName}, using auto-build"
+      autoBuildComponent(componentName)
     }
   }
 }
@@ -647,18 +642,13 @@ def deployComponent(componentName) {
 
   dir("components/${componentName}") {
     script {
-      try {
-        if (fileExists('Jenkinsfile')) {
-          echo "Loading component-specific Jenkinsfile for ${componentName}"
-          def componentLib = load 'Jenkinsfile'
-          componentLib.deploy()  // Call the deploy method
-        } else {
-          echo "No Jenkinsfile found for ${componentName}, using auto-deploy"
-          autoDeployComponent(componentName)
-        }
-      } catch (Exception e) {
-        echo "❌ Deployment failed for ${componentName}: ${e.message}"
-        // Don't fail the entire pipeline for one component
+      if (fileExists('Jenkinsfile')) {
+        echo "Loading component-specific Jenkinsfile for ${componentName}"
+        def componentLib = load 'Jenkinsfile'
+        componentLib.deploy()  // Call the deploy method
+      } else {
+        echo "No Jenkinsfile found for ${componentName}, using auto-deploy"
+        autoDeployComponent(componentName)
       }
     }
   }

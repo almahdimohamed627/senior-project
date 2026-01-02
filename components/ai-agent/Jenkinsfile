@@ -65,56 +65,7 @@ def build() {
                 }
             }
             
-            stage('Smoke Test') {
-                try {
-                    sh '''
-                        echo "Starting services for smoke test with environment file..."
-                        docker compose --env-file .env up -d
-                        
-                        # Wait for services to be ready
-                        sleep 15
-                        
-                        # Check if services are running
-                        docker compose --env-file .env ps
-                        
-                        # Run basic health checks (adjust based on your services)
-                        if docker compose --env-file .env ps | grep -q "Up"; then
-                            echo "✅ Services are running"
-                            
-                             # Additional health check for ai-agent
-                             echo "Checking if ai-agent is accessible..."
-                             for i in 1 2 3; do
-                                 if curl -s -f http://localhost:8000 >/dev/null 2>&1; then
-                                     echo "✅ ai-agent is accessible at http://localhost:8000"
-                                     break
-                                 else
-                                     echo "⏳ Attempt $i: ai-agent not yet accessible, waiting..."
-                                     sleep 5
-                                 fi
-                             done
-                        else
-                            echo "❌ Some services failed to start"
-                            echo "=== Container logs ==="
-                            docker compose --env-file .env logs || true
-                            exit 1
-                        fi
-                    '''
-                } catch (Exception e) {
-                    echo "❌ Smoke test failed: ${e.message}"
-                    sh '''
-                        echo "=== Debug Information ==="
-                        docker compose --env-file .env ps 2>/dev/null || true
-                        echo "=== Recent Logs ==="
-                        docker compose --env-file .env logs --tail=50 2>/dev/null || true
-                    '''
-                    throw e
-                } finally {
-                    sh '''
-                        echo "Stopping services after smoke test..."
-                        docker compose --env-file .env down 2>/dev/null || true
-                    '''
-                }
-            }
+
             
             stage('Save Compose Configuration') {
                 sh '''
@@ -167,30 +118,7 @@ def build() {
             }
         }
         
-        stage('Smoke Test') {
-            try {
-                sh '''
-                    echo "Starting services for smoke test..."
-                    docker compose up -d
-                        sleep 15
-                    docker compose ps
-                    if docker compose ps | grep -q "Up"; then
-                        echo "✅ Services are running"
-                    else
-                        echo "❌ Some services failed to start"
-                        exit 1
-                    fi
-                '''
-            } catch (Exception e) {
-                echo "❌ Smoke test failed: ${e.message}"
-                throw e
-            } finally {
-                sh '''
-                    echo "Stopping services after smoke test..."
-                    docker compose down
-                '''
-            }
-        }
+
         
         stage('Save Compose Configuration') {
             sh '''
