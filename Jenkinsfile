@@ -75,7 +75,7 @@ pipeline {
           echo "Build layers: ${layers}"
           def buildResults = [:]
            runLayered(layers, 'build', buildResults)
-           env.BUILD_RESULTS = new groovy.json.JsonBuilder(buildResults).toString()
+           env.BUILD_RESULTS = buildResults.collect { k, v -> "$k=$v" }.join(';')
         }
       }
     }
@@ -92,7 +92,7 @@ pipeline {
           echo "Deploy layers: ${layers}"
           def deployResults = [:]
            runLayered(layers, 'deploy', deployResults)
-           env.DEPLOY_RESULTS = new groovy.json.JsonBuilder(deployResults).toString()
+           env.DEPLOY_RESULTS = deployResults.collect { k, v -> "$k=$v" }.join(';')
         }
       }
     }
@@ -377,8 +377,8 @@ def getComponentDetails() {
 def getComponentStatuses() {
   def status = ""
   try {
-    def buildResults = env.BUILD_RESULTS ? new groovy.json.JsonSlurper().parseText(env.BUILD_RESULTS) : [:]
-    def deployResults = env.DEPLOY_RESULTS ? new groovy.json.JsonSlurper().parseText(env.DEPLOY_RESULTS) : [:]
+    def buildResults = env.BUILD_RESULTS ? env.BUILD_RESULTS.split(';').collectEntries { it.split('=') } : [:]
+    def deployResults = env.DEPLOY_RESULTS ? env.DEPLOY_RESULTS.split(';').collectEntries { it.split('=') } : [:]
     def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').collect { it.trim() } : []
     components.each { comp ->
       def buildStatus = buildResults[comp] == 'success' ? '✅' : '❌'
