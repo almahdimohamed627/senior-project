@@ -4,7 +4,7 @@ pipeline {
   parameters {
     choice(
       name: 'COMPONENT',
-      choices: ['all', 'traefik', 'db', 'fusionauth', 'backend', 'ai-agent'],
+       choices: ['all', 'traefik', 'db', 'fusionauth', 'backend', 'ai-agent', 'ai-model'],
       description: 'Select component to build/deploy (its prerequisites will be included automatically)'
     )
     booleanParam(
@@ -277,7 +277,7 @@ ${getComponentStatuses()}
 *📊 Build Stages:*
 • 🏗 Build - ✅ Done
 • 🚀 Deployment - ✅ Deployed
-• 🧪 Integration Test - ✅ Passed
+• 🧪 Integration Test - ${getIntegrationTestStatus()}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 """
@@ -300,7 +300,7 @@ ${getComponentStatuses()}
 *📊 Build Stages:*
 • 🏗 Build - ❌ Failed
 • 🚀 Deployment - ⏸️ Skipped
-• 🧪 Integration Test - ⏸️ Skipped
+• 🧪 Integration Test - ${getIntegrationTestStatus()}
 
 *🔍 Recent Changes:*
 ${getRecentChanges()}
@@ -327,7 +327,7 @@ ${getComponentStatuses()}
 *📊 Build Stages:*
 • 🏗 Build - ⚠️ Unstable
 • 🚀 Deployment - ⏸️ Skipped
-• 🧪 Integration Test - ⏸️ Skipped
+• 🧪 Integration Test - ${getIntegrationTestStatus()}
 
 *🔍 Recent Changes:*
 ${getRecentChanges()}
@@ -391,6 +391,11 @@ def getComponentStatuses() {
   return status
 }
 
+def getIntegrationTestStatus() {
+  def status = env.INTEGRATION_TEST_STATUS ?: 'unknown'
+  return status == 'passed' ? '✅ Passed' : status == 'failed' ? '❌ Failed' : '⏸️ Not Run'
+}
+
 def getComponentType(componentName) {
   def type = "Generic"
   try {
@@ -426,7 +431,7 @@ def findComponents() {
       // If no components found with structure, fall back to default list
       if (components.isEmpty()) {
         echo "No components discovered by structure, using default components"
-        components = ['traefik', 'db', 'fusionauth', 'backend', 'ai-agent']
+         components = ['traefik', 'db', 'fusionauth', 'backend', 'ai-agent', 'ai-model']
       }
     } else {
       echo "No components directory found, using default components"
@@ -539,7 +544,7 @@ def autoBuildComponent(componentName) {
             docker compose build --no-cache || true
           fi
           docker compose --env-file .env up -d || true
-          sleep 10
+          sleep 5
           docker compose --env-file .env ps || true
           docker compose --env-file .env down || true
           rm -f .env 2>/dev/null || true
@@ -554,7 +559,7 @@ def autoBuildComponent(componentName) {
           docker compose build --no-cache || true
         fi
         docker compose up -d || true
-        sleep 10
+        sleep 5
         docker compose ps || true
         docker compose down || true
       '''
@@ -597,12 +602,40 @@ def autoBuildComponent(componentName) {
 
 def runIntegrationTests() {
   echo "Running integration tests"
-  // TODO: Implement actual integration test logic (e.g., API calls between components, health checks)
-  // TODO: Set integration test status in env for Telegram notifications
-  sh '''
-    echo "Running integration tests between components"
-    # TODO: add real integration tests here
-  '''
+  def status = 'passed'
+  try {
+    sh '''
+      echo "Testing integration: Traefik routing to backend"
+      if curl -s -f http://localhost:3000/health >/dev/null 2>&1; then
+        echo "✅ Backend reachable via Traefik"
+      else
+        echo "❌ Backend not reachable"
+        exit 1
+      fi
+
+      echo "Testing integration: Backend to AI-Agent"
+      if curl -s -f http://localhost:8000/health >/dev/null 2>&1; then
+        echo "✅ AI-Agent reachable"
+      else
+        echo "❌ AI-Agent not reachable"
+        exit 1
+      fi
+
+      echo "Testing integration: AI-Agent to AI-Model"
+      if curl -s -f http://localhost:3001/health >/dev/null 2>&1; then
+        echo "✅ AI-Model reachable"
+      else
+        echo "❌ AI-Model not reachable"
+        exit 1
+      fi
+
+      echo "✅ Cross-component checks passed"
+    '''
+  } catch (Exception e) {
+    echo "❌ Integration tests failed: ${e.message}"
+    status = 'failed'
+  }
+  env.INTEGRATION_TEST_STATUS = status
 }
 
 def deployComponent(componentName) {
@@ -655,7 +688,7 @@ def autoDeployComponent(componentName) {
         docker compose down --remove-orphans 2>/dev/null || true
         docker compose pull --ignore-pull-failures 2>/dev/null || true
         docker compose --env-file .env up -d
-        sleep 60
+        sleep 30
       """
     }
 
@@ -695,7 +728,7 @@ def performComponentHealthCheck(componentName) {
             break
           else
             echo "⏳ Attempt $i: Traefik not yet accessible, waiting..."
-            sleep 30
+            sleep 15
           fi
         done
         if ! curl -s -f http://localhost:2468/ >/dev/null; then
@@ -713,7 +746,7 @@ def performComponentHealthCheck(componentName) {
             break
           else
             echo "⏳ Attempt $i: Database not yet healthy, waiting..."
-            sleep 30
+            sleep 15
           fi
         done
         if ! docker compose ps db | grep -q "healthy"; then
@@ -731,7 +764,7 @@ def performComponentHealthCheck(componentName) {
             break
           else
             echo "⏳ Attempt $i: FusionAuth not yet accessible, waiting..."
-            sleep 30
+            sleep 15
           fi
         done
         if ! curl -s -f http://localhost:9011/ >/dev/null; then
@@ -750,7 +783,7 @@ def performComponentHealthCheck(componentName) {
             break
           else
             echo "⏳ Attempt $i: backend not yet accessible, waiting..."
-            sleep 30
+            sleep 15
           fi
         done
         if ! curl -s -f http://localhost:3000/health >/dev/null 2>&1 && 
@@ -764,23 +797,43 @@ def performComponentHealthCheck(componentName) {
     case 'ai-agent':
       sh '''
         for i in 1 2 3; do
-          if curl -s -f http://localhost:8080/health >/dev/null 2>&1 || 
-             curl -s -f http://localhost:8080 >/dev/null 2>&1; then
-            echo "✅ AI Agent is accessible at http://localhost:8080"
+          if curl -s -f http://localhost:8000/health >/dev/null 2>&1 ||
+             curl -s -f http://localhost:8000 >/dev/null 2>&1; then
+            echo "✅ AI Agent is accessible at http://localhost:8000"
             break
           else
             echo "⏳ Attempt $i: AI Agent not yet accessible, waiting..."
-            sleep 30
+            sleep 15
           fi
         done
-        if ! curl -s -f http://localhost:8080/health >/dev/null 2>&1 && 
-           ! curl -s -f http://localhost:8080 >/dev/null 2>&1; then
+        if ! curl -s -f http://localhost:8000/health >/dev/null 2>&1 &&
+           ! curl -s -f http://localhost:8000 >/dev/null 2>&1; then
           echo "⚠️ AI Agent not accessible, showing recent logs..."
           docker compose logs --tail=50 ai-agent || true
         fi
       '''
       break
-      
+
+    case 'ai-model':
+      sh '''
+        for i in 1 2 3; do
+          if curl -s -f http://localhost:3001/health >/dev/null 2>&1 ||
+             curl -s -f http://localhost:3001 >/dev/null 2>&1; then
+            echo "✅ AI Model is accessible at http://localhost:3001"
+            break
+          else
+            echo "⏳ Attempt $i: AI Model not yet accessible, waiting..."
+            sleep 15
+          fi
+        done
+        if ! curl -s -f http://localhost:3001/health >/dev/null 2>&1 &&
+           ! curl -s -f http://localhost:3001 >/dev/null 2>&1; then
+          echo "⚠️ AI Model not accessible, showing recent logs..."
+          docker compose logs --tail=50 ai-model || true
+        fi
+      '''
+      break
+
     default:
       echo "⚠️ No specific health check configured for ${componentName}"
       // Generic health check

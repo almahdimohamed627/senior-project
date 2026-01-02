@@ -69,7 +69,7 @@ def build() {
                         docker compose --env-file .env up -d
                         
                         # Wait for services to be ready
-                        sleep 30
+                        sleep 15
                         
                         # Check if services are running
                         docker compose --env-file .env ps
@@ -78,18 +78,17 @@ def build() {
                         if docker compose --env-file .env ps | grep -q "Up"; then
                             echo "✅ Services are running"
                             
-                            # Additional health check for nest-app
-                            echo "Checking if nest-app is accessible..."
-                            for i in 1 2 3; do
-                                if curl -s -f http://localhost:3000/health >/dev/null 2>&1 || 
-                                   curl -s -f http://localhost:3000 >/dev/null 2>&1; then
-                                    echo "✅ backend is accessible at http://localhost:3000"
-                                    break
-                                else
-                                    echo "⏳ Attempt $i: backend not yet accessible, waiting..."
-                                    sleep 10
-                                fi
-                            done
+                             # Additional health check for nest-app
+                             echo "Checking if nest-app is accessible..."
+                             for i in 1 2 3; do
+                                 if curl -s -f http://localhost:3000 >/dev/null 2>&1; then
+                                     echo "✅ backend is accessible at http://localhost:3000"
+                                     break
+                                 else
+                                     echo "⏳ Attempt $i: backend not yet accessible, waiting..."
+                                     sleep 5
+                                 fi
+                             done
                         else
                             echo "❌ Some services failed to start"
                             echo "=== Container logs ==="
@@ -213,7 +212,7 @@ def deploy() {
                 docker compose --env-file .env down --remove-orphans 2>/dev/null || true
                 docker compose --env-file .env pull --ignore-pull-failures 2>/dev/null || true
                 docker compose --env-file .env up -d
-                sleep 60
+                sleep 30
             """
         }
 
@@ -225,19 +224,17 @@ def deploy() {
         // Custom health check for backend
         sh '''
             for i in 1 2 3; do
-                if curl -s -f http://localhost:3000/health >/dev/null 2>&1 || 
-                   curl -s -f http://localhost:3000 >/dev/null 2>&1; then
+                if curl -s -f http://localhost:3000 >/dev/null 2>&1; then
                     echo "✅ backend is accessible at http://localhost:3000"
                     break
                 else
                     echo "⏳ Attempt $i: backend not yet accessible, waiting..."
-                    sleep 30
+                    sleep 15
                 fi
             done
-            if ! curl -s -f http://localhost:3000/health >/dev/null 2>&1 && 
-               ! curl -s -f http://localhost:3000 >/dev/null 2>&1; then
+            if ! curl -s -f http://localhost:3000 >/dev/null 2>&1; then
                 echo "⚠️ backend not accessible, showing recent logs..."
-                docker compose --env-file .env logs --tail=50 nest-app || true
+                docker compose logs --tail=50 nest-app || true
             fi
         '''
 

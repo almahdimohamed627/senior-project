@@ -10,8 +10,6 @@ def build() {
         withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
             hasEnvFile = true
         }
-
-        hasEnvFile = false
     } catch(Exception e) {
         echo "⚠️ No credential found for ${credentialId}, proceeding without environment file"
     }
@@ -33,7 +31,7 @@ def build() {
             stage('Clean Previous Builds') {
                 sh '''
                     echo "Cleaning up previous builds and images..."
-                    docker rmi --force ai-model-ai-model
+                    docker rmi --force ai-model-app
                     docker compose --env-file .env down --remove-orphans --rmi all 2>/dev/null || true
                     docker image prune -f 2>/dev/null || true
                     docker rmi -f $(docker images | grep "ai-model" | awk "{print \$3}") 2>/dev/null || true
@@ -56,7 +54,7 @@ def build() {
                     sh '''
                         echo "Building ai-model services..."
                         # Build the specific service image directly, ensuring no-cache
-                        docker build --no-cache --pull -t ai-model-ai-model .
+                        docker build --no-cache --pull -t ai-model-app .
                     '''
                 } else {
                     echo "⚠️ No build configuration found - skipping build"
@@ -70,7 +68,7 @@ def build() {
                         docker compose --env-file .env up -d
                         
                         # Wait for services to be ready
-                        sleep 30
+                        sleep 15
                         
                         # Check if services are running
                         docker compose --env-file .env ps
@@ -79,18 +77,17 @@ def build() {
                         if docker compose --env-file .env ps | grep -q "Up"; then
                             echo "✅ Services are running"
                             
-                            # Additional health check for ai-model
-                            echo "Checking if ai-model is accessible..."
-                            for i in 1 2 3; do
-                                if curl -s -f http://localhost:3000/health >/dev/null 2>&1 || 
-                                   curl -s -f http://localhost:3000 >/dev/null 2>&1; then
-                                    echo "✅ ai-model is accessible at http://localhost:3000"
-                                    break
-                                else
-                                    echo "⏳ Attempt $i: ai-model not yet accessible, waiting..."
-                                    sleep 10
-                                fi
-                            done
+                             # Additional health check for ai-model
+                             echo "Checking if ai-model is accessible..."
+                             for i in 1 2 3; do
+                                 if curl -s -f http://localhost:3001 >/dev/null 2>&1; then
+                                     echo "✅ ai-model is accessible at http://localhost:3001"
+                                     break
+                                 else
+                                     echo "⏳ Attempt $i: ai-model not yet accessible, waiting..."
+                                     sleep 5
+                                 fi
+                             done
                         else
                             echo "❌ Some services failed to start"
                             echo "=== Container logs ==="
@@ -138,7 +135,7 @@ def build() {
         stage('Clean Previous Builds') {
             sh '''
                 echo "Cleaning up previous builds and images..."
-                docker rmi --force ai-model-ai-model
+                docker rmi --force ai-model-app
                 docker compose down --remove-orphans --rmi all 2>/dev/null || true
                 docker image prune -f 2>/dev/null || true
                 docker rmi -f $(docker images | grep "ai-model" | awk "{print \$3}") 2>/dev/null || true
@@ -159,7 +156,7 @@ def build() {
             if (shouldBuild) {
                 sh '''
                     echo "Building ai-model services..."
-                    docker build --no-cache --pull -t ai-model-ai-model .
+                    docker build --no-cache --pull -t ai-model-app .
                 '''
             } else {
                 echo "⚠️ No build configuration found - skipping build"
@@ -214,7 +211,7 @@ def deploy() {
                 docker compose --env-file .env down --remove-orphans 2>/dev/null || true
                 docker compose --env-file .env pull --ignore-pull-failures 2>/dev/null || true
                 docker compose --env-file .env up -d
-                sleep 60
+                sleep 30
             """
         }
 
@@ -226,19 +223,17 @@ def deploy() {
         // Custom health check for ai-model
         sh '''
             for i in 1 2 3; do
-                if curl -s -f http://localhost:3000/health >/dev/null 2>&1 || 
-                   curl -s -f http://localhost:3000 >/dev/null 2>&1; then
-                    echo "✅ ai-model is accessible at http://localhost:3000"
+                if curl -s -f http://localhost:3001 >/dev/null 2>&1; then
+                    echo "✅ ai-model is accessible at http://localhost:3001"
                     break
                 else
                     echo "⏳ Attempt $i: ai-model not yet accessible, waiting..."
-                    sleep 30
+                    sleep 15
                 fi
             done
-            if ! curl -s -f http://localhost:3000/health >/dev/null 2>&1 && 
-               ! curl -s -f http://localhost:3000 >/dev/null 2>&1; then
+            if ! curl -s -f http://localhost:3001 >/dev/null 2>&1; then
                 echo "⚠️ ai-model not accessible, showing recent logs..."
-                docker compose --env-file .env logs --tail=50 ai-model || true
+                docker compose logs --tail=50 ai-model || true
             fi
         '''
 
@@ -266,7 +261,7 @@ def cleanup() {
     echo "🧹 Cleaning up ai-model resources"
     sh '''
         docker compose down --remove-orphans --rmi all 2>/dev/null || true
-        docker rmi -f ai-model-ai-model 2>/dev/null || true
+        docker rmi -f ai-model-app 2>/dev/null || true
     '''
 }
 
