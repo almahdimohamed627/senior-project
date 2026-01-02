@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
-import { AiAgentGateway } from './ai-agent.gateway';
+import { AiAgentController } from './ai-agent.controller';
+import { AiAgentService } from './ai-agent.service';
 
 @Module({
-  providers: [AiAgentGateway]
+  controllers:[AiAgentController],
+  providers: [AiAgentService]
 })
 export class AiAgentModule {}

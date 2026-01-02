@@ -6,7 +6,7 @@ export { conversationAI, messages, conversations, conversationAiMessages } from 
 export { appointments } from './appointments.schema';
 export { cities } from './cities.schema';
 export { role } from './profiles.schema';
-export { aiConversationStatus, aiMessageRole, messageType } from './chat.schema';
+export { aiConversationStatus, messageType } from './chat.schema';
 export { requeststatus } from './request.schema';
 // (اختياري) إذا بدك تجمعهم في object لاستخدامه مع drizzle runtime:
 import { doctorProfile, patientProfile, role, users } from './profiles.schema';

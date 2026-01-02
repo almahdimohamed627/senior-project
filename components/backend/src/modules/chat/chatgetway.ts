@@ -10,11 +10,7 @@ import { ChatService } from './chat.service';
 import { db } from 'src/db/client';
 import { users } from 'src/db/schema/profiles.schema';
 import { desc, eq, or } from 'drizzle-orm';
-import { conversations } from 'src/db/schema/chat.schema';
-import { UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/modules/auth/guards/role.guard';
-import { Roles } from 'src/modules/auth/decorators/role.decorator';
+
 
 
 @WebSocketGateway({
