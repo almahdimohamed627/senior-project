@@ -1,5 +1,6 @@
 {
-  "id": "f8d2f826-0ffd-4c8b-b935-adb41f51463f",
+
+  "id": "d1e0019b-7e76-4318-aad9-a923ee8e53cc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -748,7 +749,9 @@
           "name": "city",
           "type": "integer",
           "primaryKey": false,
+
           "notNull": false
+
         },
         "birth_year": {
           "name": "birth_year",
