@@ -32,7 +32,7 @@ def build() {
             stage('Clean Previous Builds') {
                 sh '''
                     echo "Cleaning up previous builds and images..."
-                    docker rmi --force backend-nest-app
+                    docker rmi --force backend-app
                     docker compose --env-file .env down --remove-orphans --rmi all 2>/dev/null || true
                     docker image prune -f 2>/dev/null || true
                     docker rmi -f $(docker images | grep "nest-app" | awk "{print \$3}") 2>/dev/null || true
@@ -55,7 +55,7 @@ def build() {
                     sh '''
                         echo "Building backend services..."
                         # Build the specific service image directly, ensuring no-cache
-                        docker build --no-cache --pull -t backend-nest-app .
+                        docker build --no-cache --pull -t backend-app .
                     '''
                 } else {
                     echo "⚠️ No build configuration found - skipping build"
@@ -136,7 +136,7 @@ def build() {
         stage('Clean Previous Builds') {
             sh '''
                 echo "Cleaning up previous builds and images..."
-                docker rmi --force backend-nest-app
+                docker rmi --force backend-app
                 docker compose down --remove-orphans --rmi all 2>/dev/null || true
                 docker image prune -f 2>/dev/null || true
                 docker rmi -f $(docker images | grep "nest-app" | awk "{print \$3}") 2>/dev/null || true
@@ -157,7 +157,7 @@ def build() {
             if (shouldBuild) {
                 sh '''
                     echo "Building backend services..."
-                    docker build --no-cache --pull -t backend-nest-app .
+                    docker build --no-cache --pull -t backend-app .
                 '''
             } else {
                 echo "⚠️ No build configuration found - skipping build"
@@ -169,7 +169,7 @@ def build() {
                 sh '''
                     echo "Starting services for smoke test..."
                     docker compose up -d
-                    sleep 30
+                        sleep 15
                     docker compose ps
                     if docker compose ps | grep -q "Up"; then
                         echo "✅ Services are running"
@@ -262,7 +262,7 @@ def cleanup() {
     echo "🧹 Cleaning up backend resources"
     sh '''
         docker compose down --remove-orphans --rmi all 2>/dev/null || true
-        docker rmi -f backend-nest-app 2>/dev/null || true
+        docker rmi -f backend-app 2>/dev/null || true
     '''
 }
 

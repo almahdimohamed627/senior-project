@@ -14,8 +14,8 @@ services:
     volumes:
       - uploads_data:/app/uploads  # Named volume (not bind mount)
     ports:
-      - '3000'
-      - '4000'
+      - '3000:3000'
+      - '4000:4000'
     networks:
       - proxy
     labels:

@@ -606,7 +606,7 @@ def runIntegrationTests() {
   try {
     sh '''
       echo "Testing integration: Traefik routing to backend"
-      if curl -s -f http://localhost:3000/health >/dev/null 2>&1; then
+      if curl -s -f http://localhost:3000 >/dev/null 2>&1; then
         echo "✅ Backend reachable via Traefik"
       else
         echo "❌ Backend not reachable"
@@ -614,7 +614,7 @@ def runIntegrationTests() {
       fi
 
       echo "Testing integration: Backend to AI-Agent"
-      if curl -s -f http://localhost:8000/health >/dev/null 2>&1; then
+      if curl -s -f http://localhost:8000 >/dev/null 2>&1; then
         echo "✅ AI-Agent reachable"
       else
         echo "❌ AI-Agent not reachable"
@@ -622,7 +622,7 @@ def runIntegrationTests() {
       fi
 
       echo "Testing integration: AI-Agent to AI-Model"
-      if curl -s -f http://localhost:3001/health >/dev/null 2>&1; then
+      if curl -s -f http://localhost:3001 >/dev/null 2>&1; then
         echo "✅ AI-Model reachable"
       else
         echo "❌ AI-Model not reachable"
@@ -809,7 +809,7 @@ def performComponentHealthCheck(componentName) {
         if ! curl -s -f http://localhost:8000/health >/dev/null 2>&1 &&
            ! curl -s -f http://localhost:8000 >/dev/null 2>&1; then
           echo "⚠️ AI Agent not accessible, showing recent logs..."
-          docker compose logs --tail=50 ai-agent || true
+          docker compose logs --tail=50 langchain || true
         fi
       '''
       break

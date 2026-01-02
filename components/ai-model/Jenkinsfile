@@ -168,7 +168,7 @@ def build() {
                 sh '''
                     echo "Starting services for smoke test..."
                     docker compose up -d
-                    sleep 30
+                        sleep 15
                     docker compose ps
                     if docker compose ps | grep -q "Up"; then
                         echo "✅ Services are running"
