@@ -377,14 +377,41 @@ def getComponentDetails() {
 def getComponentStatuses() {
   def status = ""
   try {
-    def buildResults = env.BUILD_RESULTS ? env.BUILD_RESULTS.split(';').collectEntries { it.split('=') } : [:]
-    def deployResults = env.DEPLOY_RESULTS ? env.DEPLOY_RESULTS.split(';').collectEntries { it.split('=') } : [:]
+    echo "DEBUG: BUILD_RESULTS = ${env.BUILD_RESULTS}"
+    echo "DEBUG: DEPLOY_RESULTS = ${env.DEPLOY_RESULTS}"
+
+    def buildResults = [:]
+    if (env.BUILD_RESULTS) {
+      env.BUILD_RESULTS.split(';').each { entry ->
+        def parts = entry.split('=', 2)
+        if (parts.size() == 2) {
+          buildResults[parts[0]] = parts[1]
+        }
+      }
+    }
+
+    def deployResults = [:]
+    if (env.DEPLOY_RESULTS) {
+      env.DEPLOY_RESULTS.split(';').each { entry ->
+        def parts = entry.split('=', 2)
+        if (parts.size() == 2) {
+          deployResults[parts[0]] = parts[1]
+        }
+      }
+    }
+
     def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').collect { it.trim() } : []
     components.each { comp ->
-      def buildStatus = buildResults[comp] == 'success' ? '✅' : '❌'
-      def deployStatus = deployResults[comp] == 'success' ? '✅' : '❌'
+      def buildStatus = buildResults[comp] == 'success' ? '✅' : buildResults[comp] == 'failed' ? '❌' : '⏸️'
+      def deployStatus = deployResults[comp] == 'success' ? '✅' : deployResults[comp] == 'failed' ? '❌' : '⏸️'
       status += "${comp}: ${buildStatus} build, ${deployStatus} deploy\n"
     }
+  } catch (Exception e) {
+    echo "ERROR in getComponentStatuses: ${e.message}"
+    status = "Status unavailable: ${e.message}\n"
+  }
+  return status
+}
   } catch (Exception e) {
     status = "Status unavailable\n"
   }
@@ -600,36 +627,52 @@ def runIntegrationTests() {
   def status = 'passed'
   try {
     sh '''
-      echo "Testing integration: Traefik routing to backend"
+      echo "Testing integration: Traefik public access"
+      if curl -s -f https://whoami.almahdi.cloud/ >/dev/null 2>&1; then
+        echo "✅ Traefik public endpoint accessible"
+      else
+        echo "❌ Traefik public endpoint not accessible"
+        exit 1
+      fi
+
+      echo "Testing integration: AI-Agent public access"
+      if curl -s -f https://ai-agent.almahdi.cloud/ >/dev/null 2>&1; then
+        echo "✅ AI-Agent public endpoint accessible"
+      else
+        echo "❌ AI-Agent public endpoint not accessible"
+        exit 1
+      fi
+
+      echo "Testing integration: Backend internal access"
       if curl -s -f http://localhost:3000 >/dev/null 2>&1; then
-        echo "✅ Backend reachable via Traefik"
+        echo "✅ Backend accessible"
       else
-        echo "❌ Backend not reachable"
+        echo "❌ Backend not accessible"
         exit 1
       fi
 
-      echo "Testing integration: Backend to AI-Agent"
+      echo "Testing integration: AI-Agent internal access"
       if curl -s -f http://localhost:8000 >/dev/null 2>&1; then
-        echo "✅ AI-Agent reachable"
+        echo "✅ AI-Agent accessible"
       else
-        echo "❌ AI-Agent not reachable"
+        echo "❌ AI-Agent not accessible"
         exit 1
       fi
 
-      echo "Testing integration: AI-Agent to AI-Model"
+      echo "Testing integration: AI-Model access"
       if curl -s -f http://localhost:3001 >/dev/null 2>&1; then
-        echo "✅ AI-Model reachable"
+        echo "✅ AI-Model accessible"
       else
-        echo "❌ AI-Model not reachable"
+        echo "❌ AI-Model not accessible"
         exit 1
       fi
-
-      echo "✅ Cross-component checks passed"
     '''
   } catch (Exception e) {
     echo "❌ Integration tests failed: ${e.message}"
     status = 'failed'
   }
+  env.INTEGRATION_TEST_STATUS = status
+}
   env.INTEGRATION_TEST_STATUS = status
 }
 

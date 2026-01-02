@@ -223,7 +223,7 @@ def deploy() {
         // Custom health check for ai-model
         sh '''
             for i in 1 2 3; do
-                if curl -s -f http://localhost:3001 >/dev/null 2>&1; then
+                if curl -s -f http://localhost:3001/docs >/dev/null 2>&1; then
                     echo "✅ ai-model is accessible at http://localhost:3001"
                     break
                 else
