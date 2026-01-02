@@ -33,6 +33,8 @@ services:
       - db
     networks:
       - proxy
+    volumes:
+      - servers.json:/pgadmin/servers.json
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.pgadmin.rule=Host(`${PGADMIN_DOMAIN}`)"
@@ -42,6 +44,7 @@ services:
 
 volumes:
   postgres-data:
+  servers.json:
 
 networks:
   proxy:
