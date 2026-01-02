@@ -123,9 +123,11 @@ pipeline {
       }
     }
     always {
-      script { currentBuild.description = "Components: ${env.COMPONENTS_STRING ?: env.DISCOVERED_COMPONENTS}" }
-      cleanWs()
-    }
+            node() {
+                script { currentBuild.description = "Components: ${env.COMPONENTS_STRING ?: env.DISCOVERED_COMPONENTS}" }
+                cleanWs()
+            }
+        }
   }
 }
 
