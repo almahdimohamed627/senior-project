@@ -668,8 +668,6 @@ def runIntegrationTests() {
   }
   env.INTEGRATION_TEST_STATUS = status
 }
-  env.INTEGRATION_TEST_STATUS = status
-}
 
 def deployComponent(componentName) {
   echo "Deploying component: ${componentName}"
