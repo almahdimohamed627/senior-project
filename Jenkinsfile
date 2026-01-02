@@ -74,8 +74,8 @@ pipeline {
           def layers = layerize(components, deps())
           echo "Build layers: ${layers}"
           def buildResults = [:]
-          runLayered(layers, 'build', buildResults)
-          env.BUILD_RESULTS = buildResults.inspect()
+           runLayered(layers, 'build', buildResults)
+           env.BUILD_RESULTS = new groovy.json.JsonBuilder(buildResults).toString()
         }
       }
     }
@@ -91,8 +91,8 @@ pipeline {
           def layers = layerize(components, deps())
           echo "Deploy layers: ${layers}"
           def deployResults = [:]
-          runLayered(layers, 'deploy', deployResults)
-          env.DEPLOY_RESULTS = deployResults.inspect()
+           runLayered(layers, 'deploy', deployResults)
+           env.DEPLOY_RESULTS = new groovy.json.JsonBuilder(deployResults).toString()
         }
       }
     }
@@ -377,8 +377,8 @@ def getComponentDetails() {
 def getComponentStatuses() {
   def status = ""
   try {
-    def buildResults = env.BUILD_RESULTS ? evaluate(env.BUILD_RESULTS) : [:]
-    def deployResults = env.DEPLOY_RESULTS ? evaluate(env.DEPLOY_RESULTS) : [:]
+    def buildResults = env.BUILD_RESULTS ? new groovy.json.JsonSlurper().parseText(env.BUILD_RESULTS) : [:]
+    def deployResults = env.DEPLOY_RESULTS ? new groovy.json.JsonSlurper().parseText(env.DEPLOY_RESULTS) : [:]
     def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').collect { it.trim() } : []
     components.each { comp ->
       def buildStatus = buildResults[comp] == 'success' ? '✅' : '❌'
