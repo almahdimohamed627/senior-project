@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
-  "id": "6351763c-f156-4f22-9844-f9ecd77c990a",
-=======
-  "id": "d1e0019b-7e76-4318-aad9-a923ee8e53cc",
->>>>>>> 1fd9d049f194e78d82dab626df17aa68bc83b9ae
+  "id": "f8d2f826-0ffd-4c8b-b935-adb41f51463f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -95,8 +91,15 @@
           "primaryKey": false,
           "notNull": true
         },
-        "diagnosis": {
-          "name": "diagnosis",
+        "specialityE": {
+          "name": "specialityE",
+          "type": "specialtyA",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "image_path": {
+          "name": "image_path",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -108,6 +111,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'in_progress'"
+        },
+        "is_final": {
+          "name": "is_final",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -162,18 +172,17 @@
           "primaryKey": false,
           "notNull": true
         },
-        "role": {
-          "name": "role",
-          "type": "ai_message_role",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "text": {
-          "name": "text",
+        "msg": {
+          "name": "msg",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "ai_response": {
+          "name": "ai_response",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -400,15 +409,7 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "cities_id_unique": {
-          "name": "cities_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "id"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -747,12 +748,7 @@
           "name": "city",
           "type": "integer",
           "primaryKey": false,
-<<<<<<< HEAD
-          "notNull": false,
-          "default": 0
-=======
           "notNull": false
->>>>>>> 1fd9d049f194e78d82dab626df17aa68bc83b9ae
         },
         "birth_year": {
           "name": "birth_year",
@@ -974,15 +970,8 @@
       "schema": "public",
       "values": [
         "in_progress",
+        "specified",
         "completed"
-      ]
-    },
-    "public.ai_message_role": {
-      "name": "ai_message_role",
-      "schema": "public",
-      "values": [
-        "human",
-        "ai"
       ]
     },
     "public.message_type": {
@@ -991,6 +980,18 @@
       "values": [
         "text",
         "audio"
+      ]
+    },
+    "public.specialtyA": {
+      "name": "specialtyA",
+      "schema": "public",
+      "values": [
+        "Restorative",
+        "Endodontics",
+        "Periodentics",
+        "Fixed_Prosthondontics",
+        "Removable_Prosthondontics",
+        "Pediatric_Dentistry"
       ]
     },
     "public.role": {

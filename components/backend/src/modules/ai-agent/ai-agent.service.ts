@@ -1,8 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { db } from "../../db/client";
 import { conversationAI, conversationAiMessages } from "src/db/schema/chat.schema";
 import {eq} from "drizzle-orm" 
 import { users } from "src/db/schema/profiles.schema";
+import { ok } from "assert";
+import { DentistSpecialty } from "./ai-msg.dto";
 
 
 
@@ -11,41 +13,79 @@ export class AiAgentService{
 
 
 
-    async createConversationWithAi(userId:string){
-      
-        let row=await db.select().from(conversationAI).where(eq(conversationAI.userId,userId))
-
-        if(row.length>0){
-            return row[0]
-        }
-      
-      let inserted=await  db.insert(conversationAI).values({userId:userId})
-      console.log(inserted)
-
-    }
-
-  async saveMessages(
-  userId: string,
-  conversationId: number,
-  msg: string,
-  age: number,
-  role: 'human'|'ai',   
-) {
-  const user = await db
-    .select()
-    .from(users)
-    .where(eq(users.fusionAuthId, userId));
-
-  if (user.length === 0) {
-    return { msg: 'user not found' };
+async createConversationWithAi(userId: string, storedPath: string) {
+  if (!storedPath) {
+    throw new BadRequestException('please upload photo');
   }
 
-  await db.insert(conversationAiMessages).values({
-    conversationId,
-    role,      // هلق نوعه مضبوط: 'human' | 'ai'
-    text: msg,
-  });
+  const inserted = await db
+    .insert(conversationAI)
+    .values({
+      userId: userId,
+      image_path: storedPath,
+    })
+    .returning(); // ← هذا يرجّع السطر
 
-  return { msg: 'saved' };
+  return {
+    msg: 'chat created',
+    conversation: inserted[0], // السطر الذي تم تخزينه
+  };
+}
+
+
+   async returnConversations(userId:string){
+    console.log(userId)
+    let convs=await db.select().from(conversationAI).where(eq(conversationAI.userId,userId))
+    console.log(convs)
+    return {convsations:convs}
+   }
+   async returnMsgsForConversation(convId:number){
+     let msgs=await db.select().from(conversationAiMessages).where(eq(conversationAiMessages.conversationId,convId))
+
+     return {messages:msgs}
+   }
+
+  async saveMessages(
+  
+  conversationId: number,
+  msg: string,
+  ai_response:string,
+  speciality?:DentistSpecialty,
+  isFinal?:boolean
+ 
+) {
+  // const user = await db
+  //   .select()
+  //   .from(users)
+  //   .where(eq(users.fusionAuthId, userId));
+
+  // if (user.length === 0) {
+  //   return { msg: 'user not found' };
+  // }
+
+  const conversation=await db.select().from(conversationAI).where(eq(conversationAI.id,conversationId))
+  if (conversation.length === 0) {
+    return { msg: 'the user dose not have conversation' };
+  }
+
+  if(isFinal && speciality) {
+   await db
+  .update(conversationAI)
+  .set({
+    is_final: true,
+    specialityE: speciality,
+    status:'specified'
+  })
+  .where(eq(conversationAI.id, conversationId));
+  }
+
+  let row=await db.insert(conversationAiMessages).values({conversationId:conversationId 
+    ,msg:msg
+    ,ai_response:ai_response}).returning()
+
+
+
+
+  return { msg: 'saved' ,information:row[0]};
 }
 }

@@ -27,7 +27,9 @@ type PublicProfile = {
   lastName: string | null;
   email: string | null;
   city?: number | null;
+  phoneNumber?:string | null,
   specialty?: string | null;
+  university?: string | null;
   profilePhoto?: string | null;
 };
 type publicDoctorProfile={
@@ -138,18 +140,13 @@ async findAll() {
                 city: user.city,
                 specialty: doctor.specialty,
                 univercity:doctor.university,
-                profilePhoto: user.profilePhoto, // لو عندك هيك حقل
+                profilePhoto: user.profilePhoto, 
     };
    return publicProfile;
       })
     )
     
     return publicProfile
-
-   
-    
-    
-   
   }
   async findOne(id: string) {
     // id هنا هو fusionAuthId
@@ -191,7 +188,7 @@ async findAll() {
         foundIn = 'patient';
       }
     }
-
+   console.log((local as any))
     if (!local) {
       throw new NotFoundException('Profile not found');
     }
@@ -233,17 +230,17 @@ async findAll() {
       endTime: r.endTime,
     }));
 
-    // 4) تشكيل الـ profile النهائي — نعطي الأولوية لبيانات FusionAuth إن وُجدت
     const publicProfile: PublicProfile = {
-      // نستخدم id من doctorProfile/patientProfile إن وجد، وإلا من users
       id: local.id ?? baseUser.id,
       fusionAuthId: baseUser.fusionAuthId,
       firstName: firstNameFromFusion ?? baseUser.firstName ?? null,
       lastName: lastNameFromFusion ?? baseUser.lastName ?? null,
       email: emailFromFusion ?? null,
       city: userRows[0].city ,
-      specialty: (local as any).specialty ?? null, // موجودة فقط في doctorProfile
-      // إذا الحقل فارغ أو null نعيد default
+      phoneNumber:userRows[0].phoneNumber,
+      specialty: (local as any).specialty ?? null, 
+      university: (local as any).university ?? null, 
+      
       profilePhoto:
         baseUser.profilePhoto && String(baseUser.profilePhoto).trim() !== ''
           ? baseUser.profilePhoto
@@ -517,7 +514,6 @@ async findAll() {
     items: { dayOfWeek: number; startTime: string; endTime: string }[],
   ) {
     await db.transaction(async (tx) => {
-      // 1) جيب الدكتور عن طريق fusionAuthId
       const doctors = await tx
         .select()
         .from(doctorProfile)
@@ -529,15 +525,13 @@ async findAll() {
       }
 
       const doctor = doctors[0];
-      const doctorPk = doctor.fusionAuthId; // 👈 هذا اللي بدنا نستخدمه مع جدول appointments
+      const doctorPk = doctor.fusionAuthId; 
 
-      // 2) احذف كل المواعيد القديمة لهذا الدكتور
       await tx.delete(appointments).where(eq(appointments.doctorId, doctorPk));
 
-      // 3) أضف المواعيد الجديدة
       if (items.length > 0) {
         const rows = items.map((i) => ({
-          doctorId: doctorPk, // 👈 اربطها بالـ PK (هنا fusionAuthId حسب تصميمك)
+          doctorId: doctorPk, 
           dayOfWeek: i.dayOfWeek,
           startTime: i.startTime,
           endTime: i.endTime,
@@ -547,7 +541,7 @@ async findAll() {
       }
     });
 
-    return { ok: true };
+    return { items};
   }
 
   async deleteAvailability(doctorId: string, availabilityId: number) {
@@ -668,7 +662,6 @@ async createAvailabilities(
   doctorId: string,
   items: { dayOfWeek: number; startTime: string; endTime: string }[],
 ) {
-  // 1) تأكد أن الدكتور موجود
   const doctorRows = await db
     .select()
     .from(doctorProfile)
@@ -679,13 +672,11 @@ async createAvailabilities(
     throw new NotFoundException('Doctor not found');
   }
 
-  // 2) جيب المواعيد القديمة
   const existing = await db
     .select()
     .from(appointments)
     .where(eq(appointments.doctorId, doctorId));
 
-  // لو ما في ولا موعد قديم → أدخل الكل
   if (existing.length === 0) {
     const rowsToInsert = items.map((i) => ({
       doctorId: doctorId,
@@ -699,26 +690,21 @@ async createAvailabilities(
     }
 
     return {
-      inserted: rowsToInsert.length,
-      skipped: 0,
-      message: 'All availabilities inserted (no previous data).',
+      inserted: rowsToInsert,
     };
   }
 
-  // 3) في مواعيد قديمة → نبني Set للمقارنة السريعة
   const existingSet = new Set(
     existing.map(
-      (a) => `${a.dayOfWeek}|${a.startTime}|${a.endTime}`, // مفتاح فريد لكل موعد
+      (a) => `${a.dayOfWeek},${a.startTime},${a.endTime}`, 
     ),
   );
 
-  // 4) نفلتر الـ items: نخلي بس المواعيد الجديدة (اللي مو موجودة في existingSet)
   const newAvailabilities = items.filter((i) => {
-    const key = `${i.dayOfWeek}|${i.startTime}|${i.endTime}`;
+    const key = `${i.dayOfWeek},${i.startTime},${i.endTime}`;
     return !existingSet.has(key);
   });
 
-  // نجهز صفوف الإدخال
   const rowsToInsert = newAvailabilities.map((i) => ({
     doctorId: doctorId,
     dayOfWeek: i.dayOfWeek,
@@ -731,14 +717,10 @@ async createAvailabilities(
   }
 
   return {
-    inserted: rowsToInsert.length,
-    skipped: items.length - rowsToInsert.length,
-    message:
-      rowsToInsert.length === 0
-        ? 'All availabilities already exist.'
-        : 'New availabilities inserted; duplicates were skipped.',
+    inserted: rowsToInsert,
+
   };
 }
 
-   }
+ }
 

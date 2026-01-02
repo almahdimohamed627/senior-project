@@ -5,20 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-<<<<<<< HEAD
-      "when": 1766496960946,
-      "tag": "0000_nervous_raza",
-=======
-      "when": 1766593490490,
-      "tag": "0000_smart_grim_reaper",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1766605714048,
-      "tag": "0001_neat_stature",
->>>>>>> 1fd9d049f194e78d82dab626df17aa68bc83b9ae
+      "when": 1767220226800,
+      "tag": "0000_true_stranger",
       "breakpoints": true
     }
   ]

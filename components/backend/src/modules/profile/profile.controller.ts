@@ -142,23 +142,29 @@ async deleteProfile(@Param('id') id:string){
   // Availabilities endpoints
   // -----------------------
 
-  // استرجاع الدوامات (المريض / أي زائر) — الآن يُرجع اسم اليوم dayName
   @Get(':id/availabilities')
   async getAvailabilities(@Param('id') doctorId: string) {
     return await this.profileService.getAvailabilities(doctorId);
   }
 
-  // استبدال كل الدوامات للطبيب (Doctor only) - upsert
+// @Post(':id/availabilities')
+// @HttpCode(HttpStatus.OK)
+// async upsertAvailabilities(
+//   @Param('id') doctorId: string, // هذا fusionAuthId
+//   @Body(new ValidationPipe({ whitelist: true })) body: UpsertAvailabilitiesDto,
+// ) {
+//   return this.profileService.upsertAvailabilities(doctorId, body.items || []);
+// }
+
 @Post(':id/availabilities')
 @HttpCode(HttpStatus.OK)
-async upsertAvailabilities(
-  @Param('id') doctorId: string, // هذا fusionAuthId
+async createAvailabilities(
+  @Param('id') doctorId: string, 
   @Body(new ValidationPipe({ whitelist: true })) body: UpsertAvailabilitiesDto,
 ) {
-  return this.profileService.upsertAvailabilities(doctorId, body.items || []);
+  return this.profileService.createAvailabilities(doctorId, body.items || []);
 }
-
-  // حذف دوام واحد
+  
   @Delete(':id/availabilities/:availabilityId')
   @HttpCode(HttpStatus.OK)
   async deleteAvailability(
@@ -168,14 +174,13 @@ async upsertAvailabilities(
     return await this.profileService.deleteAvailability(doctorId, Number(availabilityId));
   }
 
-  // تحديث دوام واحد (اختياري)
   @Patch(':id/availabilities/:availabilityId')
   async updateAvailability(
     @Param('id') doctorId: string,
     @Param('availabilityId') availabilityId: string,
-    @Body(new ValidationPipe({ whitelist: true })) item: AvailabilityItemDto,
+    @Body(new ValidationPipe({ whitelist: true })) items: AvailabilityItemDto,
   ) {
-    return await this.profileService.updateAvailability(doctorId, Number(availabilityId), item);
+    return await this.profileService.updateAvailability(doctorId, Number(availabilityId), items);
   }
 
 

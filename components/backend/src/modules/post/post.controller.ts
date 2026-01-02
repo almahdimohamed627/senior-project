@@ -45,7 +45,7 @@ export class PostController {
         filename: editFileName,
       }),
       fileFilter,
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB per file
+      limits: { fileSize: 5 * 1024 * 1024 *1024}, // 5 MB per file
     }),
   )
   async create(

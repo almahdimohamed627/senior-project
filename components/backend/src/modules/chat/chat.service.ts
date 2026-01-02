@@ -72,7 +72,6 @@ export class ChatService {
   senderId: string,
   receiverId: string,
 ) {
-  // 1) شوف إذا في محادثة أصلاً لهذا الـ request
   const existing = await db
     .select()
     .from(conversations)
@@ -82,7 +81,6 @@ export class ChatService {
     return existing[0];
   }
 
-  // 2) جيب بيانات المستخدمين (وخصوصاً الـ role)
   const [sender] = await db
     .select({
       fusionAuthId: users.fusionAuthId,
@@ -114,11 +112,9 @@ export class ChatService {
     doctorId = receiver.fusionAuthId;
     patientId = sender.fusionAuthId;
   } else {
-    // يعني الأدوار ما بتناسب منطق المنصّة
     throw new Error('Invalid roles for chat conversation');
   }
 
-  // 4) أنشئ محادثة جديدة
   const [created] = await db
     .insert(conversations)
     .values({

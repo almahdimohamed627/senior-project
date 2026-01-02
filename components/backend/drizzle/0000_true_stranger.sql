@@ -1,6 +1,6 @@
-CREATE TYPE "public"."ai_conversation_status" AS ENUM('in_progress', 'completed');--> statement-breakpoint
-CREATE TYPE "public"."ai_message_role" AS ENUM('human', 'ai');--> statement-breakpoint
+CREATE TYPE "public"."ai_conversation_status" AS ENUM('in_progress', 'specified', 'completed');--> statement-breakpoint
 CREATE TYPE "public"."message_type" AS ENUM('text', 'audio');--> statement-breakpoint
+CREATE TYPE "public"."specialtyA" AS ENUM('Restorative', 'Endodontics', 'Periodentics', 'Fixed_Prosthondontics', 'Removable_Prosthondontics', 'Pediatric_Dentistry');--> statement-breakpoint
 CREATE TYPE "public"."role" AS ENUM('admin', 'doctor', 'patient');--> statement-breakpoint
 CREATE TYPE "public"."status" AS ENUM('pending', 'accepted', 'rejected');--> statement-breakpoint
 CREATE TABLE "appointments" (
@@ -16,8 +16,10 @@ CREATE TABLE "appointments" (
 CREATE TABLE "conversation_ai" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" varchar(255) NOT NULL,
-	"diagnosis" text,
+	"specialityE" "specialtyA",
+	"image_path" text,
 	"status" "ai_conversation_status" DEFAULT 'in_progress' NOT NULL,
+	"is_final" boolean DEFAULT false,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -25,8 +27,8 @@ CREATE TABLE "conversation_ai" (
 CREATE TABLE "conversation_ai_messages" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"conversation_id" integer NOT NULL,
-	"role" "ai_message_role" NOT NULL,
-	"text" text NOT NULL,
+	"msg" text NOT NULL,
+	"ai_response" text,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -51,8 +53,7 @@ CREATE TABLE "messages" (
 CREATE TABLE "cities" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"nameA" varchar,
-	"nameE" varchar,
-	CONSTRAINT "cities_id_unique" UNIQUE("id")
+	"nameE" varchar
 );
 --> statement-breakpoint
 CREATE TABLE "likes" (

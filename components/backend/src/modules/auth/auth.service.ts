@@ -14,7 +14,7 @@ import { FusionAuthClientWrapper } from './fusion-auth.client';
 import { RegisterDto } from './dto/register.dto';
 // Drizzle imports
 import { db } from '../../db/client';
-  import { schema } from '../../db/schema/schema';
+  import { cities, schema } from '../../db/schema/schema';
 import * as bcrypt from 'bcrypt';
 import { eq, isNull, not, and } from 'drizzle-orm';
 import axios from 'axios';
@@ -149,7 +149,7 @@ const isVerified = !!(fusionUserRaw?.verified ?? fusionUserRaw?.emailVerified ??
 
   // 4) أعد التوكنات للعميل
   return {
-    user:user,
+    user:user[0],
     access_token: tokens.access_token,
     id_token: tokens.id_token,
     refreshToken: tokens.refresh_token,
@@ -493,13 +493,18 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
 
   
   // success
-  //await db.select().from(schema.cities).where(eq(schema.cities.id,dto.city?.toString()??1))
+    if(dto.city){
+  
+    let city=await db.select().from(cities).where(eq(cities.id,dto.city))
+     return {fusionUserId,...dto,storedPath,city:city[0],...tokens};
+  }
+  let profilePhoto=storedPath
 const { password, ...safeDto } = dto;
 
 return {
   fusionUserId,
-  ...safeDto,          // كل معلومات العميل بدون password
-  storedPath,
+  ...safeDto,         
+  profilePhoto,
   access_token: tokens.access_token,
   refresh_token: tokens.refresh_token,
 };}
