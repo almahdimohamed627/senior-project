@@ -508,8 +508,8 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
      ,
      access_token: tokens.access_token,
   refresh_token: tokens.refresh_token,
-};
- }
+  };
+}
   
   // success
   //await db.select().from(schema.cities).where(eq(schema.cities.id,dto.city?.toString()??1))
