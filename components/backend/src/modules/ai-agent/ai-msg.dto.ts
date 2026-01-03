@@ -11,9 +11,7 @@ export enum DentistSpecialty {
 }
 
 export class AiMessage{
-    // @IsNotEmpty()
-    // @IsString()
-    // userID:string
+
      
     @IsString()
     @IsNotEmpty()

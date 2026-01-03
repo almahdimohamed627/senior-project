@@ -101,7 +101,6 @@ export class ChatService {
     throw new Error('Sender or receiver not found');
   }
 
-  // 3) حدّد مين الدكتور ومين المريض بناءً على role
   let doctorId: string | null = null;
   let patientId: string | null = null;
 

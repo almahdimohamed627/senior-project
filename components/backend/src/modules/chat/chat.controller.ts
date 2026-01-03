@@ -16,19 +16,16 @@ import { extname } from 'path';
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
-  // جلب المحادثات الخاصة بالمستخدم
   @Get('conversations/:userId')
   getConversations(@Param('userId') userId: string) {
     return this.chatService.getUserConversations(userId);
   }
 
-  // جلب رسائل محادثة معينة
   @Get('messages/:conversationId')
   getMessages(@Param('conversationId') conversationId: string) {
     return this.chatService.getMessages(Number(conversationId));
   }
 
-  // رفع ملف صوتي والحصول على رابط التشغيل
   @Post('upload-audio')
   @UseInterceptors(
     FileInterceptor('file', {
