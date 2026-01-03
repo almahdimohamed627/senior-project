@@ -24,11 +24,11 @@ async createConversationWithAi(userId: string, storedPath: string) {
       userId: userId,
       image_path: storedPath,
     })
-    .returning(); // ← هذا يرجّع السطر
+    .returning(); 
 
   return {
     msg: 'chat created',
-    conversation: inserted[0], // السطر الذي تم تخزينه
+    conversation: inserted[0], 
   };
 }
 
@@ -54,14 +54,7 @@ async createConversationWithAi(userId: string, storedPath: string) {
   isFinal?:boolean
  
 ) {
-  // const user = await db
-  //   .select()
-  //   .from(users)
-  //   .where(eq(users.fusionAuthId, userId));
 
-  // if (user.length === 0) {
-  //   return { msg: 'user not found' };
-  // }
 
   const conversation=await db.select().from(conversationAI).where(eq(conversationAI.id,conversationId))
   if (conversation.length === 0) {

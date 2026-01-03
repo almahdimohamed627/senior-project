@@ -56,11 +56,10 @@ export class PostController {
     const authorId = req.user?.sub || req.user?.userId;
     console.log(authorId)
     if (!authorId) {
-      // Shouldn't happen if JwtAuthGuard valid
+    
       throw new BadRequestException('User not authenticated');
     }
 
-    // Build payload and ignore any client-sent authorId
     const payload = { ...dto, authorId };
 
     // Compute stored file paths array (relative)

@@ -147,7 +147,7 @@ const isVerified = !!(fusionUserRaw?.verified ?? fusionUserRaw?.emailVerified ??
   let user=await db.select().from(users).where(eq(users.fusionAuthId,userId))
   console.log(user)
 
-  // 4) أعد التوكنات للعميل
+
   return {
     user:user[0],
     access_token: tokens.access_token,
@@ -300,7 +300,9 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
   let createdUserResp: any;
 
   
-
+  if(!storedPath){
+    storedPath='uploads/avatar.png'
+  }
 
 
 
@@ -322,7 +324,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
         'Content-Type': 'application/json',
         'Authorization': this.apiKey,
       },
-      timeout: 100000,
+      timeout: 10000,
     });
 
     fusionUserId = createdUserResp.data?.user?.id || createdUserResp.data?.id;
@@ -355,7 +357,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
     this.logger.log(`Adding registration for user ${fusionUserId} to app ${this.clientId} with roles ${JSON.stringify([dto.role])}`);
     const regResp = await axios.post(registrationUrl, registrationPayload, {
       headers: registrationHeaders,
-      timeout: 100000,
+      timeout: 10000,
     });
 
     // check registration response minimal
@@ -366,7 +368,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
         const delUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/${fusionUserId}`;
         const delHeaders: Record<string, string> = { 'Authorization': this.apiKey || '' };
         if (tenantId) delHeaders['X-FusionAuth-TenantId'] = tenantId;
-        await axios.delete(delUrl, { headers: delHeaders, timeout: 100000 });
+        await axios.delete(delUrl, { headers: delHeaders, timeout: 10000 });
         this.logger.warn(`Rolled back FusionAuth user ${fusionUserId} after failed registration`);
       } catch (delErr: any) {
         this.logger.error('Failed to rollback FusionAuth user after registration failure', delErr?.response?.data || delErr?.message || delErr);
@@ -409,8 +411,6 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
     fusionAuthId: fusionUserId,
 
   };
-  // storedPath=`app.almahdi.cloud/${storedPath}`
-  //console.log(storedPath)
   const newUser = {
     fusionAuthId: fusionUserId,
     firstName:dto.firstName,
@@ -456,7 +456,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
       const tenantFromCreated = createdUserResp?.data?.user?.tenantId;
       if (tenantFromCreated) delHeaders['X-FusionAuth-TenantId'] = tenantFromCreated;
 
-      await axios.delete(delRegUrl, { headers: delHeaders, timeout: 100000 });
+      await axios.delete(delRegUrl, { headers: delHeaders, timeout: 10000 });
       this.logger.warn(`Deleted registration for user ${fusionUserId} due to local DB error.`);
     } catch (delRegErr: any) {
       this.logger.error('Failed to delete registration during rollback', delRegErr?.response?.data || delRegErr?.message || delRegErr);
@@ -467,7 +467,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
       const delHeaders: Record<string, string> = { 'Authorization': this.apiKey || '' };
       const tenantFromCreated = createdUserResp?.data?.user?.tenantId;
       if (tenantFromCreated) delHeaders['X-FusionAuth-TenantId'] = tenantFromCreated;
-      await axios.delete(delUrl, { headers: delHeaders, timeout: 100000 });
+      await axios.delete(delUrl, { headers: delHeaders, timeout: 10000 });
       this.logger.warn(`Rolled back FusionAuth user ${fusionUserId} after local DB error`);
     } catch (delErr: any) {
       this.logger.error('Failed to rollback FusionAuth user after DB insert error', delErr?.response?.data || delErr?.message || delErr);
@@ -479,7 +479,8 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
 
   //  throw new InternalServerErrorException(clientMsg);
   }
-  const tokens: any = await this.fusionClient.exchangePassword(
+  
+    const tokens: any = await this.fusionClient.exchangePassword(
     dto.email,
     dto.password,
     this.clientId,
@@ -491,25 +492,25 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
   if (!tokens || !tokens.access_token) {
     throw new UnauthorizedException('Invalid credentials or no access token returned');
   }
-
-  
-  // success
-    if(dto.city){
-  
-    let city=await db.select().from(cities).where(eq(cities.id,dto.city))
-     return {fusionUserId,...dto,storedPath,city:city[0],...tokens};
-  }
-  let profilePhoto=storedPath
-const { password, ...safeDto } = dto;
-
-return {
-  fusionUserId,
-  ...safeDto,         
-  profilePhoto,
+  const authTokens = {
   access_token: tokens.access_token,
   refresh_token: tokens.refresh_token,
-};}
+};
 
+  
+  if(dto.city){
+  
+    let city=await db.select().from(cities).where(eq(cities.id,dto.city))
+     console.log('with city')
+     let profilePhot=storedPath
+     return {fusionUserId,...dto,profilePhot,city:city[0] ,authTokens};
+  }
+  
+  // success
+  //await db.select().from(schema.cities).where(eq(schema.cities.id,dto.city?.toString()??1))
+  console.log('without city')
+  return {fusionUserId,...dto,storedPath,};
+}
 
 
 // reset password

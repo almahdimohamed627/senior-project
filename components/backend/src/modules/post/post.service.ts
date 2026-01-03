@@ -146,20 +146,16 @@ async findOneByUserId(id: string) {
 }
 
 async  update(id: number, updatePostDto: UpdatePostDto) {
-  // جمع الحقول اللي بدنا نحدّثها بشكل انتقائي
   const payload: Record<string, any> = {};
 
   if (updatePostDto.title !== undefined) payload.title = updatePostDto.title;
   if (updatePostDto.content !== undefined) payload.content = updatePostDto.content;
   if (updatePostDto.photos !== undefined) {
-    // حوّل مصفوفة الصور إلى JSON string لأن العمود من نوع text
     payload.photos = JSON.stringify(updatePostDto.photos);
   }
 
-  // حدّث خانة updatedAt دائماً (اختياري)
   payload.updatedAt = new Date();
 
-  // لو ما في أي حقل للتحديث -> ارجع null أو throw
   if (Object.keys(payload).length === 0) {
     return null;
   }
@@ -168,7 +164,7 @@ async  update(id: number, updatePostDto: UpdatePostDto) {
     .update(posts)
     .set(payload)
     .where(eq(posts.id, id))
-    .returning(); // يرجع المصفوفة من الصفوف المحدثة
+    .returning(); 
 
   return Array.isArray(updated) ? updated[0] ?? null : null;
 }
