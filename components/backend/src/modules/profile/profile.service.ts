@@ -545,6 +545,8 @@ async findAll() {
   }
 
   async deleteAvailability(doctorId: string, availabilityId: number) {
+   
+
     const deleted = await db
       .delete(appointments)
       .where(eq(appointments.id, availabilityId))

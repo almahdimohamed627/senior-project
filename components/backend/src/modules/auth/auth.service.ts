@@ -492,8 +492,7 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
     throw new UnauthorizedException('Invalid credentials or no access token returned');
   }
   const authTokens = {
-  access_token: tokens.access_token,
-  refresh_token: tokens.refresh_token,
+
 };
 
   
@@ -501,9 +500,15 @@ async registerUserAndProfile(dto: RegisterDto,storedPath:string|undefined): Prom
   
     let city=await db.select().from(cities).where(eq(cities.id,dto.city))
      console.log('with city')
-     let profilePhot=storedPath
-     return {fusionUserId,...dto,profilePhot,city:city[0] ,authTokens};
-  }
+     let profilePhoto=storedPath
+     return {
+      
+     user:{ fusionUserId,...dto,profilePhoto,city:city[0]}
+     ,
+     access_token: tokens.access_token,
+  refresh_token: tokens.refresh_token,
+  };
+}
   
   // success
   //await db.select().from(schema.cities).where(eq(schema.cities.id,dto.city?.toString()??1))
