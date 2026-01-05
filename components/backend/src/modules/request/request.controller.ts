@@ -19,12 +19,11 @@ export class RequestController {
     @Body()
     body: {
       accepted: boolean;
-      senderId: string;
-      receiverId: string;
+      requestId:number
     },
   ) {
-    const { accepted, senderId, receiverId } = body;
-    return this.requestService.acceptOrReject(accepted, senderId, receiverId);
+    const { accepted, requestId } = body;
+    return this.requestService.acceptOrReject(accepted, requestId);
   }
 
   @Post('cancel')
