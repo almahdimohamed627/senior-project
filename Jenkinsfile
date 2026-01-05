@@ -254,7 +254,7 @@ def sendTelegramNotification(String status) {
     ]) {
       def message = ""
       def emoji = ""
-      def branch = env.BRANCH_NAME ?: "main"
+      def branch = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim() ?: "development"
       def duration = currentBuild.durationString ?: "Unknown"
       def componentDetails = getComponentDetails()
 
@@ -273,6 +273,9 @@ ${componentDetails}
 
 *Component Status:*
 ${getComponentStatuses()}
+
+*🔄 Last Commit:*
+${getLastCommitInfo()}
 
 *📊 Build Stages:*
 • 🏗 Build - ✅ Done
@@ -302,8 +305,8 @@ ${getComponentStatuses()}
 • 🚀 Deployment - ⏸️ Skipped
 • 🧪 Integration Test - ${getIntegrationTestStatus()}
 
-*🔍 Recent Changes:*
-${getRecentChanges()}
+*🔄 Last Commit:*
+${getLastCommitInfo()}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 *📝 Console Log:* [View Log](${env.BUILD_URL}console)
@@ -329,8 +332,8 @@ ${getComponentStatuses()}
 • 🚀 Deployment - ⏸️ Skipped
 • 🧪 Integration Test - ${getIntegrationTestStatus()}
 
-*🔍 Recent Changes:*
-${getRecentChanges()}
+*🔄 Last Commit:*
+${getLastCommitInfo()}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 *📝 Console Log:* [View Log](${env.BUILD_URL}console)
@@ -431,13 +434,19 @@ def getComponentType(componentName) {
   return type
 }
 
-def getRecentChanges() {
+def getLastCommitInfo() {
   try {
-    def changes = sh(script: 'git log --oneline -5', returnStdout: true).trim()
-    def changeList = changes.split('\n').collect { "• ${it}" }.join('\n')
-    return changeList ?: "No recent changes detected"
+    def changeLogSets = currentBuild.changeSets
+    if (changeLogSets && !changeLogSets.isEmpty()) {
+      def lastChangeSet = changeLogSets.last()
+      if (lastChangeSet && lastChangeSet.items) {
+        def lastItem = lastChangeSet.items.last()
+        return "${lastItem.author}: ${lastItem.msg}"
+      }
+    }
+    return "No recent commits"
   } catch (Exception e) {
-    return "Unable to fetch recent changes"
+    return "Unable to fetch commit info"
   }
 }
 
