@@ -198,32 +198,26 @@ export class RequestService {
   });
 }
 
-  async acceptOrReject(accepted: boolean, senderId: string, receiverId: string) {
+  async acceptOrReject(accepted: boolean, requestId:number) {
     const newStatus = accepted ? 'accepted' : 'rejected';
-    const pairCondition = this.buildPairCondition(senderId, receiverId);
-
-    const [updated] = await db
-      .update(requests)
-      .set({
-        status: newStatus,
-        updatedAt: new Date(),
-      })
-      .where(and(pairCondition, eq(requests.status, 'pending')))
-      .returning();
-
-    if (!updated) {
-      return 'no pending request found for this pair';
-    }
-
+     
+   
     if (newStatus === 'accepted') {
-      await this.chatService.ensureConversationForRequest(
-        updated.id,
-        updated.senderId,
-        updated.receiverId,
+      await db.update(requests).set({status:'accepted'}).where(eq(requests.id,requestId))
+       let request=await db.select().from(requests).where(eq(requests.id,requestId))
+      let conversation=await this.chatService.ensureConversationForRequest(
+        request[0].id,
+        request[0].senderId,
+        request[0].receiverId,
       );
+      return {request,conversation:conversation}
+    }else{
+      await db.update(requests).set({status:'rejected'}).where(eq(requests.id,requestId))
+      return {msg:'request rejected'}
     }
 
-    return updated;
+
+   // return {request};
   }
 
   async cancelRequest(senderId: string, receiverId: string) {

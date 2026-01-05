@@ -1,3 +1,4 @@
+//chat.service.ts
 import { Injectable } from '@nestjs/common';
 import { desc, eq, or } from 'drizzle-orm';
 import { db } from 'src/db/client';
