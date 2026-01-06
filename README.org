@@ -1,4 +1,4 @@
-#+TITLE: Senior Project: AI-Powered Dental Care Management System
+#+TITLE: DentAI-Bridge: AI-Powered Dental Care Management System
 #+AUTHOR: Mohamed Almahdi, Mustafa Aboud, Amer Habanakeh, Rami Maghrabi, Ahmad Almnsi
 #+DATE: 2025
 #+OPTIONS: toc:2 num:t
@@ -33,7 +33,7 @@ A comprehensive, microservices-based dental care management system that integrat
 #+BEGIN_SRC bash
 # Clone the repository
 git clone <repository-url>
-cd senior-project
+cd DentAI-Bridge
 
 # Start all services
 docker-compose up -d
@@ -51,7 +51,7 @@ curl http://localhost:3000/health
 * 📁 Project Structure
 
 #+BEGIN_SRC
-senior-project/
+DentAI-Bridge/
 ├── components/
 │   ├── backend/          # NestJS API services
 │   ├── ai-agent/         # Python AI triage system

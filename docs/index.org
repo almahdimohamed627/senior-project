@@ -1,4 +1,4 @@
-#+TITLE: AI-Powered Dental Care Management System
+#+TITLE: DentAI-Bridge: AI-Powered Dental Care Management System
 #+AUTHOR: Mohamed Almahdi, Mustafa Aboud, Amer Habanakeh, Rami Maghrabi, Ahmad Almnsi
 #+DATE: 2025
 #+OPTIONS: toc:3 num:t
