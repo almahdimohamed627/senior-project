@@ -68,8 +68,8 @@ export class ProfileController {
     return await this.profileService.findAll();
   }
   @Get('doctorsProfiles')
- async getDoctors(){
-  return await this.profileService.getAllDoctors()
+ async getDoctors(@Query('specialty') specialty?:string){
+  return await this.profileService.getAllDoctors(specialty)
   }
   @Get(':id')
   async findOne(@Param('id') id: string) {

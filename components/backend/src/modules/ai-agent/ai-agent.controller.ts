@@ -22,7 +22,7 @@ constructor(@Inject() private aiAgentSercice:AiAgentService ){}
       cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
     },
   }),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 ميغابايت عادةً كافية
+  limits: { fileSize: 10 * 1024 * 1024 }, 
   fileFilter: (_req, file, cb) => {
     const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
     const ext = path.extname(file.originalname).toLowerCase();
@@ -38,7 +38,7 @@ async createchat(
   @Body('userId') userId: string,
     @UploadedFile() file: Express.Multer.File
 ) {
-  if (!file) throw new BadRequestException('Please upload a photo');
+ if (!file) throw new BadRequestException('Please upload a photo');
 
   const storedPath = `/uploads/${file.filename}`;
   return await this.aiAgentSercice.createConversationWithAi(userId, storedPath);
