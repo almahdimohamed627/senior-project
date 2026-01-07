@@ -65,9 +65,7 @@ export class ProfileService {
     this.fusionClient = new FusionAuthClientWrapper(baseUrl, apiKey);
   }
 
-  // create(createProfileDto: CreateProfileDto) {
-  //   return 'This action adds a new profile';
-  // }
+
 
 async findAll() {
   const profiles = await db.select().from(users);
@@ -126,8 +124,12 @@ async findAll() {
 }
 
  
-  async getAllDoctors(){
-    let doctors= await db.select().from(doctorProfile)
+  async getAllDoctors(specialty?:string|null){
+     
+    let doctors=specialty?
+    await db.select().from(doctorProfile).where(eq(doctorProfile.specialty,specialty)):
+     await db.select().from(doctorProfile)
+
     let publicProfile:publicDoctorProfile[]=await Promise.all(
       doctors.map(async(doctor)=>{
        const [user]=await db.select().from(users).where(eq(users.fusionAuthId,doctor.fusionAuthId))

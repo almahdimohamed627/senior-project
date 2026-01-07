@@ -89,7 +89,7 @@ export const conversationAI = pgTable('conversation_ai', {
     .notNull()
     .default('in_progress'),
     is_final:boolean('is_final').default(false),
-
+   pdfReportPath: varchar('pdf_report_path'),
   createdAt: timestamp('created_at')
     .notNull()
     .defaultNow(),
@@ -115,4 +115,7 @@ export const conversationAiMessages = pgTable('conversation_ai_messages', {
     .notNull()
     .defaultNow(),
 });
+
+  
+
 
