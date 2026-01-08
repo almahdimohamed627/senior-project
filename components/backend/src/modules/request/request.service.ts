@@ -5,6 +5,7 @@ import { ChatService } from 'src/modules/chat/chat.service';
 import { patientProfile, users } from 'src/db/schema/profiles.schema';
 import { requests } from 'src/db/schema/request.schema';
 import { conversationAI, conversations } from 'src/db/schema/chat.schema';
+import { cities } from 'src/db/schema/cities.schema';
 
  type PatientProfile={
    request:{
@@ -21,11 +22,14 @@ import { conversationAI, conversations } from 'src/db/schema/chat.schema';
   firstName: string | null;
   lastName: string | null;
   email: string | null;
-  city?: number | null;
+  gender:string|null,
+  city?: object | null;
   phoneNumber?:string | null,
   specialty?: string | null;
+  diagnosisPhoto?:string|null;
   profilePhoto?: string | null;
-}
+} 
+
   }
 
 @Injectable()
@@ -58,9 +62,19 @@ export class RequestService {
   const rows: PatientProfile[] = await Promise.all(
     userRequests.map(async (req) => {
       const [patient] = await db
-        .select()
+        .select({
+          fusionAuthId:users.fusionAuthId,
+          firstName:users.firstName,
+          lastName:users.lastName,
+          gender:users.gender,
+          city:cities,
+         email: users.email,
+          phoneNumber:users.phoneNumber,
+          profilePhoto:users.profilePhoto
+        })
         .from(users)
-        .where(eq(users.fusionAuthId, req.senderId));
+        .where(eq(users.fusionAuthId, req.senderId)).innerJoin(cities,eq(users.city,cities.id))
+        ;
 
       if (!patient) return null;
 
@@ -68,6 +82,7 @@ export class RequestService {
         .select()
         .from(conversationAI)
         .where(eq(conversationAI.userId, req.senderId));
+        
 
       const row: PatientProfile = {
         request: {
@@ -83,11 +98,14 @@ export class RequestService {
         firstName: patient.firstName,
         lastName: patient.lastName,
         email: patient.email,
+        gender:patient.gender,
         phoneNumber: patient.phoneNumber,
         specialty: speciality?.specialityE ?? null,
+        diagnosisPhoto:speciality?.image_path??null,
         city: patient.city,
         profilePhoto: patient.profilePhoto,
-        }
+        },
+    
   
       };
 
@@ -103,12 +121,15 @@ export class RequestService {
     let patient=await db.select().from(users).where(eq(users.fusionAuthId,request[0].senderId))
     console.log(patient[0])
     let diagnosisInfo=await db.select().from(conversationAI).where(eq(conversationAI.userId,request[0].senderId))
+    
+   let city=await db.select().from(cities).where(eq(cities.id,Number(patient[0].city)))
     if(request[0].status==='accepted'&&request){
       let conver=await db.select().from(conversations).where(eq(conversations.requestId,requestId))
      return{
        request:request[0],
        conversation:conver[0],
-       patientInfo:patient[0],
+       patientInfo:{...patient[0],city:city[0]},
+   
        diagnosisInfo:diagnosisInfo[0]
 
      }
