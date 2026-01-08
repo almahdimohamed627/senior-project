@@ -4,7 +4,7 @@ import { db } from 'src/db/client';
 import { ChatService } from 'src/modules/chat/chat.service';
 import { patientProfile, users } from 'src/db/schema/profiles.schema';
 import { requests } from 'src/db/schema/request.schema';
-import { conversationAI } from 'src/db/schema/chat.schema';
+import { conversationAI, conversations } from 'src/db/schema/chat.schema';
 
  type PatientProfile={
    request:{
@@ -97,6 +97,29 @@ export class RequestService {
 
   return rows;
 }
+
+  async getRequstById(requestId:number){
+    let request=await db.select().from(requests).where(eq(requests.id,requestId))
+    let patient=await db.select().from(users).where(eq(users.fusionAuthId,request[0].senderId))
+    console.log(patient[0])
+    let diagnosisInfo=await db.select().from(conversationAI).where(eq(conversationAI.userId,request[0].senderId))
+    if(request[0].status==='accepted'&&request){
+      let conver=await db.select().from(conversations).where(eq(conversations.requestId,requestId))
+     return{
+       request:request[0],
+       conversation:conver[0],
+       patientInfo:patient[0],
+       diagnosisInfo:diagnosisInfo[0]
+
+     }
+    }
+    return {
+      request:request[0],
+      diagnosisInfo:diagnosisInfo[0],
+      patientInfo:patient[0],
+    }
+  }
+
 
   async getSentRequests(userId: string) {
     return db
@@ -237,6 +260,19 @@ export class RequestService {
     }
 
     return 'request cancelled';
+  }
+
+  async getOrder(requestId:number){
+   let request=await db.select().from(requests).where(eq(requests.id,requestId))
+   let diagnosisInfo=await db.select().from(conversationAI).where(eq(conversationAI.userId,request[0].senderId))
+   let patient=await db.select().from(users).where(eq(users.fusionAuthId,request[0].senderId))
+   
+   return{
+      patientInfo:patient[0],
+      diagnosisInfo:diagnosisInfo[0],
+      requestInfo:request[0]
+
+   }
   }
 
   private buildPairCondition(userA: string, userB: string) {

@@ -13,6 +13,10 @@ export class RequestController {
     return this.requestService.sendRequest(senderId, receiverId);
   }
 
+
+
+
+
   // قبول أو رفض طلب
   @Post('accept-or-reject')
   async acceptOrRejectRequest(
@@ -45,8 +49,14 @@ export class RequestController {
     return this.requestService.getSentRequests(userId);
   }
 
-  @Get('user/:userId/accepted')
-  async getAcceptedRelations(@Param('userId') userId: string) {
-    return this.requestService.getAcceptedRelations(userId);
+  @Get('user/:requestId')
+  async returnRequest(@Param('requestId')requestId:number){
+    console.log(requestId)
+     return this.requestService.getRequstById(requestId)
   }
+
+  // @Get('order')
+  // async returnOrder(@Param('requstId')requstId:number){
+  //   return await this.requestService.getOrder(requstId)
+  // }
 }

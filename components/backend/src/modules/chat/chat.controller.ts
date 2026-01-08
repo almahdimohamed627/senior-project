@@ -28,20 +28,20 @@ export class ChatController {
 
   @Post('upload-audio')
   @UseInterceptors(
-    FileInterceptor('file', {
+    FileInterceptor('voice', {
       storage: diskStorage({
         destination: 'uploads/voices',
         filename: (req, file, cb) => {
           const uniqueSuffix =
             Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname); // .mp3 / .m4a / ...
+          const ext = extname(file.originalname);
           cb(null, uniqueSuffix + ext);
         },
       }),
     }),
   )
-  async uploadAudio(@UploadedFile() file: Express.Multer.File) {
-    const audioUrl = await this.chatService.saveAudioFileAndGetUrl(file);
+  async uploadAudio(@UploadedFile() voice: Express.Multer.File) {
+    const audioUrl = await this.chatService.saveAudioFileAndGetUrl(voice);
     return { audioUrl };
   }
     @Post('message')

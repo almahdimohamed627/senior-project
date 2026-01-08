@@ -10,6 +10,7 @@ import { ChatService } from './chat.service';
 import { db } from 'src/db/client';
 import { users } from 'src/db/schema/profiles.schema';
 import { desc, eq, or } from 'drizzle-orm';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 
 
 
@@ -46,6 +47,7 @@ async handleJoin(
   client.join(`user:${data.userId}`);
   return { joined: true };
 }
+
 
   @SubscribeMessage('send_message')
   async handleSendMessage(

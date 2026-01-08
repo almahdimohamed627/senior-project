@@ -7,7 +7,6 @@ import { users } from 'src/db/schema/profiles.schema';
 
 @Injectable()
 export class ChatService {
-  // كل المحادثات التي يكون فيها المستخدم دكتور أو مريض
   async getUserConversations(userId: string) {
     return db
       .select()
@@ -20,7 +19,6 @@ export class ChatService {
       );
   }
 
-  // الرسائل الخاصة بمحادثة معينة (آخر 50 مثلاً)
   async getMessages(conversationId: number, limit = 50) {
     return db
       .select()
@@ -30,14 +28,11 @@ export class ChatService {
       .limit(limit);
   }
 
-  // بناء رابط الصوت اعتماداً على مكان التخزين
   async saveAudioFileAndGetUrl(file: Express.Multer.File): Promise<string> {
-    // بما أنك عامل static على /uploads، أي ملف في uploads/voices
-    // رح يصير متاح على /uploads/voices/<filename>
+
     return `/uploads/voices/${file.filename}`;
   }
 
-  // إنشاء رسالة جديدة (نصية أو صوتية)
   async createMessage(data: {
     conversationId: number;
     senderId: string;
