@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { db } from "src/db/client";
 import { conversationAI } from "src/db/schema/chat.schema";
 import {eq} from "drizzle-orm" 
@@ -142,4 +142,29 @@ let toothImageBase64 = '';
 
   return pdfPath;
 }
+async getPdfPath(conversationId: number): Promise<string> {
+    
+    const result = await db
+      .select({
+        pdfPath: conversationAI.pdfReportPath
+      })
+      .from(conversationAI)
+      .where(eq(conversationAI.id, conversationId));
+
+    if (result.length === 0) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    const savedPath = `uploads/${result[0].pdfPath}`;
+console.log(savedPath)
+    if (!savedPath) {
+      throw new NotFoundException('PDF report has not been generated for this conversation yet.');
+    }
+
+    if (!fs.existsSync(savedPath)) {
+      throw new NotFoundException('File not found on server storage.');
+    }
+   console.log(savedPath)
+    return savedPath;
+  }
 }
