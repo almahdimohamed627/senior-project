@@ -62,15 +62,12 @@ export class PostController {
 
     const payload = { ...dto, authorId };
 
-    // Compute stored file paths array (relative)
-    const filePaths: string[] = (files || []).map(f => `${POSTS_FOLDER}/${f.filename}`); // 'uploads/posts/filename.jpg'
+    const filePaths: string[] = (files || []).map(f => `${POSTS_FOLDER}/${f.filename}`); 
 
-    // Call service (service will handle DB insert + rollback file cleanup on failure)
     try {
       const created = await this.postService.createPost(payload, filePaths);
-      return created;
+      return {msg:"your request in review"};
     } catch (err) {
-      // If service throws, files will already be removed there on rollback.
       this.logger.error('Failed to create post', err?.message || err);
       throw err;
     }

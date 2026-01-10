@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, inArray, or } from 'drizzle-orm';
+import { and, eq, inArray, or ,desc} from 'drizzle-orm';
 import { db } from 'src/db/client';
 import { ChatService } from 'src/modules/chat/chat.service';
 import { patientProfile, users } from 'src/db/schema/profiles.schema';
@@ -36,7 +36,7 @@ import { cities } from 'src/db/schema/cities.schema';
 export class RequestService {
   constructor( private chatService: ChatService) {}
 
-  async getReceivedRequests(
+async getReceivedRequests(
   userId: string,
   status?: 'accepted' | 'rejected' | 'pending' | null,
 ) {
@@ -78,11 +78,13 @@ export class RequestService {
 
       if (!patient) return null;
 
-      const [speciality] = await db
+      const [latestDiagnosis] = await db
         .select()
         .from(conversationAI)
-        .where(eq(conversationAI.userId, req.senderId));
-        
+
+        .where(eq(conversationAI.userId, req.senderId))
+        .orderBy(desc(conversationAI.createdAt)) 
+        .limit(1); 
 
       const row: PatientProfile = {
         request: {
@@ -93,20 +95,18 @@ export class RequestService {
           createdAt: req.createdAt,
           updatedAt: req.updatedAt,
         },
-        patientInformation:{
-                fusionAuthId: patient.fusionAuthId,
-        firstName: patient.firstName,
-        lastName: patient.lastName,
-        email: patient.email,
-        gender:patient.gender,
-        phoneNumber: patient.phoneNumber,
-        specialty: speciality?.specialityE ?? null,
-        diagnosisPhoto:speciality?.image_path??null,
-        city: patient.city,
-        profilePhoto: patient.profilePhoto,
-        },
-    
-  
+
+        patientInformation: {
+          fusionAuthId: patient.fusionAuthId,
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          gender:patient.gender,
+          email: patient.email,
+          phoneNumber: patient.phoneNumber,
+          specialty: latestDiagnosis?.specialityE ?? null, 
+          city: patient.city,
+          profilePhoto: patient.profilePhoto,
+        }
       };
 
       return row;
@@ -116,30 +116,45 @@ export class RequestService {
   return rows;
 }
 
-  async getRequstById(requestId:number){
-    let request=await db.select().from(requests).where(eq(requests.id,requestId))
-    let patient=await db.select().from(users).where(eq(users.fusionAuthId,request[0].senderId))
-    console.log(patient[0])
-    let diagnosisInfo=await db.select().from(conversationAI).where(eq(conversationAI.userId,request[0].senderId))
-    
-   let city=await db.select().from(cities).where(eq(cities.id,Number(patient[0].city)))
-    if(request[0].status==='accepted'&&request){
-      let conver=await db.select().from(conversations).where(eq(conversations.requestId,requestId))
-     return{
-       request:request[0],
-       conversation:conver[0],
-       patientInfo:{...patient[0],city:city[0]},
-   
-       diagnosisInfo:diagnosisInfo[0]
 
-     }
-    }
+async getRequstById(requestId: number) {
+  
+  const requestResult = await db.select().from(requests).where(eq(requests.id, requestId));
+  const request = requestResult[0]; 
+
+  if (!request) return null; 
+
+  
+  const patientResult = await db.select().from(users).where(eq(users.fusionAuthId, request.senderId));
+  const patient = patientResult[0];
+
+  
+  const diagnosisInfoResult = await db
+    .select()
+    .from(conversationAI)
+    .where(eq(conversationAI.userId, request.senderId))
+    .orderBy(desc(conversationAI.createdAt)) 
+    .limit(1);
+  
+  const diagnosisInfo = diagnosisInfoResult[0];
+  
+
+  if (request.status === 'accepted') {
+    const converResult = await db.select().from(conversations).where(eq(conversations.requestId, requestId));
     return {
-      request:request[0],
-      diagnosisInfo:diagnosisInfo[0],
-      patientInfo:patient[0],
+      request: request,
+      conversation: converResult[0],
+      patientInfo: patient,
+      diagnosisInfo: diagnosisInfo 
     }
   }
+  
+  return {
+    request: request,
+    diagnosisInfo: diagnosisInfo, 
+    patientInfo: patient,
+  }
+}
 
 
   async getSentRequests(userId: string) {

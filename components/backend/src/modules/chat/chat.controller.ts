@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
     Body,
   Controller,
   Get,
@@ -10,7 +11,8 @@ import {
 import { ChatService } from './chat.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import path, { extname } from 'path';
+const UPLOADS_FOLDER = 'uploads';
 
 @Controller('chat')
 export class ChatController {
@@ -44,6 +46,30 @@ export class ChatController {
     const audioUrl = await this.chatService.saveAudioFileAndGetUrl(voice);
     return { audioUrl };
   }
+@Post('uploadImage')
+@UseInterceptors(FileInterceptor('photo', {
+  storage: diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOADS_FOLDER),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!allowed.includes(ext)) {
+      return cb(new BadRequestException('Only images are allowed (.jpg .jpeg .png .webp)'), false);
+    }
+    cb(null, true);
+  },
+}))
+ async uploadImage(@UploadedFile() image: Express.Multer.File){
+  let imageUrl=await this.chatService.saveImageFileAndGetUrl(image)
+  return {imageUrl}
+ }
+
     @Post('message')
   async sendMessage(
     @Body()
@@ -63,4 +89,5 @@ export class ChatController {
       audioUrl: body.audioUrl,
     });
   }
+
 }

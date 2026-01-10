@@ -55,9 +55,10 @@ async handleJoin(
     data: {
       conversationId: number;
       senderId: string;
-      type: 'text' | 'audio';
+      type: 'text' | 'audio'|'image';
       text?: string;
       audioUrl?: string;
+      imageUrl?: string;
     },
   ) {
     const conversation =

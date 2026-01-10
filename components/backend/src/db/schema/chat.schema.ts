@@ -31,7 +31,7 @@ export const aiConversationStatus = pgEnum('ai_conversation_status', [
 
 ]);
 
-export const messageType = pgEnum('message_type', ['text', 'audio']);
+export const messageType = pgEnum('message_type', ['text', 'audio','image' ]);
 
 export const messages = pgTable('messages', {
   id: serial('id').primaryKey(),
@@ -46,8 +46,9 @@ export const messages = pgTable('messages', {
 
   type: messageType('type').notNull().default('text'),
 
-  text: text('text'), // nullable لو type = audio
-  audioUrl: text('audio_url'), // nullable لو type = text
+  text: text('text'), 
+  audioUrl: text('audio_url'), 
+  imageUrl:text('image_url'),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -90,6 +91,9 @@ export const conversationAI = pgTable('conversation_ai', {
     .default('in_progress'),
     is_final:boolean('is_final').default(false),
    pdfReportPath: varchar('pdf_report_path'),
+   qrCodePath: varchar('qr_code_path'),
+
+  
   createdAt: timestamp('created_at')
     .notNull()
     .defaultNow(),

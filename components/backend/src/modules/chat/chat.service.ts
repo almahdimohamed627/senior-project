@@ -32,13 +32,17 @@ export class ChatService {
 
     return `/uploads/voices/${file.filename}`;
   }
+  async saveImageFileAndGetUrl(file: Express.Multer.File): Promise<string> {
+    return `/uploads/${file.filename}`;
+  }
 
   async createMessage(data: {
     conversationId: number;
     senderId: string;
-    type: 'text' | 'audio';
+    type: 'text' | 'audio'|'image';
     text?: string;
     audioUrl?: string;
+    imageUrl?: string;
   }) {
     const [created] = await db
       .insert(messages)
@@ -48,13 +52,13 @@ export class ChatService {
         type: data.type,
         text: data.type === 'text' ? data.text ?? '' : null,
         audioUrl: data.type === 'audio' ? data.audioUrl ?? '' : null,
+        imageUrl: data.type === 'image' ? data.imageUrl ?? '' : null,
       })
       .returning();
 
     return created;
   }
 
-  // جلب محادثة واحدة (مفيد للشات أو الجيتواي)
   async getConversationById(id: number) {
     const [conv] = await db
       .select()
