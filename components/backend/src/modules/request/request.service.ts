@@ -101,6 +101,7 @@ async getReceivedRequests(
           firstName: patient.firstName,
           lastName: patient.lastName,
           gender:patient.gender,
+
           email: patient.email,
           phoneNumber: patient.phoneNumber,
           specialty: latestDiagnosis?.specialityE ?? null, 
