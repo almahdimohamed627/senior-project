@@ -1,0 +1,16 @@
+{
+  "name": "post-verifier",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "exiftool-vendored": "^29.3.0",
+    "multer": "^2.0.1",
+    "express-basic-auth": "^1.2.1",
+    "http-proxy-middleware": "^2.0.6",
+    "winston": "^3.11.0"
+  }
+}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post-Verifier Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Post-Verifier Preferences</h1>
+  <a href="/docs">View API Docs</a>
+  <form id="prefs-form">
+    <label>Device Match:
+      <select id="deviceMatch">
+        <option value="disabled">Disabled</option>
+        <option value="not_necessary">Not Necessary</option>
+        <option value="necessary">Necessary</option>
+      </select>
+    </label><br>
+    <label>Software Check:
+      <select id="softwareCheck">
+        <option value="disabled">Disabled</option>
+        <option value="not_necessary">Not Necessary</option>
+        <option value="necessary">Necessary</option>
+      </select>
+    </label><br>
+    <label>Time Check:
+      <select id="timeCheck">
+        <option value="disabled">Disabled</option>
+        <option value="not_necessary">Not Necessary</option>
+        <option value="necessary">Necessary</option>
+      </select>
+    </label><br>
+    <label>Compression Check:
+      <select id="compressionCheck">
+        <option value="disabled">Disabled</option>
+        <option value="not_necessary">Not Necessary</option>
+        <option value="necessary">Necessary</option>
+      </select>
+    </label><br>
+    <label>
+      Max Photo Age (Months): <input type="number" id="maxPhotoAgeMonths" min="1">
+    </label><br>
+    <button type="submit">Save Preferences</button>
+  </form>
+  <div id="message"></div>
+  <script src="script.js"></script>
+</body>
+</html>

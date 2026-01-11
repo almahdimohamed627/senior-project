@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post-Verifier API Docs</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Post-Verifier API Documentation</h1>
+  <h2>Endpoints</h2>
+  <h3>POST /verify (API Port)</h3>
+  <p>Verifies a photo based on EXIF metadata.</p>
+  <ul>
+    <li><strong>Method:</strong> POST</li>
+    <li><strong>Content-Type:</strong> multipart/form-data</li>
+    <li><strong>Parameters:</strong>
+      <ul>
+        <li>image: File (JPEG/PNG)</li>
+        <li>doctorDevice: JSON string, e.g., {"model": "iPhone 12"}</li>
+      </ul>
+    </li>
+    <li><strong>Response:</strong> JSON {status: "accepted"|"not accepted"|"unstable", reasons: [...]}</li>
+  </ul>
+  <h3>GET /dashboard (Dashboard Port)</h3>
+  <p>Access the preferences dashboard (requires auth).</p>
+  <h3>GET /config (Dashboard Port)</h3>
+  <p>Get API port config (requires auth).</p>
+  <p>Response: JSON {apiPort: number}</p>
+  <h3>GET /docs (API Port)</h3>
+  <p>Access API documentation.</p>
+  <h3>GET /api/prefs (API Port)</h3>
+  <p>Get current preferences.</p>
+  <h3>POST /api/prefs (API Port)</h3>
+  <p>Update preferences.</p>
+  <p>Body: JSON with check states and maxPhotoAgeMonths.</p>
+  <h2>Check States</h2>
+  <ul>
+    <li><strong>disabled:</strong> Check ignored.</li>
+    <li><strong>not_necessary:</strong> If fails, status="unstable".</li>
+    <li><strong>necessary:</strong> If fails, status="not accepted".</li>
+  </ul>
+  <h2>Statuses</h2>
+  <ul>
+    <li><strong>accepted:</strong> All necessary checks pass.</li>
+    <li><strong>not accepted:</strong> One or more necessary checks fail.</li>
+    <li><strong>unstable:</strong> Non-critical issues; admin review needed.</li>
+  </ul>
+  <a href="/dashboard">Back to Dashboard</a>
+</body>
+</html>

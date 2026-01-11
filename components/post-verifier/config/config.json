@@ -1,0 +1,7 @@
+{
+  "deviceMatch": "necessary",
+  "softwareCheck": "necessary",
+  "timeCheck": "necessary",
+  "maxPhotoAgeMonths": 1,
+  "compressionCheck": "disabled"
+}

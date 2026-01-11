@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  post-verifier:
+    build: .
+    ports:
+      - "${DASHBOARD_PORT}:${DASHBOARD_PORT}"
+      - "${API_PORT}:${API_PORT}"
+    volumes:
+      - config-volume:/app/config
+    env_file:
+      - .env
+    develop:
+      watch:
+        - action: sync
+          path: ./config
+          target: /app/config
+    # networks:
+    #   - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.post-verifier.rule=Host(`${TRAEFIK_DOMAIN}`)"
+      - "traefik.http.services.post-verifier.loadbalancer.server.port=${DASHBOARD_PORT}"
+# networks:
+#   proxy:
+#     external: true
+volumes:
+  config-volume:
+
