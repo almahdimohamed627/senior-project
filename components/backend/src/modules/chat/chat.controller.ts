@@ -47,7 +47,7 @@ export class ChatController {
     return { audioUrl };
   }
 @Post('uploadImage')
-@UseInterceptors(FileInterceptor('image', {
+@UseInterceptors(FileInterceptor('photo', {
   storage: diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOADS_FOLDER),
     filename: (_req, file, cb) => {

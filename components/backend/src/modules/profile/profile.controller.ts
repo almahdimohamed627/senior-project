@@ -32,9 +32,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import path, { extname, join } from 'path';
 import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator';
-import { db } from 'src/db/client';
-import { users } from 'src/db/schema/profiles.schema';
-import { eq } from 'drizzle-orm';
 const UPLOADS_FOLDER = 'uploads';
 
 
@@ -195,19 +192,7 @@ async createAvailabilities(
   ) {
     return await this.profileService.updateAvailability(doctorId, Number(availabilityId), items);
   }
-//fcm token
-@Patch('fcm-token')
-async updateFcmToken(
-  @CurrentUser() user: any, 
-  @Body('token') token: string
-) {
-  await db
-    .update(users)
-    .set({ fcmToken: token })
-    .where(eq(users.fusionAuthId, user.fusionAuthId));
-    
-  return { msg: 'Token updated successfully' };
-}
+
 
 
 }
