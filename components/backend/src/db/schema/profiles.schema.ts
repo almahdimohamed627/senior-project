@@ -15,6 +15,7 @@ export const users=pgTable('users',{
   birthYear: integer('birth_year').notNull(),
   phoneNumber: varchar('phone_number', { length: 20 }).notNull(),
   role:role('role'),
+  fcmToken: varchar('fcm_token', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })

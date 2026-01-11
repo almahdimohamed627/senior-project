@@ -6,6 +6,7 @@ import { patientProfile, users } from 'src/db/schema/profiles.schema';
 import { requests } from 'src/db/schema/request.schema';
 import { conversationAI, conversations } from 'src/db/schema/chat.schema';
 import { cities } from 'src/db/schema/cities.schema';
+//import { NotificationService } from '../notification/notification.service';
 
  type PatientProfile={
    request:{
@@ -34,7 +35,7 @@ import { cities } from 'src/db/schema/cities.schema';
 
 @Injectable()
 export class RequestService {
-  constructor( private chatService: ChatService) {}
+  constructor( private chatService: ChatService,/*private readonly notificationService: NotificationService,*/) {}
 
 async getReceivedRequests(
   userId: string,
@@ -245,16 +246,34 @@ async getRequstById(requestId: number) {
         'request already exists or already accepted',
       );
     }
-
-    const [created] = await tx
+    const doctorResult = await db
+      .select({ 
+        fcmToken: users.fcmToken,
+        firstName: users.firstName 
+      })
+      .from(users)
+      .where(eq(users.fusionAuthId, receiverId));
+    const [newRequest] = await tx
       .insert(requests)
       .values({
         senderId,
         receiverId,
       })
       .returning();
+      const doctor = doctorResult[0];
+      // if(doctor && doctor.fcmToken){
+      //   const patientResult = await db.select().from(users).where(eq(users.fusionAuthId, receiverId));
+      //   //const patientName = patientResult[0]?.firstName || 'مريض';
 
-    return created;
+      // //   await this.notificationService.sendPushNotification(
+      // //   doctor.fcmToken,            
+      // //   'new patiet send request for you',         
+      // //   `the patient ${patientName} send request for you `, 
+      // //   { requestId: newRequest[0].id.toString() } 
+      // // );
+      // }
+
+    return newRequest;
   });
 }
 
