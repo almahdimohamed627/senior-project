@@ -1,6 +1,72 @@
 
+# Environment variables
 .env
-# Ignore the entire certs directory
+.env.local
+.env.production
+
+# SSL certificates
 certs/
+
 # Ignore the entire dynamic directory
 dynamic/
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+*.pid
+*.seed
+*.lock
+
+# Coverage
+coverage/
+*.lcov
+
+# Cache
+.cache
+.npm
+.eslintcache
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Test files
+.coverage
+.pytest_cache/
+test-results/
+
+# Temporary files
+*.tmp
+*.temp
+>>>>>>> 275c698 (edited github pages and added nessecary stuff in .gitignore)

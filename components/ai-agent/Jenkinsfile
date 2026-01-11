@@ -1,0 +1,201 @@
+def build() {
+    echo "🏗️ Starting build for ai-agent component"
+
+    // Use environment file for ALL stages if available
+    def credentialId = "ai-agent.env"
+    def hasEnvFile = false
+
+    // Check if environment file credential exists
+    try {
+        withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
+            hasEnvFile = true
+        }
+                } catch (Exception e) {
+        echo "⚠️ No credential found for ${credentialId}, proceeding without environment file"
+        hasEnvFile = false
+    }
+
+    if (hasEnvFile) {
+        withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
+            sh """
+                cp "\$ENV_FILE" .env
+                chmod 600 .env
+            """
+
+            stage('Validate Docker Compose') {
+                sh '''
+                    echo "Validating docker-compose.yml with environment file..."
+                    docker compose --env-file .env config
+                '''
+            }
+
+            stage('Clean Previous Builds') {
+                sh '''
+                    echo "Cleaning up previous builds and images..."
+                    docker rmi --force ai-agent-app
+                    docker compose --env-file .env down --remove-orphans --rmi all 2>/dev/null || true
+                    docker image prune -f 2>/dev/null || true
+                    docker rmi -f $(docker images | grep "langchain" | awk "{print \$3}") 2>/dev/null || true
+                '''
+            }
+
+            stage('Pull Images') {
+                sh '''
+                    echo "Pulling Docker images from Docker Hub..."
+                    docker compose --env-file .env pull --ignore-pull-failures
+                '''
+            }
+            
+            stage('Build Services') {
+                // Check if we should build
+                def shouldBuild = fileExists('Dockerfile') || 
+                    sh(script: 'docker compose --env-file .env config | grep -q "build:"', returnStatus: true) == 0
+                
+                if (shouldBuild) {
+                    sh '''
+                        echo "Building ai-agent services..."
+                        # Build the specific service image directly, ensuring no-cache
+                        docker build --no-cache --pull -t ai-agent-app .
+
+                        echo "running python ingest.py"
+                         docker run ai-agent-app python ingest.py
+                    '''
+                } else {
+                    echo "⚠️ No build configuration found - skipping build"
+                }
+            }
+            
+
+            
+            stage('Save Compose Configuration') {
+                sh '''
+                    # Generate the final compose config for deployment
+                    docker compose --env-file .env config > docker-compose.resolved.yml
+                '''
+                archiveArtifacts artifacts: 'docker-compose.resolved.yml', fingerprint: true
+            }
+            
+            // Clean up environment file
+            sh "rm -f .env 2>/dev/null || true"
+        }
+    } else {
+        // Fallback: build without environment file
+        stage('Validate Docker Compose') {
+            sh '''
+                echo "Validating docker-compose.yml..."
+                docker compose config
+            '''
+        }
+        
+        stage('Clean Previous Builds') {
+            sh '''
+                echo "Cleaning up previous builds and images..."
+                docker rmi --force ai-agent-app
+                docker compose down --remove-orphans --rmi all 2>/dev/null || true
+                docker image prune -f 2>/dev/null || true
+                docker rmi -f $(docker images | grep "langchain" | awk "{print \$3}") 2>/dev/null || true
+            '''
+        }
+        
+        stage('Pull Images') {
+            sh '''
+                echo "Pulling Docker images from Docker Hub..."
+                docker compose pull --ignore-pull-failures
+            '''
+        }
+        
+        stage('Build Services') {
+            def shouldBuild = fileExists('Dockerfile') || 
+                sh(script: 'docker compose config | grep -q "build:"', returnStatus: true) == 0
+            
+            if (shouldBuild) {
+                sh '''
+                    echo "Building ai-agent services..."
+                    docker build --no-cache --pull -t ai-agent-app .
+                '''
+            } else {
+                echo "⚠️ No build configuration found - skipping build"
+            }
+        }
+        
+
+        
+        stage('Save Compose Configuration') {
+            sh '''
+                docker compose config > docker-compose.resolved.yml
+            '''
+            archiveArtifacts artifacts: 'docker-compose.resolved.yml', fingerprint: true
+        }
+    }
+    
+    echo "✅ ai-agent build completed successfully"
+}
+
+def deploy() {
+    echo "🚀 Starting deployment for ai-agent component"
+    
+    try {
+        withCredentials([file(credentialsId: "ai-agent.env", variable: 'ENV_FILE')]) {
+            sh """
+                cp "\$ENV_FILE" .env
+                chmod 600 .env
+                docker compose --env-file .env config
+                docker compose --env-file .env down --remove-orphans 2>/dev/null || true
+                docker compose --env-file .env pull --ignore-pull-failures 2>/dev/null || true
+                docker compose --env-file .env up -d
+                sleep 30
+            """
+        }
+
+        sh """
+            docker compose --env-file .env ps || true
+            docker ps --filter "name=ai-agent" --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" || true
+        """
+
+        // Custom health check for ai-agent
+        sh '''
+            for i in 1 2 3; do
+                if curl -s -f http://localhost:8000 >/dev/null 2>&1; then
+                    echo "✅ ai-agent is accessible at http://localhost:8000"
+                    break
+                else
+                    echo "⏳ Attempt $i: ai-agent not yet accessible, waiting..."
+                    sleep 15
+                fi
+            done
+            if ! curl -s -f http://localhost:8000 >/dev/null 2>&1; then
+                echo "⚠️ ai-agent not accessible, showing recent logs..."
+                docker compose logs --tail=50 ai-agent || true
+            fi
+        '''
+
+        echo "✅ ai-agent deployment completed successfully"
+    } catch (Exception e) {
+        echo "❌ Deployment failed for ai-agent: ${e.message}"
+        sh """
+            echo "=== Debug Information ==="
+            docker compose --env-file .env ps 2>/dev/null || true
+            echo "=== Recent Logs ==="
+            docker compose --env-file .env logs --tail=100 2>/dev/null || true
+        """
+        sh "rm -f .env 2>/dev/null || true"
+        throw e
+    }
+}
+
+// Optional: Add other utility methods
+def test() {
+    echo "🧪 Running tests for ai-agent"
+    // Add your test logic here
+}
+
+def cleanup() {
+    echo "🧹 Cleaning up ai-agent resources"
+    sh '''
+        docker compose down --remove-orphans --rmi all 2>/dev/null || true
+        docker rmi -f ai-agent-app 2>/dev/null || true
+    '''
+}
+
+// Return this library
+return this

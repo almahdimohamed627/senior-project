@@ -1,0 +1,19 @@
+api:
+  dashboard: true
+
+entryPoints:
+  web:
+    address: ":80"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: almahdimohamed627@gmail.com
+      storage: acme.json
+      httpChallenge:
+        entryPoint: web

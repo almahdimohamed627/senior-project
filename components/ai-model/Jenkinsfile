@@ -1,8 +1,8 @@
 def build() {
-    echo "🏗️ Starting build for backend component"
+    echo "🏗️ Starting build for ai-model component"
     
     // Use environment file for ALL stages if available
-    def credentialId = "core-backend.env"
+    def credentialId = "ai-model.env"
     def hasEnvFile = false
     
     // Check if environment file credential exists
@@ -12,7 +12,6 @@ def build() {
         }
     } catch(Exception e) {
         echo "⚠️ No credential found for ${credentialId}, proceeding without environment file"
-        hasEnvFile = false
     }
     
     if (hasEnvFile) {
@@ -32,10 +31,10 @@ def build() {
             stage('Clean Previous Builds') {
                 sh '''
                     echo "Cleaning up previous builds and images..."
-                    docker rmi --force backend-app
+                    docker rmi --force ai-model-app
                     docker compose --env-file .env down --remove-orphans --rmi all 2>/dev/null || true
                     docker image prune -f 2>/dev/null || true
-                    docker rmi -f $(docker images | grep "nest-app" | awk "{print \$3}") 2>/dev/null || true
+                    docker rmi -f $(docker images | grep "ai-model" | awk "{print \$3}") 2>/dev/null || true
                 '''
             }
             
@@ -53,9 +52,9 @@ def build() {
                 
                 if (shouldBuild) {
                     sh '''
-                        echo "Building backend services..."
+                        echo "Building ai-model services..."
                         # Build the specific service image directly, ensuring no-cache
-                        docker build --no-cache --pull -t backend-app .
+                        docker build --no-cache --pull -t ai-model-app .
                     '''
                 } else {
                     echo "⚠️ No build configuration found - skipping build"
@@ -78,14 +77,14 @@ def build() {
                         if docker compose --env-file .env ps | grep -q "Up"; then
                             echo "✅ Services are running"
                             
-                             # Additional health check for nest-app
-                             echo "Checking if nest-app is accessible..."
+                             # Additional health check for ai-model
+                             echo "Checking if ai-model is accessible..."
                              for i in 1 2 3; do
-                                 if curl -s -f http://localhost:3000 >/dev/null 2>&1; then
-                                     echo "✅ backend is accessible at http://localhost:3000"
+                                 if curl -s -f http://localhost:3001/docs >/dev/null 2>&1; then
+                                     echo "✅ ai-model is accessible at http://localhost:3001"
                                      break
                                  else
-                                     echo "⏳ Attempt $i: backend not yet accessible, waiting..."
+                                     echo "⏳ Attempt $i: ai-model not yet accessible, waiting..."
                                      sleep 5
                                  fi
                              done
@@ -136,10 +135,10 @@ def build() {
         stage('Clean Previous Builds') {
             sh '''
                 echo "Cleaning up previous builds and images..."
-                docker rmi --force backend-app
+                docker rmi --force ai-model-app
                 docker compose down --remove-orphans --rmi all 2>/dev/null || true
                 docker image prune -f 2>/dev/null || true
-                docker rmi -f $(docker images | grep "nest-app" | awk "{print \$3}") 2>/dev/null || true
+                docker rmi -f $(docker images | grep "ai-model" | awk "{print \$3}") 2>/dev/null || true
             '''
         }
         
@@ -156,8 +155,8 @@ def build() {
             
             if (shouldBuild) {
                 sh '''
-                    echo "Building backend services..."
-                    docker build --no-cache --pull -t backend-app .
+                    echo "Building ai-model services..."
+                    docker build --no-cache --pull -t ai-model-app .
                 '''
             } else {
                 echo "⚠️ No build configuration found - skipping build"
@@ -197,14 +196,14 @@ def build() {
         }
     }
     
-    echo "✅ backend build completed successfully"
+    echo "✅ ai-model build completed successfully"
 }
 
 def deploy() {
-    echo "🚀 Starting deployment for backend component"
+    echo "🚀 Starting deployment for ai-model component"
     
     try {
-        withCredentials([file(credentialsId: "core-backend.env", variable: 'ENV_FILE')]) {
+        withCredentials([file(credentialsId: "ai-model.env", variable: 'ENV_FILE')]) {
             sh """
                 cp "\$ENV_FILE" .env
                 chmod 600 .env
@@ -218,29 +217,29 @@ def deploy() {
 
         sh """
             docker compose --env-file .env ps || true
-            docker ps --filter "name=backend" --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" || true
+            docker ps --filter "name=ai-model" --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" || true
         """
 
-        // Custom health check for backend
+        // Custom health check for ai-model
         sh '''
             for i in 1 2 3; do
-                if curl -s -f http://localhost:3000 >/dev/null 2>&1; then
-                    echo "✅ backend is accessible at http://localhost:3000"
+                if curl -s -f http://localhost:3001/docs >/dev/null 2>&1; then
+                    echo "✅ ai-model is accessible at http://localhost:3001"
                     break
                 else
-                    echo "⏳ Attempt $i: backend not yet accessible, waiting..."
+                    echo "⏳ Attempt $i: ai-model not yet accessible, waiting..."
                     sleep 15
                 fi
             done
-            if ! curl -s -f http://localhost:3000 >/dev/null 2>&1; then
-                echo "⚠️ backend not accessible, showing recent logs..."
-                docker compose logs --tail=50 nest-app || true
+            if ! curl -s -f http://localhost:3001 >/dev/null 2>&1; then
+                echo "⚠️ ai-model not accessible, showing recent logs..."
+                docker compose logs --tail=50 ai-model || true
             fi
         '''
 
-        echo "✅ backend deployment completed successfully"
+        echo "✅ ai-model deployment completed successfully"
     } catch (Exception e) {
-        echo "❌ Deployment failed for backend: ${e.message}"
+        echo "❌ Deployment failed for ai-model: ${e.message}"
         sh """
             echo "=== Debug Information ==="
             docker compose --env-file .env ps 2>/dev/null || true
@@ -254,15 +253,15 @@ def deploy() {
 
 // Optional: Add other utility methods
 def test() {
-    echo "🧪 Running tests for backend"
+    echo "🧪 Running tests for ai-model"
     // Add your test logic here
 }
 
 def cleanup() {
-    echo "🧹 Cleaning up backend resources"
+    echo "🧹 Cleaning up ai-model resources"
     sh '''
         docker compose down --remove-orphans --rmi all 2>/dev/null || true
-        docker rmi -f backend-app 2>/dev/null || true
+        docker rmi -f ai-model-app 2>/dev/null || true
     '''
 }
 

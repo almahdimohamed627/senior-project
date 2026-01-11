@@ -5,6 +5,8 @@ import { ChatService } from 'src/modules/chat/chat.service';
 import { patientProfile, users } from 'src/db/schema/profiles.schema';
 import { requests } from 'src/db/schema/request.schema';
 import { conversationAI, conversations } from 'src/db/schema/chat.schema';
+import { cities } from 'src/db/schema/cities.schema';
+//import { NotificationService } from '../notification/notification.service';
 
  type PatientProfile={
    request:{
@@ -21,16 +23,19 @@ import { conversationAI, conversations } from 'src/db/schema/chat.schema';
   firstName: string | null;
   lastName: string | null;
   email: string | null;
-  city?: number | null;
+  gender:string|null,
+  city?: object | null;
   phoneNumber?:string | null,
   specialty?: string | null;
+  diagnosisPhoto?:string|null;
   profilePhoto?: string | null;
-}
+} 
+
   }
 
 @Injectable()
 export class RequestService {
-  constructor( private chatService: ChatService) {}
+  constructor( private chatService: ChatService,/*private readonly notificationService: NotificationService,*/) {}
 
 async getReceivedRequests(
   userId: string,
@@ -58,15 +63,26 @@ async getReceivedRequests(
   const rows: PatientProfile[] = await Promise.all(
     userRequests.map(async (req) => {
       const [patient] = await db
-        .select()
+        .select({
+          fusionAuthId:users.fusionAuthId,
+          firstName:users.firstName,
+          lastName:users.lastName,
+          gender:users.gender,
+          city:cities,
+         email: users.email,
+          phoneNumber:users.phoneNumber,
+          profilePhoto:users.profilePhoto
+        })
         .from(users)
-        .where(eq(users.fusionAuthId, req.senderId));
+        .where(eq(users.fusionAuthId, req.senderId)).innerJoin(cities,eq(users.city,cities.id))
+        ;
 
       if (!patient) return null;
 
       const [latestDiagnosis] = await db
         .select()
         .from(conversationAI)
+
         .where(eq(conversationAI.userId, req.senderId))
         .orderBy(desc(conversationAI.createdAt)) 
         .limit(1); 
@@ -80,10 +96,13 @@ async getReceivedRequests(
           createdAt: req.createdAt,
           updatedAt: req.updatedAt,
         },
+
         patientInformation: {
           fusionAuthId: patient.fusionAuthId,
           firstName: patient.firstName,
           lastName: patient.lastName,
+          gender:patient.gender,
+
           email: patient.email,
           phoneNumber: patient.phoneNumber,
           specialty: latestDiagnosis?.specialityE ?? null, 
@@ -98,6 +117,7 @@ async getReceivedRequests(
 
   return rows;
 }
+
 
 async getRequstById(requestId: number) {
   
@@ -226,16 +246,34 @@ async getRequstById(requestId: number) {
         'request already exists or already accepted',
       );
     }
-
-    const [created] = await tx
+    const doctorResult = await db
+      .select({ 
+        fcmToken: users.fcmToken,
+        firstName: users.firstName 
+      })
+      .from(users)
+      .where(eq(users.fusionAuthId, receiverId));
+    const [newRequest] = await tx
       .insert(requests)
       .values({
         senderId,
         receiverId,
       })
       .returning();
+      const doctor = doctorResult[0];
+      // if(doctor && doctor.fcmToken){
+      //   const patientResult = await db.select().from(users).where(eq(users.fusionAuthId, receiverId));
+      //   //const patientName = patientResult[0]?.firstName || 'مريض';
 
-    return created;
+      // //   await this.notificationService.sendPushNotification(
+      // //   doctor.fcmToken,            
+      // //   'new patiet send request for you',         
+      // //   `the patient ${patientName} send request for you `, 
+      // //   { requestId: newRequest[0].id.toString() } 
+      // // );
+      // }
+
+    return newRequest;
   });
 }
 
