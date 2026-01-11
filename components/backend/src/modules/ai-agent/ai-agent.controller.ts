@@ -1,16 +1,20 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, Post, Query, Res, StreamableFile, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { AiAgentService } from "./ai-agent.service";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 import path from "path";
 import { AiMessage } from "./ai-msg.dto";
+import { DiagnosesPdfService } from "./diagnoses-pdf.service";
+import { PassThrough } from "stream";
+import { createReadStream } from "fs";
 const UPLOADS_FOLDER = 'uploads';
 
 
 @Controller('ai-agent')
 export class AiAgentController{
 
-constructor(@Inject() private aiAgentSercice:AiAgentService ){}
+constructor(@Inject() private aiAgentSercice:AiAgentService,
+ @Inject() private diagnosisPdfService:DiagnosesPdfService){}
    
 
 
@@ -22,7 +26,7 @@ constructor(@Inject() private aiAgentSercice:AiAgentService ){}
       cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
     },
   }),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 ميغابايت عادةً كافية
+  limits: { fileSize: 10 * 1024 * 1024 }, 
   fileFilter: (_req, file, cb) => {
     const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
     const ext = path.extname(file.originalname).toLowerCase();
@@ -38,7 +42,7 @@ async createchat(
   @Body('userId') userId: string,
     @UploadedFile() file: Express.Multer.File
 ) {
-  if (!file) throw new BadRequestException('Please upload a photo');
+ if (!file) throw new BadRequestException('Please upload a photo');
 
   const storedPath = `/uploads/${file.filename}`;
   return await this.aiAgentSercice.createConversationWithAi(userId, storedPath);
@@ -63,6 +67,21 @@ async saveMsg(@Body() saveMsgDto:AiMessage){
       saveMsgDto.AiResponse,
       saveMsgDto.speciality,saveMsgDto.isFinal)
 }
+
+@Post('returnPdf/:aiConversationId')
+  async returnDiagnosisPdf(
+    @Param('aiConversationId') aiConversationId: number,
+  ): Promise<StreamableFile> {
+    
+    const pdfPath = await this.diagnosisPdfService.getPdfPath(Number(aiConversationId));
+  console.log(pdfPath)
+    const file = createReadStream(pdfPath);
+
+    return new StreamableFile(file, {
+      type: 'application/pdf',
+      disposition: `attachment; filename="diagnosis_${aiConversationId}.pdf"`,
+    });
+  }
 
     
 }

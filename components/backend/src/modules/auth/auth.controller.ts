@@ -26,14 +26,7 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
 const UPLOADS_FOLDER = 'uploads';
 
-// ensure uploads folder exists (will create if missing)
-// if (!existsSync(UPLOADS_FOLDER)) {
-//   mkdirSync(UPLOADS_FOLDER, { recursive: true });
-// }
 
-/**
- * Helper: filter allowed mime types (jpg/jpeg/png) — throws BadRequestException on reject.
- */
 function fileFilter(req: any, file: Express.Multer.File, cb: Function) {
   if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
     return cb(new BadRequestException('Unsupported file type. Only jpg/jpeg/png allowed.'), false);
@@ -41,10 +34,7 @@ function fileFilter(req: any, file: Express.Multer.File, cb: Function) {
   cb(null, true);
 }
 
-/**
- * Helper: create deterministic filename with timestamp to avoid collisions.
- * You can replace with uuid if preferred.
- */
+
 function editFileName(req: any, file: Express.Multer.File, callback: Function) {
   const name = file.originalname
     .replace(/\.[^/.]+$/, '') // remove extension
@@ -71,7 +61,7 @@ export class AuthController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    // لوق تشخيصي سريع
+   
     this.logger.debug('loginWithPassword called, email:', email, 'password present?', !!password);
 
     if (!email || !password) {
@@ -100,13 +90,7 @@ export class AuthController {
     const resp = await this.authService.introspectAccessToken(token);
     return resp;
   }
-  // @Post('reset-password')
-  // async resetPssword(@Body() resetPassword:ResetPasswordDto){
-  //  if(resetPassword.newPassword != resetPassword.confirmNewPassword){
-  //   throw new BadRequestException('confirmNewPassword must match newPassword');
-  //  }
-  //  return this.authService.restPassword(resetPassword)
-  // }
+
 
   @Post('profileFromIdToken')
   async profileFromIdToken(@Body('id_token') id_token: string) {
@@ -114,9 +98,7 @@ export class AuthController {
     return profile;
   }
 
-  // ------------------------
-  // Registration endpoint (no photo upload)
-  // ------------------------
+
   @UseInterceptors(FileInterceptor('profilePhoto', {
     storage: diskStorage({
       destination: (_req, _file, cb) => cb(null, UPLOADS_FOLDER),
@@ -155,7 +137,6 @@ async verifyEmailOtp(@Body() dto: { email: string; code: string }) {
   return this.authService.verifyEmailOtp(dto.email, dto.code);
 }
 
-  // Refresh endpoint (reads refresh token from httpOnly cookie)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Req() req: Request, @Res() res: Response) {
@@ -167,14 +148,13 @@ async verifyEmailOtp(@Body() dto: { email: string; code: string }) {
 
     try {
       const tokens = await this.authService.refreshTokens(refreshToken);
-      // Set new refresh token cookie if rotation returned new one
       if (tokens.refresh_token) {
         res.cookie('refresh_token', tokens.refresh_token, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'strict',
           path: '/',
-          maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days example
+          maxAge: 30 * 24 * 60 * 60 * 1000, 
         });
       }
       return res.json({ access_token: tokens.access_token, refresh_token: tokens.refresh_token, id_token: tokens.id_token });
@@ -184,7 +164,6 @@ async verifyEmailOtp(@Body() dto: { email: string; code: string }) {
     }
   }
 
-  // Logout: revoke refresh token + delete session row + clear cookie
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Req() req: Request, @Res() res: Response) {
@@ -198,7 +177,6 @@ async verifyEmailOtp(@Body() dto: { email: string; code: string }) {
         await this.authService.revokeRefreshToken(refreshToken, userId);
       } catch (e) {
         this.logger.error('Failed to revoke refresh token', e?.message || e);
-        // continue to clear cookie even if revoke fails
       }
     }
 

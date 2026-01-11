@@ -1,5 +1,4 @@
-import { IsBoolean, IsNotEmpty, IsString } from "class-validator";
-
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export enum DentistSpecialty {
   Restorative = 'Restorative',
@@ -10,23 +9,24 @@ export enum DentistSpecialty {
   Pediatric_Dentistry = 'Pediatric_Dentistry',
 }
 
-export class AiMessage{
-    // @IsNotEmpty()
-    // @IsString()
-    // userID:string
-     
-    @IsString()
-    @IsNotEmpty()
-    msg:string
-    @IsString()
-    @IsNotEmpty()
-    AiResponse:string
+export class AiMessage {
 
-    @IsNotEmpty()
-    conversationId:number
-    
-    @IsBoolean()
-    isFinal?:boolean
+  @IsString()
+  @IsNotEmpty()
+  msg: string;
 
-    speciality?:DentistSpecialty
+  @IsString()
+  @IsNotEmpty()
+  AiResponse: string;
+
+  @IsNotEmpty()
+  conversationId: number; 
+  
+  @IsOptional() 
+  @IsBoolean()
+  isFinal?: boolean;
+
+  @IsOptional() 
+  @IsEnum(DentistSpecialty) 
+  speciality?: DentistSpecialty;
 }

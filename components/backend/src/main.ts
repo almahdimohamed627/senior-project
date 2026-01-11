@@ -6,6 +6,7 @@ import * as express from 'express';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { useContainer } from 'class-validator';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -18,7 +19,17 @@ async function bootstrap() {
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
   prefix: '/uploads/',
 });
-
+const config = new DocumentBuilder()
+  .setTitle('Push Notification')
+  .setDescription(
+    'The API details of the business solution for the Push Notification Demo Application.',
+  )
+  .setVersion('1.0')
+  .addTag('Notification')
+  .addBearerAuth()
+  .build();
+const document = SwaggerModule.createDocument(app, config);
+SwaggerModule.setup('api', app, document);
 app.enableCors({origin:true,credentials:true})
 
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');

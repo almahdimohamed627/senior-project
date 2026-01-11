@@ -17,6 +17,7 @@ import {
   Logger,
   Query,
   ForbiddenException,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { CreateProfileDto } from './dto/create-profile.dto';
@@ -31,6 +32,9 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import path, { extname, join } from 'path';
 import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator';
+import { db } from 'src/db/client';
+import { users } from 'src/db/schema/profiles.schema';
+import { eq } from 'drizzle-orm';
 const UPLOADS_FOLDER = 'uploads';
 
 
@@ -64,13 +68,22 @@ export class ProfileController {
   // @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles(Role.PATIENT)
   @Get('profiles')
-  async findAll() {
-    return await this.profileService.findAll();
+  async findAll(@Query('page')page:number,@Query('limit')limit:number) {
+    return await this.profileService.findAll(page,limit);
   }
-  @Get('doctorsProfiles')
- async getDoctors(){
-  return await this.profileService.getAllDoctors()
-  }
+@Get('doctorsProfiles')
+async getDoctors(
+  @Query('specialty') specialty?: string,
+  @Query('city',new ParseArrayPipe({items:Number,separator:',',optional:true})) city?: number[],
+  @Query('gender') gender?: 'male' | 'female',
+  @Query('page') page: string = '1',  
+  @Query('limit') limit: string = '10' 
+) {
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+
+  return await this.profileService.getAllDoctors(specialty, city, gender, pageNum, limitNum);
+}
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return await this.profileService.findOne(id);
@@ -182,7 +195,19 @@ async createAvailabilities(
   ) {
     return await this.profileService.updateAvailability(doctorId, Number(availabilityId), items);
   }
-
+//fcm token
+@Patch('fcm-token')
+async updateFcmToken(
+  @CurrentUser() user: any, 
+  @Body('token') token: string
+) {
+  await db
+    .update(users)
+    .set({ fcmToken: token })
+    .where(eq(users.fusionAuthId, user.fusionAuthId));
+    
+  return { msg: 'Token updated successfully' };
+}
 
 
 }

@@ -1,10 +1,12 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, inArray, or } from 'drizzle-orm';
+import { and, eq, inArray, or ,desc} from 'drizzle-orm';
 import { db } from 'src/db/client';
 import { ChatService } from 'src/modules/chat/chat.service';
 import { patientProfile, users } from 'src/db/schema/profiles.schema';
 import { requests } from 'src/db/schema/request.schema';
-import { conversationAI } from 'src/db/schema/chat.schema';
+import { conversationAI, conversations } from 'src/db/schema/chat.schema';
+import { cities } from 'src/db/schema/cities.schema';
+import { NotificationService } from '../notification/notification.service';
 
  type PatientProfile={
    request:{
@@ -21,18 +23,21 @@ import { conversationAI } from 'src/db/schema/chat.schema';
   firstName: string | null;
   lastName: string | null;
   email: string | null;
-  city?: number | null;
+  gender:string|null,
+  city?: object | null;
   phoneNumber?:string | null,
   specialty?: string | null;
+  diagnosisPhoto?:string|null;
   profilePhoto?: string | null;
-}
+} 
+
   }
 
 @Injectable()
 export class RequestService {
-  constructor( private chatService: ChatService) {}
+  constructor( private chatService: ChatService,private readonly notificationService: NotificationService,) {}
 
-  async getReceivedRequests(
+async getReceivedRequests(
   userId: string,
   status?: 'accepted' | 'rejected' | 'pending' | null,
 ) {
@@ -58,16 +63,29 @@ export class RequestService {
   const rows: PatientProfile[] = await Promise.all(
     userRequests.map(async (req) => {
       const [patient] = await db
-        .select()
+        .select({
+          fusionAuthId:users.fusionAuthId,
+          firstName:users.firstName,
+          lastName:users.lastName,
+          gender:users.gender,
+          city:cities,
+         email: users.email,
+          phoneNumber:users.phoneNumber,
+          profilePhoto:users.profilePhoto
+        })
         .from(users)
-        .where(eq(users.fusionAuthId, req.senderId));
+        .where(eq(users.fusionAuthId, req.senderId)).innerJoin(cities,eq(users.city,cities.id))
+        ;
 
       if (!patient) return null;
 
-      const [speciality] = await db
+      const [latestDiagnosis] = await db
         .select()
         .from(conversationAI)
-        .where(eq(conversationAI.userId, req.senderId));
+
+        .where(eq(conversationAI.userId, req.senderId))
+        .orderBy(desc(conversationAI.createdAt)) 
+        .limit(1); 
 
       const row: PatientProfile = {
         request: {
@@ -78,17 +96,19 @@ export class RequestService {
           createdAt: req.createdAt,
           updatedAt: req.updatedAt,
         },
-        patientInformation:{
-                fusionAuthId: patient.fusionAuthId,
-        firstName: patient.firstName,
-        lastName: patient.lastName,
-        email: patient.email,
-        phoneNumber: patient.phoneNumber,
-        specialty: speciality?.specialityE ?? null,
-        city: patient.city,
-        profilePhoto: patient.profilePhoto,
+
+        patientInformation: {
+          fusionAuthId: patient.fusionAuthId,
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          gender:patient.gender,
+
+          email: patient.email,
+          phoneNumber: patient.phoneNumber,
+          specialty: latestDiagnosis?.specialityE ?? null, 
+          city: patient.city,
+          profilePhoto: patient.profilePhoto,
         }
-  
       };
 
       return row;
@@ -97,6 +117,47 @@ export class RequestService {
 
   return rows;
 }
+
+
+async getRequstById(requestId: number) {
+  
+  const requestResult = await db.select().from(requests).where(eq(requests.id, requestId));
+  const request = requestResult[0]; 
+
+  if (!request) return null; 
+
+  
+  const patientResult = await db.select().from(users).where(eq(users.fusionAuthId, request.senderId));
+  const patient = patientResult[0];
+
+  
+  const diagnosisInfoResult = await db
+    .select()
+    .from(conversationAI)
+    .where(eq(conversationAI.userId, request.senderId))
+    .orderBy(desc(conversationAI.createdAt)) 
+    .limit(1);
+  
+  const diagnosisInfo = diagnosisInfoResult[0];
+  
+
+  if (request.status === 'accepted') {
+    const converResult = await db.select().from(conversations).where(eq(conversations.requestId, requestId));
+    return {
+      request: request,
+      conversation: converResult[0],
+      patientInfo: patient,
+      diagnosisInfo: diagnosisInfo 
+    }
+  }
+  
+  return {
+    request: request,
+    diagnosisInfo: diagnosisInfo, 
+    patientInfo: patient,
+  }
+}
+
 
   async getSentRequests(userId: string) {
     return db
@@ -185,45 +246,57 @@ export class RequestService {
         'request already exists or already accepted',
       );
     }
-
-    const [created] = await tx
+    const doctorResult = await db
+      .select({ 
+        fcmToken: users.fcmToken,
+        firstName: users.firstName 
+      })
+      .from(users)
+      .where(eq(users.fusionAuthId, receiverId));
+    const [newRequest] = await tx
       .insert(requests)
       .values({
         senderId,
         receiverId,
       })
       .returning();
+      const doctor = doctorResult[0];
+      if(doctor && doctor.fcmToken){
+        const patientResult = await db.select().from(users).where(eq(users.fusionAuthId, receiverId));
+        const patientName = patientResult[0]?.firstName || 'مريض';
 
-    return created;
+        await this.notificationService.sendPushNotification(
+        doctor.fcmToken,            
+        'new patiet send request for you',         
+        `the patient ${patientName} send request for you `, 
+        { requestId: newRequest[0].id.toString() } 
+      );
+      }
+
+    return newRequest;
   });
 }
 
-  async acceptOrReject(accepted: boolean, senderId: string, receiverId: string) {
+  async acceptOrReject(accepted: boolean, requestId:number) {
     const newStatus = accepted ? 'accepted' : 'rejected';
-    const pairCondition = this.buildPairCondition(senderId, receiverId);
-
-    const [updated] = await db
-      .update(requests)
-      .set({
-        status: newStatus,
-        updatedAt: new Date(),
-      })
-      .where(and(pairCondition, eq(requests.status, 'pending')))
-      .returning();
-
-    if (!updated) {
-      return 'no pending request found for this pair';
-    }
-
+     
+   
     if (newStatus === 'accepted') {
-      await this.chatService.ensureConversationForRequest(
-        updated.id,
-        updated.senderId,
-        updated.receiverId,
+      await db.update(requests).set({status:'accepted'}).where(eq(requests.id,requestId))
+       let request=await db.select().from(requests).where(eq(requests.id,requestId))
+      let conversation=await this.chatService.ensureConversationForRequest(
+        request[0].id,
+        request[0].senderId,
+        request[0].receiverId,
       );
+      return {request,conversation:conversation}
+    }else{
+      await db.update(requests).set({status:'rejected'}).where(eq(requests.id,requestId))
+      return {msg:'request rejected'}
     }
 
-    return updated;
+
+   // return {request};
   }
 
   async cancelRequest(senderId: string, receiverId: string) {
@@ -243,6 +316,19 @@ export class RequestService {
     }
 
     return 'request cancelled';
+  }
+
+  async getOrder(requestId:number){
+   let request=await db.select().from(requests).where(eq(requests.id,requestId))
+   let diagnosisInfo=await db.select().from(conversationAI).where(eq(conversationAI.userId,request[0].senderId))
+   let patient=await db.select().from(users).where(eq(users.fusionAuthId,request[0].senderId))
+   
+   return{
+      patientInfo:patient[0],
+      diagnosisInfo:diagnosisInfo[0],
+      requestInfo:request[0]
+
+   }
   }
 
   private buildPairCondition(userA: string, userB: string) {

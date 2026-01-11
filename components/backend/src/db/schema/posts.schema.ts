@@ -1,9 +1,10 @@
 // src/db/schema/posts.ts
 import { pgTable, serial, text, timestamp,varchar ,integer,primaryKey} from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm"; // قد تحتاجه لاحقًا للـ default expressions
-import { doctorProfile, patientProfile, DoctorProfile, PatientProfile, NewDoctorProfile, NewPatientProfile, users } from "./profiles.schema";
+import { doctorProfile, users } from "./profiles.schema";
 import { relations } from "drizzle-orm";
-import { pgTableCreator } from "drizzle-orm/pg-core";
+import { pgEnum } from "drizzle-orm/pg-core";
+
+export const reviewStatus=pgEnum('reviewStatus',['published','rejected','in_review'])
 
 
 export const posts = pgTable('posts', {
@@ -17,6 +18,7 @@ export const posts = pgTable('posts', {
     .references(() => doctorProfile.fusionAuthId, { onDelete: 'cascade' }),
 
   photos: text('photos'),
+  keyStatus:reviewStatus('keyStatus').default('in_review'),
 
   numberOfLikes: integer('number_of_likes').default(0).notNull(),
 

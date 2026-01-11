@@ -1,25 +1,47 @@
+//chat.service.ts
 import { Injectable } from '@nestjs/common';
 import { desc, eq, or } from 'drizzle-orm';
 import { db } from 'src/db/client';
 import { conversations, messages } from 'src/db/schema/chat.schema';
-import { users } from 'src/db/schema/profiles.schema';
+import { doctorProfile, patientProfile, users } from 'src/db/schema/profiles.schema';
 
 @Injectable()
 export class ChatService {
-  // كل المحادثات التي يكون فيها المستخدم دكتور أو مريض
-  async getUserConversations(userId: string) {
-    return db
-      .select()
-      .from(conversations)
-      .where(
-        or(
-          eq(conversations.doctorId, userId),
-          eq(conversations.patientId, userId),
-        ),
-      );
+async getUserConversations(userId: string) {
+  // 1. نجلب المستخدم لنعرف الرول
+  const userList = await db.select().from(users).where(eq(users.fusionAuthId, userId));
+  const currentUser = userList[0];
+  const isDoctor = currentUser.role === 'doctor';
+
+  // 2. نجهز الاستعلام بناءً على الرول
+  // لاحظ أننا أضفنا orderBy لترتيب الرسائل تنازلياً (الأحدث أولاً)
+  const rawData = await db.select()
+    .from(conversations)
+    .where(eq(isDoctor ? conversations.doctorId : conversations.patientId, userId))
+    .leftJoin(users, eq(users.fusionAuthId, isDoctor ? conversations.patientId : conversations.doctorId))
+    .leftJoin(messages, eq(messages.conversationId, conversations.id))
+    .orderBy(desc(messages.createdAt)); 
+
+  // 3. نفلتر النتائج لأخذ أحدث رسالة فقط لكل محادثة
+  const uniqueConversations = new Map();
+  const infoKey = isDoctor ? 'patientInfo' : 'doctorInfo';
+
+  for (const item of rawData) {
+    const convId = item.conversations.id;
+    // لأننا رتبنا البيانات، أول مرة بتظهر فيها المحادثة بتكون مع أحدث رسالة
+    if (!uniqueConversations.has(convId)) {
+      uniqueConversations.set(convId, {
+        conversation: item.conversations,
+        [infoKey]: item.users,
+        lastMessage: item.messages // هذه هي آخر رسالة
+      });
+    }
   }
 
-  // الرسائل الخاصة بمحادثة معينة (آخر 50 مثلاً)
+  // 4. نرجع القيم كمصفوفة
+  return Array.from(uniqueConversations.values());
+}
+
   async getMessages(conversationId: number, limit = 50) {
     return db
       .select()
@@ -29,20 +51,21 @@ export class ChatService {
       .limit(limit);
   }
 
-  // بناء رابط الصوت اعتماداً على مكان التخزين
   async saveAudioFileAndGetUrl(file: Express.Multer.File): Promise<string> {
-    // بما أنك عامل static على /uploads، أي ملف في uploads/voices
-    // رح يصير متاح على /uploads/voices/<filename>
+
     return `/uploads/voices/${file.filename}`;
   }
+  async saveImageFileAndGetUrl(file: Express.Multer.File): Promise<string> {
+    return `/uploads/${file.filename}`;
+  }
 
-  // إنشاء رسالة جديدة (نصية أو صوتية)
   async createMessage(data: {
     conversationId: number;
     senderId: string;
-    type: 'text' | 'audio';
+    type: 'text' | 'audio'|'image';
     text?: string;
     audioUrl?: string;
+    imageUrl?: string;
   }) {
     const [created] = await db
       .insert(messages)
@@ -52,13 +75,13 @@ export class ChatService {
         type: data.type,
         text: data.type === 'text' ? data.text ?? '' : null,
         audioUrl: data.type === 'audio' ? data.audioUrl ?? '' : null,
+        imageUrl: data.type === 'image' ? data.imageUrl ?? '' : null,
       })
       .returning();
 
     return created;
   }
 
-  // جلب محادثة واحدة (مفيد للشات أو الجيتواي)
   async getConversationById(id: number) {
     const [conv] = await db
       .select()
@@ -101,7 +124,6 @@ export class ChatService {
     throw new Error('Sender or receiver not found');
   }
 
-  // 3) حدّد مين الدكتور ومين المريض بناءً على role
   let doctorId: string | null = null;
   let patientId: string | null = null;
 

@@ -4,7 +4,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { db } from '../../db/client'; // تأكد المسار صحيح
 import { doctorProfile, patientProfile, users } from 'src/db/schema/profiles.schema';
 import { appointments } from '../../db/schema/appointments.schema';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray, SQL, sql } from 'drizzle-orm';
 import { ConfigService } from '@nestjs/config';
 import { FusionAuthClientWrapper } from 'src/modules/auth/fusion-auth.client';
 import pLimit from 'p-limit';
@@ -39,6 +39,7 @@ type publicDoctorProfile={
   lastName: string | null;
   email: string | null;
   city: number | null;
+  gender:string|null;
   specialty: string | null;
   univercity: string | null;
   profilePhoto?: string | null;
@@ -65,89 +66,88 @@ export class ProfileService {
     this.fusionClient = new FusionAuthClientWrapper(baseUrl, apiKey);
   }
 
-  // create(createProfileDto: CreateProfileDto) {
-  //   return 'This action adds a new profile';
-  // }
 
-async findAll() {
-  const profiles = await db.select().from(users);
 
-  const limit = pLimit(10);
-  const logger = this.logger;
+async findAll(page:number=1,limit:number=10) {
+   
+ const offset = (page - 1) * limit;
 
-  const tasks = profiles.map((user) =>
-    limit(async () => {
-      let fusionUser: { firstName?: string; lastName?: string; email?: string } | null = null;
-      try {
-        fusionUser = await this.fusionClient.getUser(user.fusionAuthId);
-      } catch (err: any) {
-        logger.warn(`Failed to fetch fusion user ${user.fusionAuthId}: ${err?.message ?? err}`);
-      }
+  let profiles =await db.select({
+    fusionAuthId:users.fusionAuthId,
+  firstName:users.firstName,
+  lastName:users.lastName,
+  email:users.email,
+  city:cities,
+  gender:users.gender,
+  speciality:doctorProfile.specialty,
+  university:doctorProfile.university,
+  profilePhoto:users.profilePhoto,
+  birthYear:users.birthYear,
+  phoneNumber:users.phoneNumber,
+  role:users.role
+  }).from(users).leftJoin(doctorProfile,eq(users.fusionAuthId,doctorProfile.fusionAuthId))
+  .leftJoin(patientProfile,eq(users.fusionAuthId,patientProfile.fusionAuthId)).leftJoin(cities,eq(users.city,cities.id)).
+  limit(limit).offset(offset)
 
-      // fallback photo logic: if DB value empty => return default
-      const photo =
-        user.profilePhoto && String(user.profilePhoto).trim() !== ''
-          ? user.profilePhoto
-          : this.defaultPhoto;
 
-      // لو كان دكتور، جيب بيانات الدكتور من doctorProfile
-      let doctorRow: typeof doctorProfile.$inferSelect | null = null;
-      if (user.role === 'doctor') {
-        const doctorRows = await db
-          .select()
-          .from(doctorProfile)
-          .where(eq(doctorProfile.fusionAuthId, user.fusionAuthId))
-          .limit(1);
-
-        doctorRow = doctorRows[0] ?? null;
-      }
-
-      return {
-        ...user,
-        // لو في سجل دكتور، نضيف حقوله بشكل مرتب (بدون ما نكسر id تبع users)
-        ...(doctorRow
-          ? {
-              doctorProfileId: doctorRow.id,
-              university: doctorRow.university,
-              specialty: doctorRow.specialty,
-            }
-          : {}),
-
-        // نعطي الأولوية لبيانات FusionAuth ثم بيانات users المحلية
-        firstName: fusionUser?.firstName ?? user.firstName ?? null,
-        lastName: fusionUser?.lastName ?? user.lastName ?? null,
-        email: fusionUser?.email ?? null,
-        profilePhoto: photo,
-      };
-    }),
-  );
-
-  return await Promise.all(tasks);
+  return profiles
 }
 
  
-  async getAllDoctors(){
-    let doctors= await db.select().from(doctorProfile)
-    let publicProfile:publicDoctorProfile[]=await Promise.all(
-      doctors.map(async(doctor)=>{
-       const [user]=await db.select().from(users).where(eq(users.fusionAuthId,doctor.fusionAuthId))
-           const publicProfile: publicDoctorProfile = {
-         
-                fusionAuthId: user.fusionAuthId,
-                firstName: user.firstName  ,
-                lastName: user.lastName ,
-                email: user.email ,
-                city: user.city,
-                specialty: doctor.specialty,
-                univercity:doctor.university,
-                profilePhoto: user.profilePhoto, 
-    };
-   return publicProfile;
-      })
-    )
-    
-    return publicProfile
+ async getAllDoctors(
+    specialty?: string | null, 
+    city?: number[] | null, 
+    gender?: 'male' | 'female' | null,
+    page: number = 1,    
+    limit: number = 10 
+) {
+  
+  const offset = (page - 1) * limit;
+
+   const conditions:SQL[] = [];
+  if (specialty) conditions.push(eq(doctorProfile.specialty, specialty));
+  if (city) {
+   conditions.push(inArray(users.city, city));
   }
+  if (gender) conditions.push(eq(users.gender, gender));
+
+  const data = await db
+    .select({
+        fusionAuthId: users.fusionAuthId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        city: cities,
+        gender: users.gender,
+        specialty: doctorProfile.specialty,
+        university: doctorProfile.university,
+        profilePhoto: users.profilePhoto,
+    })
+    .from(doctorProfile)
+    .innerJoin(users, eq(doctorProfile.fusionAuthId, users.fusionAuthId)).innerJoin(cities,eq(users.city,cities.id))
+    .where(and(...conditions))
+    .limit(limit)   
+    .offset(offset); 
+
+ 
+  const [totalResult] = await db
+     .select({ count: sql<number>`count(*)` }) 
+     .from(doctorProfile)
+     .innerJoin(users, eq(doctorProfile.fusionAuthId, users.fusionAuthId))
+     .where(and(...conditions)); 
+
+  const totalCount = Number(totalResult.count);
+
+  return {
+    doctors: data,
+    meta: {
+      total: totalCount,
+      page: page,
+      limit: limit,
+      totalPages: Math.ceil(totalCount / limit)
+    }
+  };
+}
   async findOne(id: string) {
     // id هنا هو fusionAuthId
 
@@ -545,6 +545,8 @@ async findAll() {
   }
 
   async deleteAvailability(doctorId: string, availabilityId: number) {
+   
+
     const deleted = await db
       .delete(appointments)
       .where(eq(appointments.id, availabilityId))

@@ -13,18 +13,21 @@ export class RequestController {
     return this.requestService.sendRequest(senderId, receiverId);
   }
 
+
+
+
+
   // قبول أو رفض طلب
   @Post('accept-or-reject')
   async acceptOrRejectRequest(
     @Body()
     body: {
       accepted: boolean;
-      senderId: string;
-      receiverId: string;
+      requestId:number
     },
   ) {
-    const { accepted, senderId, receiverId } = body;
-    return this.requestService.acceptOrReject(accepted, senderId, receiverId);
+    const { accepted, requestId } = body;
+    return this.requestService.acceptOrReject(accepted, requestId);
   }
 
   @Post('cancel')
@@ -46,8 +49,14 @@ export class RequestController {
     return this.requestService.getSentRequests(userId);
   }
 
-  @Get('user/:userId/accepted')
-  async getAcceptedRelations(@Param('userId') userId: string) {
-    return this.requestService.getAcceptedRelations(userId);
+  @Get('user/:requestId')
+  async returnRequest(@Param('requestId')requestId:number){
+    console.log(requestId)
+     return this.requestService.getRequstById(requestId)
   }
+
+  // @Get('order')
+  // async returnOrder(@Param('requstId')requstId:number){
+  //   return await this.requestService.getOrder(requstId)
+  // }
 }
