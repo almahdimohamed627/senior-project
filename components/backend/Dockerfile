@@ -22,6 +22,7 @@ COPY package*.json ./
 COPY tsconfig*.json ./
 
 # Install production dependencies but keep all transitive dependencies
+RUN apk add --no-cache chromium
 RUN npm ci --production --no-optional && npm cache clean --force
 
 # Copy built application
