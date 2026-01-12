@@ -14,9 +14,33 @@ pipeline {
     )
   }
 
+ environment {
+     // Jenkins built-in variables
+     BUILD_URL = "${env.BUILD_URL}"
+     JOB_NAME = "${env.JOB_NAME}"
+     BUILD_NUMBER = "${env.BUILD_NUMBER}"
+     
+     // Custom variables
+     GIT_BRANCH = ''  // Will be set in a stage
+     DEPLOY_ENV = 'production'
+     NOTIFICATION_ENABLED = true
+ }
+
   stages {
     stage('Checkout SCM') {
-      steps { checkout scm }
+      steps {
+                checkout scm
+                script {
+                    // Capture branch early before any cleanup
+                    env.GIT_BRANCH = sh(
+                        script: 'git rev-parse --abbrev-ref HEAD',
+                        returnStdout: true
+                    ).trim()
+                    
+                    echo "Building branch: ${env.GIT_BRANCH}"
+                    echo "Build URL: ${env.BUILD_URL}"
+                }
+            }
     }
 
     stage('Discover Components') {
@@ -254,7 +278,6 @@ def sendTelegramNotification(String status) {
     ]) {
       def message = ""
       def emoji = ""
-      def branch = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim() ?: "development"
       def duration = currentBuild.durationString ?: "Unknown"
       def componentDetails = getComponentDetails()
 
@@ -265,7 +288,7 @@ ${emoji} *🚀 Build Success*
 
 *📋 Job:* ${env.JOB_NAME}
 *🔢 Build:* #${env.BUILD_NUMBER}
-*🌿 Branch:* ${branch}
+*🌿 Branch:* ${env.GIT_BRANCH}
 *⏱️ Duration:* ${duration}
 
 *🏗 Component Details:*
@@ -291,7 +314,7 @@ ${emoji} *💥 Build Failed*
 
 *📋 Job:* ${env.JOB_NAME}
 *🔢 Build:* #${env.BUILD_NUMBER}
-*🌿 Branch:* ${branch}
+*🌿 Branch:* ${env.GIT_BRANCH}
 *⏱️ Duration:* ${duration}
 
 *🏗 Component Details:*
@@ -318,7 +341,7 @@ ${emoji} *⚠️ Build Unstable*
 
 *📋 Job:* ${env.JOB_NAME}
 *🔢 Build:* #${env.BUILD_NUMBER}
-*🌿 Branch:* ${branch}
+*🌿 Branch:* ${env.GIT_BRANCH}
 *⏱️ Duration:* ${duration}
 
 *🏗 Component Details:*
