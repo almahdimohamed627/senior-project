@@ -297,15 +297,15 @@ ${componentDetails}
 *Component Status:*
 ${getComponentStatuses()}
 
-*🔄 Last Commit:*
-${getLastCommitInfo()}
-
 *📊 Build Stages:*
 • 🏗 Build - ✅ Done
 • 🚀 Deployment - ✅ Deployed
 • 🧪 Integration Test - ${getIntegrationTestStatus()}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
+
+*🔄 Last Commit:*
+${getLastCommitInfo()}
 """
       } else if (status == "failure") {
         emoji = "💥"
@@ -328,11 +328,11 @@ ${getComponentStatuses()}
 • 🚀 Deployment - ⏸️ Skipped
 • 🧪 Integration Test - ${getIntegrationTestStatus()}
 
-*🔄 Last Commit:*
-${getLastCommitInfo()}
-
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 *📝 Console Log:* [View Log](${env.BUILD_URL}console)
+
+*🔄 Last Commit:*
+${getLastCommitInfo()}
 """
       } else if (status == "unstable") {
         emoji = "⚠️"
@@ -355,11 +355,11 @@ ${getComponentStatuses()}
 • 🚀 Deployment - ⏸️ Skipped
 • 🧪 Integration Test - ${getIntegrationTestStatus()}
 
-*🔄 Last Commit:*
-${getLastCommitInfo()}
-
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 *📝 Console Log:* [View Log](${env.BUILD_URL}console)
+
+*🔄 Last Commit:*
+${getLastCommitInfo()}
 """
       }
 
