@@ -283,7 +283,7 @@ def sendTelegramNotification(String status) {
 
       if (status == "success") {
         emoji = "🎉"
-        message = """
+        message = "
 ${emoji} *🚀 Build Success*
 
 *📋 Job:* ${env.JOB_NAME}
@@ -306,10 +306,10 @@ ${getLastCommitInfo()}
 • 🧪 Integration Test - ${getIntegrationTestStatus()}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
-"""
+"
       } else if (status == "failure") {
         emoji = "💥"
-        message = """
+        message = "
 ${emoji} *💥 Build Failed*
 
 *📋 Job:* ${env.JOB_NAME}
@@ -333,10 +333,10 @@ ${getLastCommitInfo()}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 *📝 Console Log:* [View Log](${env.BUILD_URL}console)
-"""
+"
       } else if (status == "unstable") {
         emoji = "⚠️"
-        message = """
+        message = "
 ${emoji} *⚠️ Build Unstable*
 
 *📋 Job:* ${env.JOB_NAME}
@@ -360,20 +360,20 @@ ${getLastCommitInfo()}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 *📝 Console Log:* [View Log](${env.BUILD_URL}console)
-"""
+"
       }
 
-      sh """
+      sh "
         curl -s -X POST \
         -H 'Content-Type: application/json' \
         -d '{
-          "chat_id": "${CHAT_ID}",
-          "text": "${message}",
-          "parse_mode": "Markdown",
-          "disable_web_page_preview": true
+          'chat_id': '${CHAT_ID}',
+          'text': '${message}',
+          'parse_mode': 'Markdown',
+          'disable_web_page_preview': true
         }' \
-        "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" > /dev/null
-      """
+        'https://api.telegram.org/bot${BOT_TOKEN}/sendMessage' > /dev/null
+      "
       echo "Telegram notification sent for ${status}"
     }
   } catch (Exception e) {
