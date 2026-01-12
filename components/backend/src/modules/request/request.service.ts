@@ -6,6 +6,7 @@ import { patientProfile, users } from 'src/db/schema/profiles.schema';
 import { requests } from 'src/db/schema/request.schema';
 import { conversationAI, conversations } from 'src/db/schema/chat.schema';
 import { cities } from 'src/db/schema/cities.schema';
+
 //import { NotificationService } from '../notification/notification.service';
 
  type PatientProfile={
@@ -35,6 +36,8 @@ import { cities } from 'src/db/schema/cities.schema';
 
 @Injectable()
 export class RequestService {
+
+
   constructor( private chatService: ChatService,/*private readonly notificationService: NotificationService,*/) {}
 
 async getReceivedRequests(
@@ -261,9 +264,12 @@ async getRequstById(requestId: number) {
       })
       .returning();
       const doctor = doctorResult[0];
+
+
       // if(doctor && doctor.fcmToken){
       //   const patientResult = await db.select().from(users).where(eq(users.fusionAuthId, receiverId));
       //   //const patientName = patientResult[0]?.firstName || 'مريض';
+
 
       // //   await this.notificationService.sendPushNotification(
       // //   doctor.fcmToken,            

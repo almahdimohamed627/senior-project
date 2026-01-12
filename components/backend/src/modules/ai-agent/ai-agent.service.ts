@@ -70,6 +70,8 @@ async saveMessages(
   let pdfFileName: string | null = null;
   let qrFileName: string | null = null; // متغير لحفظ اسم ملف الـ QR
 
+
+  
   // 2. إذا كانت النتيجة نهائية
   if (isFinal && speciality) {
     

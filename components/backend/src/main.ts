@@ -19,6 +19,7 @@ async function bootstrap() {
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
   prefix: '/uploads/',
 });
+
 // const config = new DocumentBuilder()
 //   .setTitle('Push Notification')
 //   .setDescription(
