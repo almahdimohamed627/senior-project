@@ -1,3 +1,4 @@
+// src/profile/profile.controller.ts
 import {
   Controller,
   Get,
@@ -35,6 +36,8 @@ import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator'
 import { db } from 'src/db/client';
 import { users } from 'src/db/schema/profiles.schema';
 import { eq } from 'drizzle-orm';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes, ApiQuery, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+
 const UPLOADS_FOLDER = 'uploads';
 
 
@@ -54,6 +57,8 @@ function editFileName(req: any, file: Express.Multer.File, callback: Function) {
   callback(null, finalName);
 }
 
+@ApiTags('Profile')
+@ApiBearerAuth()
 @Controller('profile')
 export class ProfileController {
   private readonly logger = new Logger(ProfileController.name);
@@ -68,10 +73,19 @@ export class ProfileController {
   // @UseGuards(JwtAuthGuard, RolesGuard)
   // @Roles(Role.PATIENT)
   @Get('profiles')
+  @ApiOperation({ summary: 'Get all profiles (paginated)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
   async findAll(@Query('page')page:number,@Query('limit')limit:number) {
     return await this.profileService.findAll(page,limit);
   }
 @Get('doctorsProfiles')
+@ApiOperation({ summary: 'Get doctors profiles with filtering' })
+@ApiQuery({ name: 'specialty', required: false })
+@ApiQuery({ name: 'city', required: false, type: String, description: 'Comma separated city IDs' })
+@ApiQuery({ name: 'gender', required: false, enum: ['male', 'female'] })
+@ApiQuery({ name: 'page', required: false, example: '1' })
+@ApiQuery({ name: 'limit', required: false, example: '10' })
 async getDoctors(
   @Query('specialty') specialty?: string,
   @Query('city',new ParseArrayPipe({items:Number,separator:',',optional:true})) city?: number[],
@@ -85,6 +99,8 @@ async getDoctors(
   return await this.profileService.getAllDoctors(specialty, city, gender, pageNum, limitNum);
 }
   @Get(':id')
+  @ApiOperation({ summary: 'Get profile by ID' })
+  @ApiParam({ name: 'id', description: 'Profile ID' })
   async findOne(@Param('id') id: string) {
     return await this.profileService.findOne(id);
   }
@@ -93,6 +109,30 @@ async getDoctors(
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.DOCTOR, Role.PATIENT)
 @Patch('updateprofile')
+@ApiOperation({ summary: 'Update current user profile' })
+@ApiBearerAuth()
+@ApiConsumes('multipart/form-data')
+@ApiBody({
+  schema: {
+    type: 'object',
+    properties: {
+      firstName: { type: 'string' },
+      lastName: { type: 'string' },
+      email: { type: 'string' },
+      password: { type: 'string' },
+      city: { type: 'string' },
+      phoneNumber: { type: 'string' },
+      birthYear: { type: 'string' },
+      gender: { type: 'string' },
+      university: { type: 'string' },
+      specialty: { type: 'string' },
+      profilePhoto: {
+        type: 'string',
+        format: 'binary',
+      },
+    },
+  },
+})
 @UseInterceptors(FileInterceptor('profilePhoto', {
   storage: diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOADS_FOLDER),
@@ -138,6 +178,9 @@ async updateMe(
 
 @UseGuards(JwtAuthGuard)
 @Patch('fusionInformation')
+@ApiOperation({ summary: 'Update FusionAuth information' })
+@ApiBearerAuth()
+@ApiBody({ schema: { type: 'object', properties: { firstName: { type: 'string' }, lastName: { type: 'string' }, email: { type: 'string' }, password: { type: 'string' } } } })
 async updateFusionInformation(  @CurrentUser() user: any,
   @Body() dto: {firstName ,lastName,email,password}){
      const fusionAuthId: string | undefined = user?.sub;
@@ -147,6 +190,8 @@ async updateFusionInformation(  @CurrentUser() user: any,
 }
 //delete user
 @Delete(":id")
+@ApiOperation({ summary: 'Delete profile by ID' })
+@ApiParam({ name: 'id', description: 'Profile ID' })
 async deleteProfile(@Param('id') id:string){
   await this.profileService.remove(id)
 }
@@ -156,6 +201,8 @@ async deleteProfile(@Param('id') id:string){
   // -----------------------
 
   @Get(':id/availabilities')
+  @ApiOperation({ summary: 'Get availabilities for a doctor' })
+  @ApiParam({ name: 'id', description: 'Doctor ID' })
   async getAvailabilities(@Param('id') doctorId: string) {
     return await this.profileService.getAvailabilities(doctorId);
   }
@@ -170,6 +217,9 @@ async deleteProfile(@Param('id') id:string){
 // }
 
 @Post(':id/availabilities')
+@ApiOperation({ summary: 'Create/Upsert availabilities' })
+@ApiParam({ name: 'id', description: 'Doctor ID' })
+@ApiBody({ type: UpsertAvailabilitiesDto })
 @HttpCode(HttpStatus.OK)
 async createAvailabilities(
   @Param('id') doctorId: string, 
@@ -179,6 +229,9 @@ async createAvailabilities(
 }
   
   @Delete(':id/availabilities/:availabilityId')
+  @ApiOperation({ summary: 'Delete availability' })
+  @ApiParam({ name: 'id', description: 'Doctor ID' })
+  @ApiParam({ name: 'availabilityId', description: 'Availability ID' })
   @HttpCode(HttpStatus.OK)
   async deleteAvailability(
     @Param('id') doctorId: string,
@@ -188,6 +241,10 @@ async createAvailabilities(
   }
 
   @Patch(':id/availabilities/:availabilityId')
+  @ApiOperation({ summary: 'Update availability' })
+  @ApiParam({ name: 'id', description: 'Doctor ID' })
+  @ApiParam({ name: 'availabilityId', description: 'Availability ID' })
+  @ApiBody({ type: AvailabilityItemDto })
   async updateAvailability(
     @Param('id') doctorId: string,
     @Param('availabilityId') availabilityId: string,
@@ -197,6 +254,9 @@ async createAvailabilities(
   }
 //fcm token
 @Patch('fcm-token')
+@ApiOperation({ summary: 'Update FCM Token' })
+@ApiBearerAuth()
+@ApiBody({ schema: { type: 'object', properties: { token: { type: 'string' } } } })
 async updateFcmToken(
   @CurrentUser() user: any, 
   @Body('token') token: string
@@ -211,5 +271,6 @@ async updateFcmToken(
 
 
 }
+
 
 

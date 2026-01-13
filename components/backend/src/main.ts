@@ -17,21 +17,19 @@ async function bootstrap() {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
-  prefix: '/uploads/',
-});
+    prefix: '/uploads/',
+  });
 
-// const config = new DocumentBuilder()
-//   .setTitle('Push Notification')
-//   .setDescription(
-//     'The API details of the business solution for the Push Notification Demo Application.',
-//   )
-//   .setVersion('1.0')
-//   .addTag('Notification')
-//   .addBearerAuth()
-//   .build();
-// const document = SwaggerModule.createDocument(app, config);
-// SwaggerModule.setup('api', app, document);
-app.enableCors({origin:true,credentials:true})
+  const config = new DocumentBuilder()
+    .setTitle('Senior Project API')
+    .setDescription('The API details of the Senior Project application.')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('docs', app, document);
+
+  app.enableCors({ origin: true, credentials: true });
 
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 

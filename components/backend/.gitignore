@@ -55,19 +55,7 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# Ignore ChromaDB data
-chroma_db__huggingface__intfloat__multilingual-e5-base/
-*.bin
-chroma.sqlite3
 
-<<<<<<< HEAD
-=======
-# Ignore ChromaDB data
-chroma_db__huggingface__intfloat__multilingual-e5-base/
-*.bin
-chroma.sqlite3
-
->>>>>>> 9dee8b5 (fix pdf)
 # Ignore Keras Models
 *.keras
 *.h5

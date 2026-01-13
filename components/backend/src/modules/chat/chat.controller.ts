@@ -12,23 +12,44 @@ import { ChatService } from './chat.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import path, { extname } from 'path';
+import { ApiTags, ApiOperation, ApiBody, ApiConsumes, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+
 const UPLOADS_FOLDER = 'uploads';
 
+@ApiTags('Chat')
+@ApiBearerAuth()
 @Controller('chat')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Get('conversations/:userId')
+  @ApiOperation({ summary: 'Get conversations for user' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
   getConversations(@Param('userId') userId: string) {
     return this.chatService.getUserConversations(userId);
   }
 
   @Get('messages/:conversationId')
+  @ApiOperation({ summary: 'Get messages for conversation' })
+  @ApiParam({ name: 'conversationId', description: 'Conversation ID' })
   getMessages(@Param('conversationId') conversationId: string) {
     return this.chatService.getMessages(Number(conversationId));
   }
 
   @Post('upload-audio')
+  @ApiOperation({ summary: 'Upload audio file' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        voice: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   @UseInterceptors(
     FileInterceptor('voice', {
       storage: diskStorage({
@@ -47,6 +68,19 @@ export class ChatController {
     return { audioUrl };
   }
 @Post('uploadImage')
+@ApiOperation({ summary: 'Upload image file' })
+@ApiConsumes('multipart/form-data')
+@ApiBody({
+  schema: {
+    type: 'object',
+    properties: {
+      image: {
+        type: 'string',
+        format: 'binary',
+      },
+    },
+  },
+})
 @UseInterceptors(FileInterceptor('image', {
   storage: diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOADS_FOLDER),
@@ -71,6 +105,19 @@ export class ChatController {
  }
 
     @Post('message')
+    @ApiOperation({ summary: 'Send message' })
+    @ApiBody({
+      schema: {
+        type: 'object',
+        properties: {
+          conversationId: { type: 'number' },
+          senderId: { type: 'string' },
+          type: { type: 'string', enum: ['text', 'audio'] },
+          text: { type: 'string' },
+          audioUrl: { type: 'string' },
+        },
+      },
+    })
   async sendMessage(
     @Body()
     body: {

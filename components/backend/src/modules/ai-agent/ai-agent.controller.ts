@@ -7,9 +7,13 @@ import { AiMessage } from "./ai-msg.dto";
 import { DiagnosesPdfService } from "./diagnoses-pdf.service";
 import { PassThrough } from "stream";
 import { createReadStream } from "fs";
+import { ApiTags, ApiOperation, ApiBody, ApiConsumes, ApiParam, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+
 const UPLOADS_FOLDER = 'uploads';
 
 
+@ApiTags('AI Agent')
+@ApiBearerAuth()
 @Controller('ai-agent')
 export class AiAgentController{
 
@@ -38,6 +42,20 @@ constructor(@Inject() private aiAgentSercice:AiAgentService,
 }))
 @HttpCode(HttpStatus.OK)
 @Post('createChat')
+@ApiOperation({ summary: 'Create chat with AI agent (upload photo)' })
+@ApiConsumes('multipart/form-data')
+@ApiBody({
+  schema: {
+    type: 'object',
+    properties: {
+      userId: { type: 'string' },
+      toothPhoto: {
+        type: 'string',
+        format: 'binary',
+      },
+    },
+  },
+})
 async createchat(
   @Body('userId') userId: string,
     @UploadedFile() file: Express.Multer.File
@@ -50,16 +68,22 @@ async createchat(
 
 
 @Get('conversations/:userId')
+@ApiOperation({ summary: 'Get conversations for user' })
+@ApiParam({ name: 'userId', description: 'User ID' })
 async getConversations(@Param('userId') userId: string) {
   return this.aiAgentSercice.returnConversations(userId);
 }
 
 @Get('conversation-msgs/:conversationId')
+@ApiOperation({ summary: 'Get messages for conversation' })
+@ApiParam({ name: 'conversationId', description: 'Conversation ID' })
 async returnMsgs(@Param('conversationId')conversationId:number){
  return await this.aiAgentSercice.returnMsgsForConversation(conversationId)
 }
 
 @Post('save-msg')
+@ApiOperation({ summary: 'Save AI message' })
+@ApiBody({ type: AiMessage })
 async saveMsg(@Body() saveMsgDto:AiMessage){
     return await this.aiAgentSercice.saveMessages(
       saveMsgDto.conversationId,
@@ -69,6 +93,9 @@ async saveMsg(@Body() saveMsgDto:AiMessage){
 }
 
 @Post('returnPdf/:aiConversationId')
+@ApiOperation({ summary: 'Download diagnosis PDF' })
+@ApiParam({ name: 'aiConversationId', description: 'AI Conversation ID' })
+@ApiResponse({ status: 200, description: 'PDF file stream' })
   async returnDiagnosisPdf(
     @Param('aiConversationId') aiConversationId: number,
   ): Promise<StreamableFile> {
