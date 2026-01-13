@@ -24,6 +24,8 @@ import path, { extname, join } from 'path';
 import { existsSync, mkdirSync, } from 'fs';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
+
 const UPLOADS_FOLDER = 'uploads';
 
 
@@ -46,6 +48,7 @@ function editFileName(req: any, file: Express.Multer.File, callback: Function) {
   callback(null, finalName);
 }
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
@@ -54,6 +57,10 @@ export class AuthController {
 
 
   @Post('login')
+  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiBody({ type: LoginDto })
+  @ApiResponse({ status: 200, description: 'Login successful' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @HttpCode(HttpStatus.OK)
   async loginWithPassword(
     @Body('email') email: string,
@@ -79,12 +86,17 @@ export class AuthController {
       return res.status(401).json({ error: err?.message || 'Login failed' });
     }
   }
+  
   @Post('checkemail')
+  @ApiOperation({ summary: 'Check if email exists' })
+  @ApiBody({ schema: { type: 'object', properties: { email: { type: 'string', example: 'test@example.com' } } } })
   async checkEmail(@Body('email') email:string){
     return await this.authService.checkEmail(email)
   }
 
   @Post('introspect')
+  @ApiOperation({ summary: 'Introspect token' })
+  @ApiBody({ schema: { type: 'object', properties: { token: { type: 'string' } } } })
   @HttpCode(HttpStatus.OK)
   async introspect(@Body('token') token: string) {
     const resp = await this.authService.introspectAccessToken(token);
@@ -93,6 +105,8 @@ export class AuthController {
 
 
   @Post('profileFromIdToken')
+  @ApiOperation({ summary: 'Get profile from ID token' })
+  @ApiBody({ schema: { type: 'object', properties: { id_token: { type: 'string' } } } })
   async profileFromIdToken(@Body('id_token') id_token: string) {
     const profile = await this.authService.getUserProfileFromIdToken(id_token);
     return profile;
@@ -118,6 +132,31 @@ export class AuthController {
     },
   }))
   @Post('register')
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string' },
+        password: { type: 'string' },
+        firstName: { type: 'string' },
+        lastName: { type: 'string' },
+        role: { type: 'string', enum: ['doctor', 'patient'] },
+        gender: { type: 'string' },
+        city: { type: 'number' },
+        phoneNumber: { type: 'string' },
+        birthYear: { type: 'number' },
+        profilePhoto: {
+          type: 'string',
+          format: 'binary',
+        },
+        university: { type: 'string' },
+        specialty: { type: 'string' },
+      },
+      required: ['email', 'password', 'firstName', 'lastName', 'role', 'phoneNumber', 'birthYear'],
+    },
+  })
   async register(@Body() body: RegisterDto,@UploadedFile() file?: Express.Multer.File) {
    let storedPath = file ? `/uploads/${file.filename}` : undefined;
 if (!storedPath) storedPath = '/uploads/avatar.png';
@@ -128,16 +167,22 @@ console.log('body keys:', Object.keys(body));
   }
 
 @Post('send-email-otp')
+@ApiOperation({ summary: 'Send email OTP' })
+@ApiBody({ schema: { type: 'object', properties: { email: { type: 'string' } } } })
 async sendEmailOtp(@Body() dto: { email: string }) {
   return this.authService.sendEmailOtp(dto.email);
 }
 
 @Post('verify-email-otp')
+@ApiOperation({ summary: 'Verify email OTP' })
+@ApiBody({ schema: { type: 'object', properties: { email: { type: 'string' }, code: { type: 'string' } } } })
 async verifyEmailOtp(@Body() dto: { email: string; code: string }) {
   return this.authService.verifyEmailOtp(dto.email, dto.code);
 }
 
   @Post('refresh')
+  @ApiOperation({ summary: 'Refresh tokens' })
+  @ApiBody({ schema: { type: 'object', properties: { refreshToken: { type: 'string' } } } })
   @HttpCode(HttpStatus.OK)
   async refresh(@Req() req: Request, @Res() res: Response) {
     const refreshToken = (req as any).body?.refreshToken || (req as any).cookies?.refresh_token;
@@ -165,6 +210,8 @@ async verifyEmailOtp(@Body() dto: { email: string; code: string }) {
   }
 
   @Post('logout')
+  @ApiOperation({ summary: 'Logout' })
+  @ApiBody({ schema: { type: 'object', properties: { userId: { type: 'string' } } } })
   @HttpCode(HttpStatus.OK)
   async logout(@Req() req: Request, @Res() res: Response) {
     const refreshToken = (req as any).cookies?.refresh_token;

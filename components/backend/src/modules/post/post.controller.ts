@@ -10,6 +10,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { extname } from 'path';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
+import { ApiTags, ApiOperation, ApiBody, ApiConsumes, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 
 const UPLOADS_FOLDER = 'uploads';
 const POSTS_FOLDER = `${UPLOADS_FOLDER}/posts`;
@@ -30,6 +31,9 @@ function editFileName(req: any, file: Express.Multer.File, callback: Function) {
   const finalName = `${name}-${timestamp}${fileExtName}`;
   callback(null, finalName);
 }
+
+@ApiTags('Post')
+@ApiBearerAuth()
 @Controller('post')
 export class PostController {
     private readonly logger = new Logger(PostController.name);
@@ -38,6 +42,25 @@ export class PostController {
    @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.DOCTOR)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a post with photos' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        content: { type: 'string' },
+        photos: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary',
+          },
+        },
+      },
+    },
+  })
   @UseInterceptors(
     FilesInterceptor('photos', 8, { // allow up to 8 photos (change as needed)
       storage: diskStorage({
@@ -74,30 +97,42 @@ export class PostController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Get all posts' })
   findAll() {
     return this.postService.findAll();
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get post by ID' })
+  @ApiParam({ name: 'id', description: 'Post ID' })
   findOne(@Param('id') id: string) {
     return this.postService.findOne(+id);
   }
   @Get('doctor/:userId')
+  @ApiOperation({ summary: 'Get posts by user ID' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
   findOneByPostOd(@Param('userId') userId: string) {
     return this.postService.findOneByUserId(userId);
   }
 
   @Post('/like')
+  @ApiOperation({ summary: 'Like or unlike a post' })
+  @ApiBody({ schema: { type: 'object', properties: { userId: { type: 'string' }, postId: { type: 'number' } } } })
   async like(@Body() body: { userId: string; postId: number }){
   return this.postService.addLikeOrDelete(body.userId, body.postId);
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: 'Update post' })
+  @ApiParam({ name: 'id', description: 'Post ID' })
+  @ApiBody({ type: UpdatePostDto })
   update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
     return this.postService.update(+id, updatePostDto);
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete post' })
+  @ApiParam({ name: 'id', description: 'Post ID' })
   remove(@Param('id') id: string) {
     return this.postService.remove(+id);
   }

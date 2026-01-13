@@ -7,7 +7,7 @@ import { requests } from 'src/db/schema/request.schema';
 import { conversationAI, conversations } from 'src/db/schema/chat.schema';
 import { cities } from 'src/db/schema/cities.schema';
 
-//import { NotificationService } from '../notification/notification.service';
+import { NotificationService } from '../notification/notification.service';
 
  type PatientProfile={
    request:{
@@ -38,7 +38,7 @@ import { cities } from 'src/db/schema/cities.schema';
 export class RequestService {
 
 
-  constructor( private chatService: ChatService,/*private readonly notificationService: NotificationService,*/) {}
+  constructor( private chatService: ChatService, private readonly notificationService: NotificationService) {}
 
 async getReceivedRequests(
   userId: string,
@@ -196,42 +196,40 @@ async getRequstById(requestId: number) {
     };
   }
 
- async sendRequest(senderId: string, receiverId: string) {
+async sendRequest(senderId: string, receiverId: string) {
   if (senderId === receiverId) {
     throw new BadRequestException('cannot send request to yourself');
   }
 
-  return db.transaction(async (tx) => {
-    const [sender] = await tx
-      .select({
-        id: users.fusionAuthId,
-        role: users.role,
-      })
-      .from(users)
-      .where(eq(users.fusionAuthId, senderId));
 
-    const [receiver] = await tx
-      .select({
-        id: users.fusionAuthId,
-        role: users.role,
-      })
-      .from(users)
-      .where(eq(users.fusionAuthId, receiverId));
+  const [sender] = await db
+    .select({
+      id: users.fusionAuthId,
+      role: users.role,
+      firstName: users.firstName, 
+    })
+    .from(users)
+    .where(eq(users.fusionAuthId, senderId));
 
-    if (!sender || !receiver) {
-      throw new NotFoundException('sender or receiver not found');
-    }
+  const [receiver] = await db
+    .select({
+      id: users.fusionAuthId,
+      role: users.role,
+      fcmToken: users.fcmToken, 
+    })
+    .from(users)
+    .where(eq(users.fusionAuthId, receiverId));
 
-    const isDoctorPatientPair =
-      (sender.role === 'doctor' && receiver.role === 'patient') ||
-      (sender.role === 'patient' && receiver.role === 'doctor');
+  if (!sender || !receiver) {
+    throw new NotFoundException('sender or receiver not found');
+  }
 
-    if (!isDoctorPatientPair) {
-      throw new BadRequestException(
-        'invalid request: roles not compatible',
-      );
-    }
+  const isDoctorPatientPair = (sender.role === 'patient' && receiver.role === 'doctor');
+  if (!isDoctorPatientPair) {
+    throw new BadRequestException('invalid request: roles not compatible');
+  }
 
+  const newRequest = await db.transaction(async (tx) => {
     const pairCondition = this.buildPairCondition(senderId, receiverId);
 
     const existing = await tx
@@ -245,65 +243,70 @@ async getRequstById(requestId: number) {
       );
 
     if (existing.length > 0) {
-      throw new ConflictException(
-        'request already exists or already accepted',
-      );
+      throw new ConflictException('request already exists or already accepted');
     }
-    const doctorResult = await db
-      .select({ 
-        fcmToken: users.fcmToken,
-        firstName: users.firstName 
-      })
-      .from(users)
-      .where(eq(users.fusionAuthId, receiverId));
-    const [newRequest] = await tx
+
+    const [insertedRequest] = await tx
       .insert(requests)
       .values({
         senderId,
         receiverId,
       })
       .returning();
-      const doctor = doctorResult[0];
-
-
-      // if(doctor && doctor.fcmToken){
-      //   const patientResult = await db.select().from(users).where(eq(users.fusionAuthId, receiverId));
-      //   //const patientName = patientResult[0]?.firstName || 'مريض';
-
-
-      // //   await this.notificationService.sendPushNotification(
-      // //   doctor.fcmToken,            
-      // //   'new patiet send request for you',         
-      // //   `the patient ${patientName} send request for you `, 
-      // //   { requestId: newRequest[0].id.toString() } 
-      // // );
-      // }
-
-    return newRequest;
+      
+    return insertedRequest;
   });
+
+ 
+  if (receiver.fcmToken) {
+    const patientName = sender.firstName || 'مريض'; 
+
+    this.notificationService.sendAndSave(
+      receiver.id,                 
+      'طلب حالة جديد ',       
+      `أرسل لك ${patientName} طلب معالجة جديد.`, 
+      'new_request',            
+      { requestId: newRequest.id }
+    ).catch(err => console.error("Notification failed", err));
+  }
+
+  return newRequest;
 }
 
-  async acceptOrReject(accepted: boolean, requestId:number) {
-    const newStatus = accepted ? 'accepted' : 'rejected';
-     
-   
-    if (newStatus === 'accepted') {
-      await db.update(requests).set({status:'accepted'}).where(eq(requests.id,requestId))
-       let request=await db.select().from(requests).where(eq(requests.id,requestId))
-      let conversation=await this.chatService.ensureConversationForRequest(
-        request[0].id,
-        request[0].senderId,
-        request[0].receiverId,
+async acceptOrReject(accepted: boolean, requestId: number) {
+  const newStatus = accepted ? 'accepted' : 'rejected';
+
+  if (newStatus === 'accepted') {
+    return await db.transaction(async (tx) => {
+      
+      const [updatedRequest] = await tx
+        .update(requests)
+        .set({ status: 'accepted' })
+        .where(eq(requests.id, requestId))
+        .returning(); 
+
+      const conversation = await this.chatService.ensureConversationForRequest(
+        updatedRequest.id,
+        updatedRequest.senderId,
+        updatedRequest.receiverId,
       );
-      return {request,conversation:conversation}
-    }else{
-      await db.update(requests).set({status:'rejected'}).where(eq(requests.id,requestId))
-      return {msg:'request rejected'}
-    }
 
 
-   // return {request};
+      return { 
+        request: updatedRequest, 
+        conversation: conversation
+      };
+    });
+
+  } else {
+    await db
+      .update(requests)
+      .set({ status: 'rejected' })
+      .where(eq(requests.id, requestId));
+
+    return { msg: 'request rejected' };
   }
+}
 
   async cancelRequest(senderId: string, receiverId: string) {
     const deleted = await db
