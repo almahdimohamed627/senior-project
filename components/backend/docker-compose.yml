@@ -13,6 +13,7 @@ services:
       - PORT=3000
     volumes:
       - uploads_data:/app/uploads  # Named volume (not bind mount)
+      - /etc/firebase/firebase-admin-key.json:/app/firebase-admin-key.json
     ports:
       - '3000:3000'
       - '4000:4000'
