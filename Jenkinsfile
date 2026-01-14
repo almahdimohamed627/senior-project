@@ -943,26 +943,16 @@ def runE2ETests() {
         echo "E2E Test Full Output:\n${testOutput}"
 
         // Extract key information from output
-        def totalScenarios = (testOutput =~ /Total scenarios: (\d+)/)?.find { it[1] } ?: "N/A"
-        def summaryMatch = (testOutput =~ /📊 Summary: (\d+\/\d+) tests passed/)
-        def summary = summaryMatch ? summaryMatch[0][1] : "N/A"
-        def executionTimeMatch = (testOutput =~ /⏱️  Total execution time: (\d+s)/)
-        def executionTime = executionTimeMatch ? executionTimeMatch[0][1] : "N/A"
+        def totalScenarios = "8" // Fixed based on our test suite
+        def summaryMatcher = (testOutput =~ /📊 Summary: (\d+\/\d+) tests passed/)
+        def summary = summaryMatcher.find() ? summaryMatcher.group(1) : "N/A"
+        def timeMatcher = (testOutput =~ /⏱️  Total execution time: (\d+s)/)
+        def executionTime = timeMatcher.find() ? timeMatcher.group(1) : "N/A"
 
         // Extract failed test details
         def failedTestsDetails = ""
-        def failedSections = testOutput.findAll(/(?s)Running: .*?❌ FAILED.*?(?=Running:|$)/)
-        if (failedSections) {
-            failedTestsDetails = "\n\nFailed Tests Details:"
-            failedSections.each { section ->
-                def testName = (section =~ /Running: (.*?)$/)[0][1]
-                def errorDetails = section.find(/(?s)Error details:(.*?)(?=Running:|$)/)
-                if (errorDetails) {
-                    failedTestsDetails += "\n• ${testName}: ${errorDetails[1].trim()}"
-                } else {
-                    failedTestsDetails += "\n• ${testName}: Failed"
-                }
-            }
+        if (testOutput.contains("❌ FAILED")) {
+            failedTestsDetails = "\n\nFailed Tests Detected (see build logs for full details)"
         }
 
         // Set comprehensive status for Telegram
