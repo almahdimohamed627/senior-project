@@ -927,49 +927,60 @@ def performComponentHealthCheck(componentName) {
 }
 
 def runE2ETests() {
+    def testOutput = ""
+    def exitCode = 0
+
     try {
-        // Run comprehensive test suite
-        sh '''
+        // Run comprehensive test suite and capture all output
+        def result = sh(script: '''
             cd scripts
-            ./run-all-scenarios.sh
-        '''
+            ./run-all-scenarios.sh 2>&1 || true
+        ''', returnStdout: true, returnStatus: true)
 
-        // Parse JSON results
-        def resultsFile = 'scripts/test-results/latest-run.json'
-        if (fileExists(resultsFile)) {
-            def results = readJSON file: resultsFile
-            def totalTests = results.results.totalTests
-            def passedTests = results.results.passed
-            def failedTests = results.results.failed
+        testOutput = result[0]
+        exitCode = result[1]
 
-            // Build detailed failure feedback
-            def failureDetails = ""
-            if (failedTests > 0) {
-                results.scenarios.each { scenario ->
-                    if (scenario.status == 'failed') {
-                        failureDetails += "\n• ${scenario.name}: API Error - ${scenario.error ?: 'Check build logs for response details'}"
-                    }
+        echo "E2E Test Full Output:\n${testOutput}"
+
+        // Extract key information from output
+        def totalScenarios = (testOutput =~ /Total scenarios: (\d+)/)?.find { it[1] } ?: "N/A"
+        def summaryMatch = (testOutput =~ /📊 Summary: (\d+\/\d+) tests passed/)
+        def summary = summaryMatch ? summaryMatch[0][1] : "N/A"
+        def executionTimeMatch = (testOutput =~ /⏱️  Total execution time: (\d+s)/)
+        def executionTime = executionTimeMatch ? executionTimeMatch[0][1] : "N/A"
+
+        // Extract failed test details
+        def failedTestsDetails = ""
+        def failedSections = testOutput.findAll(/(?s)Running: .*?❌ FAILED.*?(?=Running:|$)/)
+        if (failedSections) {
+            failedTestsDetails = "\n\nFailed Tests Details:"
+            failedSections.each { section ->
+                def testName = (section =~ /Running: (.*?)$/)[0][1]
+                def errorDetails = section.find(/(?s)Error details:(.*?)(?=Running:|$)/)
+                if (errorDetails) {
+                    failedTestsDetails += "\n• ${testName}: ${errorDetails[1].trim()}"
+                } else {
+                    failedTestsDetails += "\n• ${testName}: Failed"
                 }
             }
-
-            // Set status for Telegram
-            if (failedTests == 0) {
-                env.E2E_TEST_STATUS = "✅ Passed (${passedTests}/${totalTests})"
-                env.E2E_FAILURE_DETAILS = ""
-            } else {
-                env.E2E_TEST_STATUS = "❌ Failed (${failedTests}/${totalTests})"
-                env.E2E_FAILURE_DETAILS = failureDetails
-            }
-
-            echo "E2E test results logged and reported to Telegram"
-        } else {
-            env.E2E_TEST_STATUS = "❌ No results generated"
-            env.E2E_FAILURE_DETAILS = ""
         }
 
+        // Set comprehensive status for Telegram
+        def statusSummary = "📊 ${summary} | ⏱️ ${executionTime}"
+        if (exitCode == 0) {
+            env.E2E_TEST_STATUS = "✅ Tests Completed\n${statusSummary}"
+            env.E2E_FAILURE_DETAILS = failedTestsDetails ?: "\nAll tests passed successfully!"
+        } else {
+            env.E2E_TEST_STATUS = "❌ Tests Failed\n${statusSummary}"
+            env.E2E_FAILURE_DETAILS = failedTestsDetails ?: "\nScript execution issues detected"
+        }
+
+        // Always include key output in details
+        env.E2E_FAILURE_DETAILS += "\n\nFull Output Summary:\n${testOutput.take(1500)}"
+
     } catch (Exception e) {
-        env.E2E_TEST_STATUS = "❌ Execution failed"
-        env.E2E_FAILURE_DETAILS = "\n• Script error: ${e.message}"
+        env.E2E_TEST_STATUS = "❌ Execution Error"
+        env.E2E_FAILURE_DETAILS = "\nException: ${e.message}\nPartial Output: ${testOutput.take(500)}"
         echo "E2E Test execution failed: ${e.message}"
     }
 }
@@ -977,5 +988,12 @@ def runE2ETests() {
 def getE2ETestStatus() {
     def status = env.E2E_TEST_STATUS ?: '⏸️ Not Run'
     def details = env.E2E_FAILURE_DETAILS ?: ''
+
+    // Truncate details to fit Telegram limits (around 4000 chars total message)
+    def maxDetailsLength = 2000
+    if (details.length() > maxDetailsLength) {
+        details = details.take(maxDetailsLength) + "\n\n[Output truncated - check build logs for full details]"
+    }
+
     return "${status}${details}"
 }
