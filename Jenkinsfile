@@ -960,8 +960,14 @@ def runE2ETests() {
 
 def getE2ETestStatus() {
     def status = env.E2E_TEST_STATUS ?: '⏸️ Not Run'
-    def fullOutput = env.E2E_FULL_OUTPUT ?: ''
+    def fullOutput = (env.E2E_FULL_OUTPUT ?: '').toString()
 
     // Include raw output directly (Telegram handles up to ~4000 chars)
-    return "${status}\n\n📄 Complete Test Output:\n${fullOutput.take(3500)}${fullOutput.length() > 3500 ? '\n\n[Output truncated - check build logs for full details]' : ''}"
+    def truncatedOutput = fullOutput.take(3500)
+    def suffix = fullOutput.length() > 3500 ? '\n\n[Output truncated - check build logs for full details]' : ''
+
+    // Break down string interpolation into simpler steps
+    def header = "${status}\n\n📄 Complete Test Output:\n"
+    def content = "${truncatedOutput}${suffix}"
+    return header + content
 }
