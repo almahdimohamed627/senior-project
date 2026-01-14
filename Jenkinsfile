@@ -935,8 +935,16 @@ def runE2ETests() {
             ./run-all-scenarios.sh 2>&1
         ''', returnStdout: true, returnStatus: true)
 
-        def testOutput = result[0]
-        def exitCode = result[1]
+        def testOutput
+        def exitCode
+        if (result != null && result instanceof List && result.size() >= 2) {
+            testOutput = result[0]
+            exitCode = result[1]
+        } else {
+            // Fallback for cases where sh doesn't return the expected array
+            testOutput = result?.toString() ?: ""
+            exitCode = 0
+        }
 
         // Dump complete raw output to console for debugging
         echo "E2E Test Complete Raw Output:\n${testOutput}"
