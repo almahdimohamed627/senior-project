@@ -966,6 +966,6 @@ def getE2ETestStatus() {
 
     // Break down string interpolation into simpler steps
     def header = "${status}\n\n📄 Complete Test Output:\n"
-    def content = "${truncatedOutput}${suffix}"
+    def content = "```\n${truncatedOutput}${suffix}\n```"
     return header + content
 }
