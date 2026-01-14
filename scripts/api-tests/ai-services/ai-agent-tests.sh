@@ -53,7 +53,6 @@ echo "✅ AI response structure is valid"
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
 
-RESULT_JSON=$(jq -n --arg name "$TEST_NAME" --arg status "passed" --arg duration "${DURATION}s" --arg sessionId "$SESSION_ID" --arg state "$STATE" --arg hasAnswer "$( [ -n "$ANSWER" ] && echo true || echo false )" '{testName: $name, status: $status, duration: $duration, details: {sessionId: $sessionId, state: $state, hasAnswer: $hasAnswer}}')
-echo "$RESULT_JSON" >> "$RESULTS_DIR/test-results.log"
-echo "$RESULT_JSON"
+# Simple text output - no complex JSON serialization
+echo "Test: $TEST_NAME | Status: passed | Duration: ${DURATION}s | Session: $SESSION_ID | State: $STATE"
 echo "✅ AI Agent tests passed"

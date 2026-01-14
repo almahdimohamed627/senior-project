@@ -63,7 +63,6 @@ cleanup_created_data "$TOKEN"
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
 
-RESULT_JSON=$(generate_test_result "$TEST_NAME" "passed" "$DURATION" "{\"userId\":\"$USER_ID\"}")
-log_test_result "$RESULT_JSON"
-echo "$RESULT_JSON"
+# Simple text output - no complex JSON serialization
+echo "Test: $TEST_NAME | Status: passed | Duration: ${DURATION}s | User: $USER_ID"
 echo "✅ Authentication flow test passed"

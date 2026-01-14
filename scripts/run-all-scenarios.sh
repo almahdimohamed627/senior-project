@@ -4,9 +4,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/api-tests/utils/test-config.sh"
 
-# Initialize results
-RESULTS_FILE="$RESULTS_DIR/$(date +%Y%m%d_%H%M%S)_scenarios.json"
-LATEST_RESULTS="$RESULTS_DIR/latest-run.json"
+# Initialize results - use simple text file instead of JSON to avoid serialization issues
+RESULTS_FILE="$RESULTS_DIR/$(date +%Y%m%d_%H%M%S)_scenarios.txt"
+LATEST_RESULTS="$RESULTS_DIR/latest-run.txt"
 TOTAL_TESTS=0
 PASSED_TESTS=0
 FAILED_TESTS=0
@@ -24,9 +24,6 @@ SCENARIOS=(
     "e2e-scenarios/patient-journey-complete.sh:Patient Complete Journey"
 )
 
-# Results array
-declare -a test_results=()
-
 echo "🚀 Starting API Scenario Tests..."
 echo "Total scenarios: ${#SCENARIOS[@]}"
 echo "Results will be saved to: $RESULTS_FILE"
@@ -40,26 +37,32 @@ for scenario in "${SCENARIOS[@]}"; do
     echo "Running: $TEST_NAME"
     SCENARIO_START=$(date +%s)
 
-    # Execute test script
-    if bash "$SCRIPT_DIR/api-tests/$SCRIPT_PATH" > /tmp/test_output.log 2>&1; then
-        SCENARIO_DURATION=$(( $(date +%s) - SCENARIO_START ))
+    # Execute test script and capture ALL output
+    TEST_OUTPUT=$(bash "$SCRIPT_DIR/api-tests/$SCRIPT_PATH" 2>&1)
+    TEST_EXIT_CODE=$?
+
+    SCENARIO_DURATION=$(( $(date +%s) - SCENARIO_START ))
+
+    if [ $TEST_EXIT_CODE -eq 0 ]; then
         echo "✅ PASSED: $TEST_NAME (${SCENARIO_DURATION}s)"
         ((PASSED_TESTS++))
-
-        # Get test result JSON
-        result=$(cat /tmp/test_output.log | tail -1 2>/dev/null || echo "{}")
-        test_results+=("{\"name\": \"$TEST_NAME\", \"status\": \"passed\", \"duration\": ${SCENARIO_DURATION}, \"details\": $result}")
+        STATUS="PASSED"
     else
-        SCENARIO_DURATION=$(( $(date +%s) - SCENARIO_START ))
         echo "❌ FAILED: $TEST_NAME (${SCENARIO_DURATION}s)"
-
-        # Show error output
         echo "Error details:"
-        cat /tmp/test_output.log
-
+        echo "$TEST_OUTPUT"
         ((FAILED_TESTS++))
-        test_results+=("{\"name\": \"$TEST_NAME\", \"status\": \"failed\", \"duration\": ${SCENARIO_DURATION}, \"error\": \"$(cat /tmp/test_output.log | tr '\n' ' ' | cut -c1-200)\"}")
+        STATUS="FAILED"
     fi
+
+    # Write simple text results to file (no JSON parsing/serialization)
+    echo "=== $TEST_NAME ===" >> "$RESULTS_FILE"
+    echo "Status: $STATUS" >> "$RESULTS_FILE"
+    echo "Duration: ${SCENARIO_DURATION}s" >> "$RESULTS_FILE"
+    echo "ExitCode: $TEST_EXIT_CODE" >> "$RESULTS_FILE"
+    echo "Output:" >> "$RESULTS_FILE"
+    echo "$TEST_OUTPUT" >> "$RESULTS_FILE"
+    echo "" >> "$RESULTS_FILE"
 
     ((TOTAL_TESTS++))
     echo
@@ -69,32 +72,24 @@ done
 END_TIME=$(date +%s)
 TOTAL_DURATION=$((END_TIME - START_TIME))
 
-# Generate final results JSON
-cat > "$RESULTS_FILE" << EOF
-{
-  "testSuite": "all-api-scenarios",
-  "timestamp": "$(date -Iseconds)",
-  "environment": "development",
-  "execution": {
-    "parallel": false,
-    "ordered": true,
-    "totalDuration": "${TOTAL_DURATION}s"
-  },
-  "results": {
-    "totalTests": $TOTAL_TESTS,
-    "passed": $PASSED_TESTS,
-    "failed": $FAILED_TESTS,
-    "successRate": $(echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc 2>/dev/null || echo "0")%
-  },
-  "scenarios": [
-    $(IFS=','; echo "${test_results[*]}")
-  ],
-  "summary": {
-    "allDataCleaned": true,
-    "testEnvironmentReady": true,
-    "totalExecutionTime": "${TOTAL_DURATION}s"
-  }
-}
+# Generate final summary (simple text, no JSON)
+cat >> "$RESULTS_FILE" << EOF
+=== TEST SUITE SUMMARY ===
+Timestamp: $(date -Iseconds)
+Environment: development
+Execution: sequential, ordered
+Total Duration: ${TOTAL_DURATION}s
+
+Results:
+- Total Tests: $TOTAL_TESTS
+- Passed: $PASSED_TESTS
+- Failed: $FAILED_TESTS
+- Success Rate: $(echo "scale=2; $PASSED_TESTS * 100 / $TOTAL_TESTS" | bc 2>/dev/null || echo "0")%
+
+Summary:
+- All data cleaned: true
+- Test environment ready: true
+- Total execution time: ${TOTAL_DURATION}s
 EOF
 
 # Copy to latest results

@@ -79,25 +79,17 @@ validate_fields() {
     return 0
 }
 
-# Generate test result JSON
+# Generate simple test result text (no JSON serialization)
 generate_test_result() {
     local test_name=$1
     local status=$2
     local duration=${3:-0}
     local details=${4:-"{}"}
 
-    cat << EOF
-{
-  "testName": "$test_name",
-  "status": "$status",
-  "duration": "${duration}s",
-  "timestamp": "$(date -Iseconds)",
-  "details": $details
-}
-EOF
+    echo "Test: $test_name | Status: $status | Duration: ${duration}s | Details: $details"
 }
 
-# Log test result
+# Log test result (simple text)
 log_test_result() {
     local result=$1
     local log_file="$RESULTS_DIR/test-results.log"
