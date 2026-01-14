@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
 import { db } from "../../db/client";
 import { conversationAI, conversationAiMessages } from "src/db/schema/chat.schema";
-import { eq } from "drizzle-orm"
+import { eq ,and,or} from "drizzle-orm"
 import { users } from "src/db/schema/profiles.schema";
 import { ok } from "assert";
 import { DentistSpecialty } from "./ai-msg.dto";
@@ -137,6 +137,8 @@ export class AiAgentService {
   }
 
 
+
+
   async generateAndSaveQRCode(conversationId: number): Promise<string> {
     try {
       // أ. تحديد مجلد الحفظ واسم ملف الـ QR
@@ -184,4 +186,22 @@ export class AiAgentService {
       throw new InternalServerErrorException('Failed to generate QR code.');
     }
   }
+
+  async returnDiagnosesForPatient(patientId:string){
+    let diagnoses=await db.select().from(conversationAI).where(eq(conversationAI.userId,patientId))
+    return diagnoses
+  }
+
+async  ensureCase(patientId:string):Promise<boolean>{
+      let diagnoses=await db.select().from(conversationAI).where(and(eq(conversationAI.userId,patientId)
+      ,or(eq(conversationAI.status,"in_progress"),eq(conversationAI.status,"specified"))))
+      console.log(diagnoses.length)
+   if(diagnoses.length===1){
+       return false
+   }
+
+       return true
+
+}
+ 
 }

@@ -1,6 +1,6 @@
 //chat.service.ts
 import { Injectable } from '@nestjs/common';
-import { desc, eq, or } from 'drizzle-orm';
+import { desc, eq, or ,and} from 'drizzle-orm';
 import { db } from 'src/db/client';
 import { conversationAI, conversations, messages } from 'src/db/schema/chat.schema';
 import { doctorProfile, patientProfile, users } from 'src/db/schema/profiles.schema';
@@ -19,7 +19,8 @@ async getUserConversations(userId: string) {
     .from(conversations)
     .where(eq(isDoctor ? conversations.doctorId : conversations.patientId, userId))
     .leftJoin(users, eq(users.fusionAuthId, isDoctor ? conversations.patientId : conversations.doctorId))
-    .leftJoin(messages, eq(messages.conversationId, conversations.id)).innerJoin(conversationAI,eq(conversationAI.userId,conversations.patientId))
+    .leftJoin(messages, eq(messages.conversationId, conversations.id)).
+    leftJoin(conversationAI,and(eq(conversationAI.userId,conversations.patientId),eq(conversationAI.status,'completed')))
     .orderBy(desc(messages.createdAt)); 
 
 
