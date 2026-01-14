@@ -142,7 +142,7 @@ async findOneByUserId(id: string) {
   if(!user[0]){
     throw new NotFoundException(`there is no user`)
   }
-  const result = await db.select().from(posts).where(eq(posts.userId, id));
+  const result = await db.select().from(posts).where(and(eq(posts.userId, id),eq(posts.keyStatus,'published')));
   
   return result;
 }

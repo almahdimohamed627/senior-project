@@ -110,5 +110,17 @@ async saveMsg(@Body() saveMsgDto:AiMessage){
     });
   }
 
+  @Post("completeDiagnosis")
+  async completeDiagnosis(@Body('conversationId')conversationId:number,@Body('requestId')requestId:number){
+    let status= await this.aiAgentSercice.completeDiagnosis(conversationId,requestId)
+    if(status){
+       return {msg:'status changes'}
+    }
+    else{
+    return {msg:'can not changed because the backend is very super hero'}
+    }
+     
+  }
+
     
 }
