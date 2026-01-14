@@ -86,43 +86,37 @@ async saveMessages(
       .where(eq(conversationAI.id, conversationId));
 
     try {
-      // أ. توليد الـ PDF
       const fullPdfPath = await this.diagnosesPdfService.generateDiagnosisPdf(conversationId);
-      pdfFileName = path.basename(fullPdfPath); // استخراج الاسم فقط
+      pdfFileName = path.basename(fullPdfPath); 
 
-      // ب. توليد الـ QR Code (الخطوة الجديدة)
-      // هذا التابع بيرجع المسار الكامل للصورة
+      
       const fullQrPath = await this.generateAndSaveQRCode(conversationId);
-      qrFileName = path.basename(fullQrPath); // استخراج الاسم فقط لتخزينه مثل الـ PDF
+      qrFileName = path.basename(fullQrPath); 
 
-      // ج. حفظ مسارات الملفين في الداتابيز
       await db
         .update(conversationAI)
         .set({
-          pdfReportPath: fullPdfPath, // أو pdfFileName حسب كيف بدك تخزنه (كامل أو بس الاسم)
-          qrCodePath: fullQrPath      // **ملاحظة:** تأكد أنك ضفت هذا العمود في الـ Schema
+          pdfReportPath: fullPdfPath, 
+          qrCodePath: fullQrPath    
         })
         .where(eq(conversationAI.id, conversationId));
 
     } catch (error) {
       console.error("Error generating files (PDF/QR):", error);
-      // ممكن نضيف منطق لحذف التحديث السابق لو فشل التوليد، بس حالياً هيك تمام
     }
   }
 
-  // 3. حفظ الرسالة
   let row = await db.insert(conversationAiMessages).values({
     conversationId: conversationId,
     msg: msg,
     ai_response: ai_response
   }).returning();
 
-  // 4. الإرجاع (ضفنا الـ qrCode للرد)
   return { 
     msg: 'saved', 
     information: row[0],
     pdfReport: pdfFileName,
-    qrCode: qrFileName // رجعنا اسم ملف الـ QR لليوزر عشان يعرضه فوراً
+    qrCode: qrFileName 
   };}
 
   async returnPdf(aiConversationId:number){

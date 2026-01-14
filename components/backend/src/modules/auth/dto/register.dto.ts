@@ -46,18 +46,13 @@ password: string;
   @ApiPropertyOptional({ example: 1, description: 'City ID' })
   @IsNotEmpty() @IsString() city?: number;
 
-  // phoneNumber مطلوب لكلا الدورين بحسب منطقك السابق، لذا نحافظ عليه كحقل محتمل مطلوب
-  // استخدمت IsPhoneNumber (يمكنك ضبط البلد إن أردت) — إن لم ترغب استخدم @IsString()
+
   @ApiProperty({ example: '+1234567890', description: 'Phone number' })
   @IsString()
   @IsNotEmpty()
   phoneNumber: string;
 
-  // -------------------------
-  // birthYear (تعريف واحد فقط)
-  // مطلوب حسب منطقك — إن أردت جعله شرطياً استبدل ValidateIf بالشكل المناسب
-  // نستخدم class-transformer لتحويل القيمة إلى Number قبل التحقق
-  // -------------------------
+
   @ApiProperty({ example: 1990, description: 'Birth year' })
   @Type(() => Number)
   @IsNotEmpty()

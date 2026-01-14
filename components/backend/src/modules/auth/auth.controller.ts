@@ -29,24 +29,24 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes, ApiBearerAuth
 const UPLOADS_FOLDER = 'uploads';
 
 
-function fileFilter(req: any, file: Express.Multer.File, cb: Function) {
-  if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
-    return cb(new BadRequestException('Unsupported file type. Only jpg/jpeg/png allowed.'), false);
-  }
-  cb(null, true);
-}
+// function fileFilter(req: any, file: Express.Multer.File, cb: Function) {
+//   if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
+//     return cb(new BadRequestException('Unsupported file type. Only jpg/jpeg/png allowed.'), false);
+//   }
+//   cb(null, true);
+// }
 
 
-function editFileName(req: any, file: Express.Multer.File, callback: Function) {
-  const name = file.originalname
-    .replace(/\.[^/.]+$/, '') // remove extension
-    .replace(/\s+/g, '-')
-    .toLowerCase();
-  const fileExtName = extname(file.originalname).toLowerCase();
-  const timestamp = Date.now();
-  const finalName = `${name}-${timestamp}${fileExtName}`;
-  callback(null, finalName);
-}
+// function editFileName(req: any, file: Express.Multer.File, callback: Function) {
+//   const name = file.originalname
+//     .replace(/\.[^/.]+$/, '') // remove extension
+//     .replace(/\s+/g, '-')
+//     .toLowerCase();
+//   const fileExtName = extname(file.originalname).toLowerCase();
+//   const timestamp = Date.now();
+//   const finalName = `${name}-${timestamp}${fileExtName}`;
+//   callback(null, finalName);
+// }
 
 @ApiTags('Auth')
 @Controller('auth')

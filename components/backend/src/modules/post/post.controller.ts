@@ -89,6 +89,7 @@ export class PostController {
 
     try {
       const created = await this.postService.createPost(payload, filePaths);
+      console.log(created)
       return {msg:"your request in review"};
     } catch (err) {
       this.logger.error('Failed to create post', err?.message || err);
