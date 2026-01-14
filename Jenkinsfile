@@ -42,61 +42,6 @@ pipeline {
   }
 }
 
-def runE2ETests() {
-    try {
-        // Run comprehensive test suite
-        sh '''
-            cd scripts
-            ./run-all-scenarios.sh
-        '''
-
-        // Parse JSON results
-        def resultsFile = 'scripts/test-results/latest-run.json'
-        if (fileExists(resultsFile)) {
-            def results = readJSON file: resultsFile
-            def totalTests = results.results.totalTests
-            def passedTests = results.results.passed
-            def failedTests = results.results.failed
-
-            // Build detailed failure feedback
-            def failureDetails = ""
-            if (failedTests > 0) {
-                results.scenarios.each { scenario ->
-                    if (scenario.status == 'failed') {
-                        failureDetails += "\n• ${scenario.name}: API Error - ${scenario.error ?: 'Check build logs for response details'}"
-                    }
-                }
-            }
-
-            // Set status for Telegram
-            if (failedTests == 0) {
-                env.E2E_TEST_STATUS = "✅ Passed (${passedTests}/${totalTests})"
-                env.E2E_FAILURE_DETAILS = ""
-            } else {
-                env.E2E_TEST_STATUS = "❌ Failed (${failedTests}/${totalTests})"
-                env.E2E_FAILURE_DETAILS = failureDetails
-            }
-
-            echo "E2E test results logged and reported to Telegram"
-        } else {
-            env.E2E_TEST_STATUS = "❌ No results generated"
-            env.E2E_FAILURE_DETAILS = ""
-        }
-
-    } catch (Exception e) {
-        env.E2E_TEST_STATUS = "❌ Execution failed"
-        env.E2E_FAILURE_DETAILS = "\n• Script error: ${e.message}"
-        echo "E2E Test execution failed: ${e.message}"
-    }
-}
-
-def getE2ETestStatus() {
-    def status = env.E2E_TEST_STATUS ?: '⏸️ Not Run'
-    def details = env.E2E_FAILURE_DETAILS ?: ''
-    return "${status}${details}"
-}
-    }
-
     stage('Discover Components') {
       steps {
         script {
@@ -979,4 +924,58 @@ def performComponentHealthCheck(componentName) {
       '''
       break
   }
+}
+
+def runE2ETests() {
+    try {
+        // Run comprehensive test suite
+        sh '''
+            cd scripts
+            ./run-all-scenarios.sh
+        '''
+
+        // Parse JSON results
+        def resultsFile = 'scripts/test-results/latest-run.json'
+        if (fileExists(resultsFile)) {
+            def results = readJSON file: resultsFile
+            def totalTests = results.results.totalTests
+            def passedTests = results.results.passed
+            def failedTests = results.results.failed
+
+            // Build detailed failure feedback
+            def failureDetails = ""
+            if (failedTests > 0) {
+                results.scenarios.each { scenario ->
+                    if (scenario.status == 'failed') {
+                        failureDetails += "\n• ${scenario.name}: API Error - ${scenario.error ?: 'Check build logs for response details'}"
+                    }
+                }
+            }
+
+            // Set status for Telegram
+            if (failedTests == 0) {
+                env.E2E_TEST_STATUS = "✅ Passed (${passedTests}/${totalTests})"
+                env.E2E_FAILURE_DETAILS = ""
+            } else {
+                env.E2E_TEST_STATUS = "❌ Failed (${failedTests}/${totalTests})"
+                env.E2E_FAILURE_DETAILS = failureDetails
+            }
+
+            echo "E2E test results logged and reported to Telegram"
+        } else {
+            env.E2E_TEST_STATUS = "❌ No results generated"
+            env.E2E_FAILURE_DETAILS = ""
+        }
+
+    } catch (Exception e) {
+        env.E2E_TEST_STATUS = "❌ Execution failed"
+        env.E2E_FAILURE_DETAILS = "\n• Script error: ${e.message}"
+        echo "E2E Test execution failed: ${e.message}"
+    }
+}
+
+def getE2ETestStatus() {
+    def status = env.E2E_TEST_STATUS ?: '⏸️ Not Run'
+    def details = env.E2E_FAILURE_DETAILS ?: ''
+    return "${status}${details}"
 }
