@@ -926,64 +926,42 @@ def performComponentHealthCheck(componentName) {
     }
 }
 
+// Helper function to extract regex groups without storing Matcher objects
 def runE2ETests() {
-    def testOutput = ""
-    def exitCode = 0
-
     try {
-        // Run comprehensive test suite and capture all output
+        // Run tests and capture ALL raw output
         def result = sh(script: '''
             cd scripts
-            ./run-all-scenarios.sh 2>&1 || true
+            ./run-all-scenarios.sh 2>&1
         ''', returnStdout: true, returnStatus: true)
 
-        testOutput = result[0]
-        exitCode = result[1]
+        def testOutput = result[0]
+        def exitCode = result[1]
 
-        echo "E2E Test Full Output:\n${testOutput}"
+        // Dump complete raw output to console for debugging
+        echo "E2E Test Complete Raw Output:\n${testOutput}"
 
-        // Extract key information from output
-        def totalScenarios = "8" // Fixed based on our test suite
-        def summaryMatcher = (testOutput =~ /📊 Summary: (\d+\/\d+) tests passed/)
-        def summary = summaryMatcher.find() ? summaryMatcher.group(1) : "N/A"
-        def timeMatcher = (testOutput =~ /⏱️  Total execution time: (\d+s)/)
-        def executionTime = timeMatcher.find() ? timeMatcher.group(1) : "N/A"
-
-        // Extract failed test details
-        def failedTestsDetails = ""
-        if (testOutput.contains("❌ FAILED")) {
-            failedTestsDetails = "\n\nFailed Tests Detected (see build logs for full details)"
-        }
-
-        // Set comprehensive status for Telegram
-        def statusSummary = "📊 ${summary} | ⏱️ ${executionTime}"
+        // Set simple status based on exit code only
         if (exitCode == 0) {
-            env.E2E_TEST_STATUS = "✅ Tests Completed\n${statusSummary}"
-            env.E2E_FAILURE_DETAILS = failedTestsDetails ?: "\nAll tests passed successfully!"
+            env.E2E_TEST_STATUS = "✅ Tests Completed Successfully"
         } else {
-            env.E2E_TEST_STATUS = "❌ Tests Failed\n${statusSummary}"
-            env.E2E_FAILURE_DETAILS = failedTestsDetails ?: "\nScript execution issues detected"
+            env.E2E_TEST_STATUS = "❌ Tests Failed"
         }
 
-        // Always include key output in details
-        env.E2E_FAILURE_DETAILS += "\n\nFull Output Summary:\n${testOutput.take(1500)}"
+        // Store the ENTIRE raw output for Telegram
+        env.E2E_FULL_OUTPUT = testOutput
 
     } catch (Exception e) {
-        env.E2E_TEST_STATUS = "❌ Execution Error"
-        env.E2E_FAILURE_DETAILS = "\nException: ${e.message}\nPartial Output: ${testOutput.take(500)}"
+        env.E2E_TEST_STATUS = "❌ Test Execution Error"
+        env.E2E_FULL_OUTPUT = "Exception: ${e.message}"
         echo "E2E Test execution failed: ${e.message}"
     }
 }
 
 def getE2ETestStatus() {
     def status = env.E2E_TEST_STATUS ?: '⏸️ Not Run'
-    def details = env.E2E_FAILURE_DETAILS ?: ''
+    def fullOutput = env.E2E_FULL_OUTPUT ?: ''
 
-    // Truncate details to fit Telegram limits (around 4000 chars total message)
-    def maxDetailsLength = 2000
-    if (details.length() > maxDetailsLength) {
-        details = details.take(maxDetailsLength) + "\n\n[Output truncated - check build logs for full details]"
-    }
-
-    return "${status}${details}"
+    // Include raw output directly (Telegram handles up to ~4000 chars)
+    return "${status}\n\n📄 Complete Test Output:\n${fullOutput.take(3500)}${fullOutput.length() > 3500 ? '\n\n[Output truncated - check build logs for full details]' : ''}"
 }
