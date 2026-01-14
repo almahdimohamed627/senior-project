@@ -41,7 +41,7 @@ pipeline {
                     echo "Build URL: ${env.BUILD_URL}"
                 }
             }
-
+        }
             stage('Discover Components') {
                 steps {
                     script {
@@ -169,7 +169,6 @@ pipeline {
             }
         }
     }
-}
 
 /* ========================= GLOBAL DEPENDENCIES ========================= */
 // الكل يعتمد على traefik
