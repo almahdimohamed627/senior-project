@@ -484,7 +484,10 @@ def getLastCommitInfo() {
             def lastChangeSet = changeLogSets.last()
             if (lastChangeSet && lastChangeSet.items) {
                 def lastItem = lastChangeSet.items.last()
-                return "`${lastItem.author}`: `${lastItem.msg}`"
+                // Apply JSON escaping to prevent payload breakage
+                def escapedAuthor = jsonEscape(lastItem.author ?: "")
+                def escapedMessage = jsonEscape(lastItem.msg ?: "")
+                return "`${escapedAuthor}`: `${escapedMessage}`"
             }
         }
         return "No recent commits"
