@@ -484,7 +484,7 @@ def getLastCommitInfo() {
             def lastChangeSet = changeLogSets.last()
             if (lastChangeSet && lastChangeSet.items) {
                 def lastItem = lastChangeSet.items.last()
-                return "${lastItem.author}: ${lastItem.msg}"
+                return "`${lastItem.author}`: `${lastItem.msg}`"
             }
         }
         return "No recent commits"
