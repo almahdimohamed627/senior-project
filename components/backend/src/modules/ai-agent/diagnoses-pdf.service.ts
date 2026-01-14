@@ -123,7 +123,7 @@ export class DiagnosesPdfService {
     const pdfFileName = `diagnosis_${conversationId}.pdf`;
     
     // التأكد من أن مجلد uploads موجود
-    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const uploadsDir = path.join( 'uploads');
     if (!fs.existsSync(uploadsDir)){
         fs.mkdirSync(uploadsDir);
     }

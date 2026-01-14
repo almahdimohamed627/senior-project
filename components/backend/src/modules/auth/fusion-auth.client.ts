@@ -1,19 +1,25 @@
 // src/auth/fusion-auth.client.ts
 import axios from 'axios';
-import {
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
-  Logger
-
-} from '@nestjs/common';
+@Injectable() // 1. إضافة هذا الديكوريتور ليصبح Provider
 export class FusionAuthClientWrapper {
-  constructor(
-    private baseUrl: string,
-    private apiKey?: string,
-    private clientId?: string,
-    private clientSecret?: string,
-    private tenantId?:string,
-   private logger = new Logger(FusionAuthClientWrapper.name)
-  ) {}
+  private baseUrl: string;
+  private apiKey?: string;
+  private clientId?: string;
+  private clientSecret?: string;
+  private tenantId?: string;
+  private logger = new Logger(FusionAuthClientWrapper.name);
+
+  // 2. نحقن ConfigService هنا
+  constructor(private config: ConfigService) {
+    this.baseUrl = this.config.get<string>('FUSIONAUTH_BASE_URL') || '';
+    this.apiKey = this.config.get<string>('FUSIONAUTH_API_KEY');
+    this.clientId = this.config.get<string>('FUSIONAUTH_CLIENT_ID');
+    this.clientSecret = this.config.get<string>('FUSIONAUTH_CLIENT_SECRET');
+    this.tenantId = this.config.get<string>('FUSIONAUTH_TENANT_ID');
+  }
 
   // تبادل كلمة المرور للحصول على التوكنات
   async exchangePassword(email: string, password: string, clientId: string, clientSecret: string) {
@@ -23,8 +29,8 @@ export class FusionAuthClientWrapper {
     params.append('password', password);
     params.append('client_id', clientId);
     params.append('client_secret', clientSecret);
-// اطلب offline_access للحصول على refresh token، وopenid إذا تريد id_token
-params.append('scope', 'offline_access openid');
+    // اطلب offline_access للحصول على refresh token، وopenid إذا تريد id_token
+    params.append('scope', 'offline_access openid');
 
     const resp = await axios.post(`${this.baseUrl}/oauth2/token`, params, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -41,11 +47,11 @@ params.append('scope', 'offline_access openid');
     params.append('client_secret', clientSecret);
     params.append('scope', 'openid offline_access');
 
-   const resp = await axios.post(`${this.baseUrl}/oauth2/token`, params, {
-  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-});
-this.logger.debug('FusionAuth refresh response', resp.data);
-return resp.data;
+    const resp = await axios.post(`${this.baseUrl}/oauth2/token`, params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    this.logger.debug('FusionAuth refresh response', resp.data);
+    return resp.data;
   }
 
   // التحقق من صلاحية التوكن
@@ -64,29 +70,30 @@ return resp.data;
     });
     return resp.data;
   }
-    async updateUser(userId: string, payload: {
-  email?: string;
-  password?: string;
-  firstName?: string;
-  lastName?: string;
-}) {
-  if (!this.apiKey) {
-    throw new Error('FusionAuth API key is missing');
+
+  async updateUser(userId: string, payload: {
+    email?: string;
+    password?: string;
+    firstName?: string;
+    lastName?: string;
+  }) {
+    if (!this.apiKey) {
+      throw new Error('FusionAuth API key is missing');
+    }
+
+    const url = `${this.baseUrl}/api/user/${userId}`;
+    const body = { user: { ...payload } };
+
+    const headers: Record<string, string> = {
+      Authorization: this.apiKey, // admin API key
+      'Content-Type': 'application/json',
+    };
+    if (this.tenantId) headers['X-FusionAuth-TenantId'] = this.tenantId;
+
+    const resp = await axios.patch(url, body, { headers });
+    return resp.data?.user;
   }
 
-  const url = `${this.baseUrl}/api/user/${userId}`;
-  const body = { user: { ...payload } };
-
-  const headers: Record<string, string> = {
-    Authorization: this.apiKey, // admin API key
-    'Content-Type': 'application/json',
-  };
-  if (this.tenantId) headers['X-FusionAuth-TenantId'] = this.tenantId;
-
-  const resp = await axios.patch(url, body, { headers });
-  return resp.data?.user;
-}
-  // جلب بيانات المستخدم من FusionAuth
   async getUser(userId: string) {
     const url = `${this.baseUrl}/api/user/${userId}`;
     const resp = await axios.get(url, {

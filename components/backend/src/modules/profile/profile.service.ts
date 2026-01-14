@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, NotFoundException, Logger, BadRequestException, ForbiddenException, Inject, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException, Logger, BadRequestException, ForbiddenException, Inject, InternalServerErrorException, forwardRef } from '@nestjs/common';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { db } from '../../db/client'; // تأكد المسار صحيح
@@ -7,9 +7,7 @@ import { appointments } from '../../db/schema/appointments.schema';
 import { and, eq, inArray, SQL, sql } from 'drizzle-orm';
 import { ConfigService } from '@nestjs/config';
 import { FusionAuthClientWrapper } from 'src/modules/auth/fusion-auth.client';
-import pLimit from 'p-limit';
-import { unlink } from 'fs/promises';
-import { join } from 'path';
+
 import axios from 'axios';
 import {cities, schema} from 'src/db/schema/schema';
 import { AuthService } from 'src/modules/auth/auth.service';
@@ -45,25 +43,31 @@ type publicDoctorProfile={
   profilePhoto?: string | null;
 }
 type UpdateArgs = {
-  id: string;                         // profile id (رقمي من جدولك)
+  id: string;                       
   type: 'doctor' | 'patient';
   dto: UpdateProfileDto;
   storedPath?: string;
-  fusionAuthId: string;               // من التوكن
+  fusionAuthId: string;             
 };
 
 @Injectable()
 export class ProfileService {
-  private fusionClient: FusionAuthClientWrapper;
   private readonly logger = new Logger(ProfileService.name);
-  // default photo URL (served via static)
   private readonly defaultPhoto = '/uploads/logo.png';
+  
   private baseUrl: string = process.env.FUSIONAUTH_BASE_URL || '';
   private apiKey: string = process.env.FUSIONAUTH_API_KEY || '';
-  constructor(private config: ConfigService, @Inject() private authService: AuthService) {
-    const baseUrl = (this.config.get<string>('FUSIONAUTH_BASE_URL') || 'https://auth.almahdi.cloud').replace(/\/$/, '');
-    const apiKey = this.config.get<string>('FUSIONAUTH_API_KEY') || 'aNnC27LYRSW8WBZdni-_kbcsc7O8c00PiMVDRIgcAua4hBD2OpnIMUb9';
-    this.fusionClient = new FusionAuthClientWrapper(baseUrl, apiKey);
+constructor(
+private config: ConfigService, 
+    
+    @Inject(forwardRef(() => AuthService)) 
+    private authService: AuthService,
+    
+    private fusionClient: FusionAuthClientWrapper
+  ) {
+    this.baseUrl = (this.config.get<string>('FUSIONAUTH_BASE_URL') || 'https://auth.almahdi.cloud').replace(/\/$/, '');
+    this.apiKey = this.config.get<string>('FUSIONAUTH_API_KEY') || 'aNnC27LYRSW8WBZdni-_kbcsc7O8c00PiMVDRIgcAua4hBD2OpnIMUb9';
+    
   }
 
 
