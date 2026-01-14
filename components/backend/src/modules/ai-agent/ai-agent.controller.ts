@@ -121,6 +121,15 @@ async saveMsg(@Body() saveMsgDto:AiMessage){
     }
      
   }
+@Get('diagnosesForPatient')
+async returnDiagnoses(@Query('patientId')patientId:string){
+  return await this.aiAgentSercice.returnDiagnosesForPatient(patientId)
+}
 
-    
+@Get('checkUserDiagnosis')
+async ensureCase(@Query('patientId')patientId:string){
+ let key= await this.aiAgentSercice.ensureCase(patientId)
+ return{key}
+}
+
 }
