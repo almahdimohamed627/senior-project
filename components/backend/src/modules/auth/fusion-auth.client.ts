@@ -104,20 +104,20 @@ export class FusionAuthClientWrapper {
     return resp.data.user;
   }
 
-  // إلغاء صلاحية refresh token
-  async revokeToken(refreshToken: string, clientId: string, clientSecret: string) {
-    const url = `${this.baseUrl}/oauth2/revoke`;
-    const params = new URLSearchParams();
-    params.append('token', refreshToken);
-    params.append('client_id', clientId);
-    if (clientSecret) params.append('client_secret', clientSecret);
+async revokeToken(refreshToken: string, clientId: string, clientSecret: string) {
+  if (!refreshToken) return; 
 
-    await axios.post(url, params, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
-  }
+  const url = `${this.baseUrl}/oauth2/revoke`;
+  const params = new URLSearchParams();
+  params.append('token', refreshToken);
+  params.append('client_id', clientId);
+  if (clientSecret) params.append('client_secret', clientSecret);
 
-  // تبادل authorization code للحصول على التوكنات
+  await axios.post(url, params, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+}
+
   async exchangeCodeForToken(code: string, redirectUri: string, clientId: string, clientSecret: string) {
     const params = new URLSearchParams();
     params.append('grant_type', 'authorization_code');

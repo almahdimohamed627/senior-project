@@ -42,7 +42,7 @@ export class RequestService {
 
 async getReceivedRequests(
   userId: string,
-  status?: 'accepted' | 'rejected' | 'pending' | null,
+  status?: 'accepted' | 'rejected' | 'pending' |'completed'| null,
 ) {
   let userRequests;
 

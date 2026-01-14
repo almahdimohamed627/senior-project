@@ -51,7 +51,7 @@ export class RequestController {
   @ApiOperation({ summary: 'Get received requests' })
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiQuery({ name: 'status', required: false, enum: ['accepted', 'rejected', 'pending'] })
-  async getReceivedRequests(@Param('userId') userId: string,@Query('status')status?:'accepted'|'rejected'|'pending'|null) {
+  async getReceivedRequests(@Param('userId') userId: string,@Query('status')status?:'accepted'|'rejected'|'pending'|'completed'|null) {
    
     return this.requestService.getReceivedRequests(userId,status);
   }

@@ -13,6 +13,7 @@ import {
   BadRequestException,
   UseInterceptors,
   UploadedFile,
+  UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -25,6 +26,8 @@ import { existsSync, mkdirSync, } from 'fs';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { LogoutDto } from './dto/logout.dto';
 
 const UPLOADS_FOLDER = 'uploads';
 
@@ -76,7 +79,7 @@ export class AuthController {
     }
 
     try {
-      const result = await this.authService.loginWithCredentials(email, password, res, {
+      const result = await this.authService.loginWithCredentials(email, password, {
         userAgent: req.get('user-agent') || '',
         ip: (req.ip as string) || (req.headers['x-forwarded-for'] as string) || undefined,
       });
@@ -209,25 +212,28 @@ async verifyEmailOtp(@Body() dto: { email: string; code: string }) {
     }
   }
 
-  @Post('logout')
-  @ApiOperation({ summary: 'Logout' })
-  @ApiBody({ schema: { type: 'object', properties: { userId: { type: 'string' } } } })
+@Post('logout')
+  @UseGuards(JwtAuthGuard) // 1. حماية الراوت (لازم يكون معه Access Token)
+  @ApiOperation({ summary: 'Logout user and revoke refresh token' })
+  @ApiBody({ type: LogoutDto })
+  @ApiResponse({ status: 200, description: 'Logout successful' })
   @HttpCode(HttpStatus.OK)
-  async logout(@Req() req: Request, @Res() res: Response) {
-    const refreshToken = (req as any).cookies?.refresh_token;
-    const userIdFromBody = (req as any).body?.userId;
-    const userIdFromReqUser = (req as any).user?.sub;
-    const userId = userIdFromBody || userIdFromReqUser;
-
-    if (refreshToken) {
-      try {
-        await this.authService.revokeRefreshToken(refreshToken, userId);
-      } catch (e) {
-        this.logger.error('Failed to revoke refresh token', e?.message || e);
-      }
+  async logout(@Req() req, @Body() body: LogoutDto) {
+    // 2. فاليديشن: هل الريفرش توكن موجود؟
+    if (!body.refreshToken) {
+      throw new BadRequestException('Refresh token is required in body');
     }
 
-    res.clearCookie('refresh_token', { path: '/' });
-    return res.json({ ok: true });
+    // 3. الحصول على اليوزر آيدي من التوكن (أكثر أماناً من البودي)
+    const userId = req.user.userId || req.user.sub || req.user.fusionAuthId;
+    
+    if (!userId) {
+       throw new BadRequestException('User ID not found in request context');
+    }
+
+    // 4. استدعاء السيرفس
+    await this.authService.revokeRefreshToken(body.refreshToken, userId);
+
+    return { ok: true, message: 'Logged out successfully' };
   }
 }

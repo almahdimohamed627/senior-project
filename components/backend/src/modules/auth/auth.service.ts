@@ -62,82 +62,88 @@ export class AuthService {
   }
 
   async loginWithCredentials(
-    email: string,
-    password: string,
-    res: Response,
-    options?: { userAgent?: string; ip?: string | undefined },
-  ) {
-    const tokens: any = await this.fusionClient.exchangePassword(
-      email,
-      password,
-      this.clientId,
-      this.clientSecret,
-    );
+  email: string,
+  password: string,
+  // شلت الـ res من هون لأنه ما عاد إله داعي
+  options?: { userAgent?: string; ip?: string | undefined },
+) {
+  // 1. طلب التوكنات من فيوجن
+  const tokens: any = await this.fusionClient.exchangePassword(
+    email,
+    password,
+    this.clientId,
+    this.clientSecret,
+  );
 
-    this.logger.debug('exchangePassword result', { hasAccessToken: !!tokens?.access_token, hasIdToken: !!tokens?.id_token });
+  this.logger.debug('exchangePassword result', { hasAccessToken: !!tokens?.access_token, hasIdToken: !!tokens?.id_token });
 
-    if (!tokens || !tokens.access_token) {
-      throw new UnauthorizedException('Invalid credentials or no access token returned');
-    }
-
-    const payload = await this.getUserProfileFromIdToken(tokens.id_token || tokens.access_token);
-    const userId = payload?.sub;
-    if (!userId) {
-      this.logger.warn('No subject (sub) found in id_token; userId missing');
-      throw new UnauthorizedException('Unable to determine user id from token');
-    }
-
-    let fusionUserRaw: any = null;
-    try {
-      fusionUserRaw = await this.fusionClient.getUser(userId);
-
-    } catch (e) {
-      this.logger.error(`Failed to fetch user ${userId} from FusionAuth to check verification`, e?.message || e);
-      throw new UnauthorizedException('Could not verify email status; try again later');
-    }
-
-    console.log(fusionUserRaw)
-    const isVerified = (fusionUserRaw?.verified ?? false);
-
-
-    if (!isVerified) {
-      this.logger.warn(`Login attempt for unverified user ${userId} (${email})`);
-      throw new ForbiddenException('Email not verified. Please verify your email before logging in.');
-    }
-
-    if (tokens.refresh_token && userId) {
-      try {
-        await this.createSessionForUser({
-          userId,
-          refreshToken: tokens.refresh_token,
-          userAgent: options?.userAgent || '',
-          ip: options?.ip ?? undefined,
-          expiresInSeconds: tokens.expires_in ?? null,
-        });
-
-        // إذا أردت تفعيل الكوكي لاحقاً، يمكنك فكّ تعليق السطور التالية
-        // res.cookie('refresh_token', tokens.refresh_token, {
-        //   httpOnly: true,
-        //   secure: process.env.NODE_ENV === 'production',
-        //   sameSite: 'strict',
-        //   path: '/',
-        //   maxAge: tokens.expires_in ? tokens.expires_in * 1000 : 30 * 24 * 60 * 60 * 1000,
-        // });
-      } catch (e) {
-        this.logger.error('Failed to create session for user after password login', e?.message || e);
-        // لا نمنع المصادقة النهائية لمجرد فشل حفظ الجلسة، لكن نعلم الخادم
-      }
-    }
-    let user = await db.select().from(users).where(eq(users.fusionAuthId, userId))
-
-    return {
-      user: user[0],
-      access_token: tokens.access_token,
-      id_token: tokens.id_token,
-      refreshToken: tokens.refresh_token,
-      expires_in: tokens.expires_in,
-    };
+  if (!tokens || !tokens.access_token) {
+    throw new UnauthorizedException('Invalid credentials or no access token returned');
   }
+
+  // 2. جلب بيانات المستخدم من التوكن
+  const payload = await this.getUserProfileFromIdToken(tokens.id_token || tokens.access_token);
+  const userId = payload?.sub;
+  if (!userId) {
+    this.logger.warn('No subject (sub) found in id_token; userId missing');
+    throw new UnauthorizedException('Unable to determine user id from token');
+  }
+
+  // 3. التأكد من حالة التفعيل (Verified)
+  let fusionUserRaw: any = null;
+  try {
+    fusionUserRaw = await this.fusionClient.getUser(userId);
+    // تنظيف هيكلية الاستجابة
+    if (fusionUserRaw && fusionUserRaw.response && fusionUserRaw.response.user) {
+      fusionUserRaw = fusionUserRaw.response.user;
+    }
+    if (fusionUserRaw && fusionUserRaw.user) {
+      fusionUserRaw = fusionUserRaw.user;
+    }
+  } catch (e) {
+    this.logger.error(`Failed to fetch user ${userId} from FusionAuth to check verification`, e?.message || e);
+    throw new UnauthorizedException('Could not verify email status; try again later');
+  }
+
+  const identityEmailVerified =
+    Array.isArray(fusionUserRaw?.identities) &&
+    fusionUserRaw.identities.some((i: any) => i?.type === 'email' && i?.verified === true);
+
+  const isVerified = !!(fusionUserRaw?.verified ?? fusionUserRaw?.emailVerified ?? identityEmailVerified ?? false);
+
+  if (!isVerified) {
+    this.logger.warn(`Login attempt for unverified user ${userId} (${email})`);
+    throw new ForbiddenException('Email not verified. Please verify your email before logging in.');
+  }
+
+  // 4. حفظ الجلسة في قاعدة البيانات (Session) عشان تقدر تعمل Logout بعدين
+  // (هاد مو كوكي، هاد تخزين بالداتا بيز عندك للريفرش توكن)
+  if (tokens.refresh_token && userId) {
+    try {
+      await this.createSessionForUser({
+        userId,
+        refreshToken: tokens.refresh_token,
+        userAgent: options?.userAgent || '',
+        ip: options?.ip ?? undefined,
+        expiresInSeconds: tokens.expires_in ?? null,
+      });
+    } catch (e) {
+      this.logger.error('Failed to create session for user after password login', e?.message || e);
+    }
+  }
+
+  // 5. جلب بيانات المستخدم المحلية
+  let user = await db.select().from(users).where(eq(users.fusionAuthId, userId));
+  
+  // 6. الإرجاع النهائي
+  return {
+    user: user[0],
+    access_token: tokens.access_token,
+    id_token: tokens.id_token,
+    refreshToken: tokens.refresh_token,
+    expires_in: tokens.expires_in,
+  };
+}
   async handleCallback(code: string) {
     const tokens = await this.fusionClient.exchangeCodeForToken(
       code,
@@ -567,21 +573,49 @@ export class AuthService {
 
 
 
-  async revokeRefreshToken(refreshToken: string, userId?: string) {
-    try {
-      await this.fusionClient.revokeToken(refreshToken, this.clientId, this.clientSecret);
-    } catch (e) {
-      this.logger.error('Failed to revoke token at FusionAuth', e?.message || e);
-    }
+async revokeRefreshToken(refreshToken: string, userId: string) {
+  // 1. فاليديشن للمدخلات
+  if (!refreshToken || !userId) {
+    this.logger.warn('revokeRefreshToken called with missing data');
+    return; // أو ارمي Exception حسب رغبتك
+  }
 
-    if (userId) {
-      const rows = await db.select().from(schema.userSessions).where(eq(schema.userSessions.userId, userId));
-      for (const r of rows) {
-        const match = await bcrypt.compare(refreshToken, r.refreshTokenHash);
-        if (match) {
-          await db.delete(schema.userSessions).where(eq(schema.userSessions.id, r.id));
-        }
+  // 2. محاولة إلغاء التوكن في FusionAuth
+  try {
+    await this.fusionClient.revokeToken(
+      refreshToken, 
+      this.clientId, 
+      this.clientSecret
+    );
+  } catch (e) {
+    // نسجل الخطأ لكن لا نوقف العملية، عشان نكمل حذف الجلسة المحلية
+    this.logger.error('Failed to revoke token at FusionAuth', e?.message || e);
+  }
+
+  // 3. حذف الجلسة من قاعدة البيانات المحلية
+  try {
+    // نجيب كل جلسات هذا اليوزر
+    const rows = await db
+      .select()
+      .from(schema.userSessions)
+      .where(eq(schema.userSessions.userId, userId));
+    
+    // ندور على الجلسة اللي بتطابق الريفرش توكن (لأنه مشفر Hash)
+    for (const r of rows) {
+      const match = await bcrypt.compare(refreshToken, r.refreshTokenHash);
+      if (match) {
+        await db
+          .delete(schema.userSessions)
+          .where(eq(schema.userSessions.id, r.id));
+        
+        this.logger.log(`Local session deleted for user ${userId}`);
+        // لقينا الجلسة وحذفناها، نوقف اللوب
+        break; 
       }
     }
+  } catch (dbErr) {
+    this.logger.error('Failed to delete local session', dbErr?.message || dbErr);
+    throw new InternalServerErrorException('Logout failed locally');
   }
+}
 }
