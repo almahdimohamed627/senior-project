@@ -37,5 +37,9 @@ coverage.xml
 htmlcov/
 
 # Local dev data/artifacts
-*.sqlite
+*.sqlite*
 *.db
+
+# Folders 
+chroma_db__huggingface__intfloat__multilingual-e5-base
+chroma_db_huggingface__intfloat__multilingual-e5-base
