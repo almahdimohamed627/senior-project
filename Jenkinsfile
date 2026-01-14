@@ -960,9 +960,17 @@ def getE2ETestStatus() {
     def status = env.E2E_TEST_STATUS ?: '⏸️ Not Run'
     def fullOutput = (env.E2E_FULL_OUTPUT ?: '').toString()
 
+    // Escape JSON-breaking characters (quotes, backslashes, newlines) for Telegram API
+    def escapedOutput = fullOutput
+        .replaceAll('\\\\', '\\\\\\\\')  // Escape backslashes first
+        .replaceAll('"', '\\\\"')        // Escape double quotes
+        .replaceAll('\n', '\\\\n')       // Escape newlines
+        .replaceAll('\r', '\\\\r')       // Escape carriage returns
+        .replaceAll('\t', '\\\\t')       // Escape tabs
+
     // Include raw output directly (Telegram handles up to ~4000 chars)
-    def truncatedOutput = fullOutput.take(3500)
-    def suffix = fullOutput.length() > 3500 ? '\n\n[Output truncated - check build logs for full details]' : ''
+    def truncatedOutput = escapedOutput.take(3500)
+    def suffix = escapedOutput.length() > 3500 ? '\n\n[Output truncated - check build logs for full details]' : ''
 
     // Break down string interpolation into simpler steps
     def header = "${status}\n\n📄 Complete Test Output:\n"
