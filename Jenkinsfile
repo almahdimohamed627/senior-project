@@ -929,6 +929,11 @@ def performComponentHealthCheck(componentName) {
 // Helper function to extract regex groups without storing Matcher objects
 def runE2ETests() {
     try {
+        // Create test results directory before running tests
+        sh '''
+            mkdir -pv scripts/test-results
+        '''
+
         // Run tests and capture ALL raw output - script always exits 0
         def testOutput = sh(script: '''
             cd scripts
