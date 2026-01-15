@@ -29,277 +29,278 @@ pipeline {
     stages {
         stage('Checkout SCM') {
             e('Discover Components') {
-            steps {
-                script {
-                    def discovered = normalizeComponents(findComponents())
-                    env.DISCOVERED_COMPONENTS = discovered.join(',')
-                    echo "Discovered components: ${discovered}"
-                }
-            }
-        }
-
-        stage('Resolve Order') {
-            steps {
-                script {
-                    def depmap = deps()
-
-                    // الموجود فعليًا (مطَبَّع)
-                    def present = (env.DISCOVERED_COMPONENTS ?: '')
-                        .split(',')
-                        .findAll { it?.trim() }
-                        .collect { it.trim() }
-                        .unique()
-
-                    // الهدف من الباراميتر + متطلباته (مطَبَّع)
-                    def target = normalizeComponent(params.COMPONENT)
-                    def wanted = []
-                    if (target == 'all') {
-                        wanted = present
-                    } else {
-                        wanted = resolveWithPrereqs(target, depmap)
-                            .findAll { present.contains(it) }
-                    }
-
-                    if (wanted.isEmpty()) {
-                        error "No valid components to process."
-                    }
-
-                    // ترتيب (مع تجنّب استدعاءات محظورة)
-                    def ordered = topoOrder(wanted, depmap).findAll { present.contains(it) }
-                    env.COMPONENTS_STRING = ordered.join(',')
-                    echo "Ordered components: ${ordered}"
-                }
-            }
-        }
-
-        stage('Build (layered waves)') {
-            steps {
-                script {
-                    def components = (env.COMPONENTS_STRING ?: '')
-                        .split(',')
-                        .findAll { it?.trim() }
-                        .collect { it.trim() }
-
-                    def layers = layerize(components, deps())
-                    echo "Build layers: ${layers}"
-                    def buildResults = [:]
-                    runLayered(layers, 'build', buildResults)
-                    env.BUILD_RESULTS = buildResults.collect { k, v -> "$k=$v" }.join(';')
-                }
-            }
-        }
-
-        stage('Deploy (layered waves)') {
-            steps {
-                script {
-                    def components = (env.COMPONENTS_STRING ?: '')
-                        .split(',')
-                        .findAll { it?.trim() }
-                        .collect { it.trim() }
-
-                    def layers = layerize(components, deps())
-                    echo "Deploy layers: ${layers}"
-                    def deployResults = [:]
-                    runLayered(layers, 'deploy', deployResults)
-                    env.DEPLOY_RESULTS = deployResults.collect { k, v -> "$k=$v" }.join(';')
-                }
-            }
-        }
-
-        stage('Integration Test') {
-            steps {
-                script {
-                    // TODO: Implement comprehensive integration tests
-                    // covering service-to-service communication,
-                    // database connectivity, and cross-component validation
-                    env.INTEGRATION_TEST_STATUS = 'passed'
-                    echo "Integration tests: Basic health checks passed"
-                }
-            }
-        }
-
-        stage('E2E Test') {
-            steps {
-                script {
-                    timeout(time: 5, unit: 'MINUTES') {
-                        runE2ETests()
+                steps {
+                    script {
+                        def discovered = normalizeComponents(findComponents())
+                        env.DISCOVERED_COMPONENTS = discovered.join(',')
+                        echo "Discovered components: ${discovered}"
                     }
                 }
             }
-        }
-    }
 
-    post {
-        // مهم: نفّذ الإشعارات أولاً ثم نظّف المساحة
-        success {
-            script {
-                echo "✅ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
-                sendTelegramNotification("success")
+            stage('Resolve Order') {
+                steps {
+                    script {
+                        def depmap = deps()
+
+                        // الموجود فعليًا (مطَبَّع)
+                        def present = (env.DISCOVERED_COMPONENTS ?: '')
+                            .split(',')
+                            .findAll { it?.trim() }
+                            .collect { it.trim() }
+                            .unique()
+
+                        // الهدف من الباراميتر + متطلباته (مطَبَّع)
+                        def target = normalizeComponent(params.COMPONENT)
+                        def wanted = []
+                        if (target == 'all') {
+                            wanted = present
+                        } else {
+                            wanted = resolveWithPrereqs(target, depmap)
+                                .findAll { present.contains(it) }
+                        }
+
+                        if (wanted.isEmpty()) {
+                            error "No valid components to process."
+                        }
+
+                        // ترتيب (مع تجنّب استدعاءات محظورة)
+                        def ordered = topoOrder(wanted, depmap).findAll { present.contains(it) }
+                        env.COMPONENTS_STRING = ordered.join(',')
+                        echo "Ordered components: ${ordered}"
+                    }
+                }
             }
-        }
-        failure {
-            script {
-                echo "❌ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
-                sendTelegramNotification("failure")
+
+            stage('Build (layered waves)') {
+                steps {
+                    script {
+                        def components = (env.COMPONENTS_STRING ?: '')
+                            .split(',')
+                            .findAll { it?.trim() }
+                            .collect { it.trim() }
+
+                        def layers = layerize(components, deps())
+                        echo "Build layers: ${layers}"
+                        def buildResults = [:]
+                        runLayered(layers, 'build', buildResults)
+                        env.BUILD_RESULTS = buildResults.collect { k, v -> "$k=$v" }.join(';')
+                    }
+                }
             }
-        }
-        unstable {
-            script {
-                echo "⚠️ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
-                sendTelegramNotification("unstable")
+
+            stage('Deploy (layered waves)') {
+                steps {
+                    script {
+                        def components = (env.COMPONENTS_STRING ?: '')
+                            .split(',')
+                            .findAll { it?.trim() }
+                            .collect { it.trim() }
+
+                        def layers = layerize(components, deps())
+                        echo "Deploy layers: ${layers}"
+                        def deployResults = [:]
+                        runLayered(layers, 'deploy', deployResults)
+                        env.DEPLOY_RESULTS = deployResults.collect { k, v -> "$k=$v" }.join(';')
+                    }
+                }
             }
-        }
-        always {
-            script { currentBuild.description = "Components: ${env.COMPONENTS_STRING ?: env.DISCOVERED_COMPONENTS}" }
-            cleanWs()
-        }
-    }
-}
 
-/* ========================= GLOBAL DEPENDENCIES ========================= */
-// الكل يعتمد على traefik
-// fusionauth و backend يعتمدان أيضًا على db
-def deps() {
-    return [
-        'traefik'     : [],
-        'db'          : ['traefik'],
-        'fusionauth'  : ['db', 'traefik'],
-        'backend': ['db', 'traefik'],
-        'ai-agent'    : ['traefik'],
-        'ai-model'    : ['traefik']
-    ]
-}
+            stage('Integration Test') {
+                steps {
+                    script {
+                        // TODO: Implement comprehensive integration tests
+                        // covering service-to-service communication,
+                        // database connectivity, and cross-component validation
+                        env.INTEGRATION_TEST_STATUS = 'passed'
+                        echo "Integration tests: Basic health checks passed"
+                    }
+                }
+            }
 
-/* ========================= Normalization helpers ========================= */
-
-def normalizeComponent(String name) {
-    if (!name) return name
-    def n = name.trim()
-    // lower-case
-    n = n.toLowerCase()
-    // aliases
-    if (n == 'fusionauth' || n == 'fusion-auth' || n == 'fusionauth/') n = 'fusionauth'
-    if (n == 'corebackend' || n == 'core_backend') n = 'backend'
-    return n
-}
-
-def normalizeComponents(List list) {
-    return list.collect { normalizeComponent(it) }.unique()
-}
-/* ========================= Layering utilities ========================= */
-
-def layerize(List wanted, Map depmap) {
-    def remaining = wanted as Set
-    def depsInSet = { String n -> (depmap[n] ?: []).findAll { remaining.contains(it) } }
-    def layers = []
-    while (!remaining.isEmpty()) {
-        def layer = remaining.findAll { n -> depsInSet(n).isEmpty() }.toList().sort()
-        if (layer.isEmpty()) error "Cyclic or missing dependency among: ${remaining}"
-        layers << layer
-        remaining.removeAll(layer)
-    }
-    return layers
-}
-
-def runLayered(List layers, String op /* 'build' or 'deploy' */, Map results) {
-    layers.eachWithIndex { layer, idx ->
-        stage("${op.capitalize()} Wave ${idx+1}") {
-            echo "${op.capitalize()} in parallel for: ${layer}"
-            def par = [:]
-            layer.each { comp ->
-                par["${op}_${comp}"] = {
-                    stage("${op.capitalize()} ${comp}") {
-                        try {
-                            if (op == 'build') buildComponent(comp)
-                            else if (op == 'deploy') deployComponent(comp)
-                            results[comp] = 'success'
-                        } catch (Exception e) {
-                            results[comp] = 'failed'
-                            echo "❌ ${op.capitalize()} failed for ${comp}: ${e.message}"
-                            // Continue with others, don't fail pipeline
+            stage('E2E Test') {
+                steps {
+                    script {
+                        timeout(time: 5, unit: 'MINUTES') {
+                            runE2ETests()
                         }
                     }
                 }
             }
-            parallel par  // Execute the parallel steps
+        }
+
+        post {
+            // مهم: نفّذ الإشعارات أولاً ثم نظّف المساحة
+            success {
+                script {
+                    echo "✅ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+                    sendTelegramNotification("success")
+                }
+            }
+            failure {
+                script {
+                    echo "❌ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+                    sendTelegramNotification("failure")
+                }
+            }
+            unstable {
+                script {
+                    echo "⚠️ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+                    sendTelegramNotification("unstable")
+                }
+            }
+            always {
+                script { currentBuild.description = "Components: ${env.COMPONENTS_STRING ?: env.DISCOVERED_COMPONENTS}" }
+                cleanWs()
+            }
         }
     }
 }
 
-/* ========================= Dependency resolution (sandbox-safe) ========================= */
-
-// JSON escape function to prevent Telegram payload breakage from special characters
-import com.cloudbees.groovy.cps.NonCPS
-
-@NonCPS
-def jsonEscape(String text) {
-    if (!text) return ""
-    return text.replaceAll('\\\\', '\\\\\\\\')  // Escape backslashes first
-        .replaceAll('"', '\\\\"')        // Escape double quotes
-        .replaceAll('\n', '\\\\n')       // Escape newlines
-        .replaceAll('\r', '\\\\r')       // Escape carriage returns
-        .replaceAll('\t', '\\\\t')       // Escape tabs
-}
-
-def resolveWithPrereqs(String target, Map depmap) {
-    def out = [] as LinkedHashSet
-    def visit
-    visit = { String n ->
-        (depmap[n] ?: []).each { visit(it as String) }
-        out << n
-    }
-    visit(target)
-    return out.toList()
-}
-
-// نسخة آمنة بدون removeFirst ولا ArrayDeque
-def topoOrder(List wanted, Map depmap) {
-    def wantedSet = wanted as Set
-    def indeg = [:].withDefault { 0 }
-    def adj = [:].withDefault { [] as Set }
-
-    wanted.each { n ->
-        def parents = (depmap[n] ?: []).findAll { wantedSet.contains(it) }
-        indeg[n] = parents.size()
-        parents.each { p -> adj[p] = (adj[p] + n) as Set }
+    /* ========================= GLOBAL DEPENDENCIES ========================= */
+    // الكل يعتمد على traefik
+    // fusionauth و backend يعتمدان أيضًا على db
+    def deps() {
+        return [
+            'traefik'     : [],
+            'db'          : ['traefik'],
+            'fusionauth'  : ['db', 'traefik'],
+            'backend': ['db', 'traefik'],
+            'ai-agent'    : ['traefik'],
+            'ai-model'    : ['traefik']
+        ]
     }
 
-    def q = [] as List
-    wanted.each { n -> if (indeg[n] == 0) q << n }
+    /* ========================= Normalization helpers ========================= */
 
-    def out = []
-    int qi = 0
-    while (qi < q.size()) {
-        def u = q[qi++]        // لا إزالة من البداية، فقط مؤشّر
-        out << u
-        (adj[u] ?: []).each { v ->
-            indeg[v] = indeg[v] - 1
-            if (indeg[v] == 0) q << v
+    def normalizeComponent(String name) {
+        if (!name) return name
+        def n = name.trim()
+        // lower-case
+        n = n.toLowerCase()
+        // aliases
+        if (n == 'fusionauth' || n == 'fusion-auth' || n == 'fusionauth/') n = 'fusionauth'
+        if (n == 'corebackend' || n == 'core_backend') n = 'backend'
+        return n
+    }
+
+    def normalizeComponents(List list) {
+        return list.collect { normalizeComponent(it) }.unique()
+    }
+    /* ========================= Layering utilities ========================= */
+
+    def layerize(List wanted, Map depmap) {
+        def remaining = wanted as Set
+        def depsInSet = { String n -> (depmap[n] ?: []).findAll { remaining.contains(it) } }
+        def layers = []
+        while (!remaining.isEmpty()) {
+            def layer = remaining.findAll { n -> depsInSet(n).isEmpty() }.toList().sort()
+            if (layer.isEmpty()) error "Cyclic or missing dependency among: ${remaining}"
+            layers << layer
+            remaining.removeAll(layer)
+        }
+        return layers
+    }
+
+    def runLayered(List layers, String op /* 'build' or 'deploy' */, Map results) {
+        layers.eachWithIndex { layer, idx ->
+            stage("${op.capitalize()} Wave ${idx+1}") {
+                echo "${op.capitalize()} in parallel for: ${layer}"
+                def par = [:]
+                layer.each { comp ->
+                    par["${op}_${comp}"] = {
+                        stage("${op.capitalize()} ${comp}") {
+                            try {
+                                if (op == 'build') buildComponent(comp)
+                                else if (op == 'deploy') deployComponent(comp)
+                                results[comp] = 'success'
+                            } catch (Exception e) {
+                                results[comp] = 'failed'
+                                echo "❌ ${op.capitalize()} failed for ${comp}: ${e.message}"
+                                // Continue with others, don't fail pipeline
+                            }
+                        }
+                    }
+                }
+                parallel par  // Execute the parallel steps
+            }
         }
     }
 
-    if (out.size() != wanted.size()) {
-        error "Cyclic or missing dependency detected for ${wanted}."
+    /* ========================= Dependency resolution (sandbox-safe) ========================= */
+
+    // JSON escape function to prevent Telegram payload breakage from special characters
+    import com.cloudbees.groovy.cps.NonCPS
+
+    @NonCPS
+    def jsonEscape(String text) {
+        if (!text) return ""
+        return text.replaceAll('\\\\', '\\\\\\\\')  // Escape backslashes first
+            .replaceAll('"', '\\\\"')        // Escape double quotes
+            .replaceAll('\n', '\\\\n')       // Escape newlines
+            .replaceAll('\r', '\\\\r')       // Escape carriage returns
+            .replaceAll('\t', '\\\\t')       // Escape tabs
     }
-    return out
-}
 
-/* ========================= Telegram notification ========================= */
+    def resolveWithPrereqs(String target, Map depmap) {
+        def out = [] as LinkedHashSet
+        def visit
+        visit = { String n ->
+            (depmap[n] ?: []).each { visit(it as String) }
+            out << n
+        }
+        visit(target)
+        return out.toList()
+    }
 
-def sendTelegramNotification(String status) {
-    try {
-        withCredentials([
-            string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN'),
-            string(credentialsId: 'telegram-chat-id', variable: 'CHAT_ID')
-        ]) {
-            def message = ""
-            def emoji = ""
-            def duration = currentBuild.durationString ?: "Unknown"
-            def componentDetails = getComponentDetails()
+    // نسخة آمنة بدون removeFirst ولا ArrayDeque
+    def topoOrder(List wanted, Map depmap) {
+        def wantedSet = wanted as Set
+        def indeg = [:].withDefault { 0 }
+        def adj = [:].withDefault { [] as Set }
 
-            if (status == "success") {
-                emoji = "🎉"
-                message = """
+        wanted.each { n ->
+            def parents = (depmap[n] ?: []).findAll { wantedSet.contains(it) }
+            indeg[n] = parents.size()
+            parents.each { p -> adj[p] = (adj[p] + n) as Set }
+        }
+
+        def q = [] as List
+        wanted.each { n -> if (indeg[n] == 0) q << n }
+
+        def out = []
+        int qi = 0
+        while (qi < q.size()) {
+            def u = q[qi++]        // لا إزالة من البداية، فقط مؤشّر
+            out << u
+            (adj[u] ?: []).each { v ->
+                indeg[v] = indeg[v] - 1
+                if (indeg[v] == 0) q << v
+            }
+        }
+
+        if (out.size() != wanted.size()) {
+            error "Cyclic or missing dependency detected for ${wanted}."
+        }
+        return out
+    }
+
+    /* ========================= Telegram notification ========================= */
+
+    def sendTelegramNotification(String status) {
+        try {
+            withCredentials([
+                string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN'),
+                string(credentialsId: 'telegram-chat-id', variable: 'CHAT_ID')
+            ]) {
+                def message = ""
+                def emoji = ""
+                def duration = currentBuild.durationString ?: "Unknown"
+                def componentDetails = getComponentDetails()
+
+                if (status == "success") {
+                    emoji = "🎉"
+                    message = """
 ${emoji} *🚀 Build Success*
 
 *📋 Job:* ${env.JOB_NAME}
@@ -324,9 +325,9 @@ ${getComponentStatuses()}
 *🔄 Last Commit:*
 ${getLastCommitInfo()}
 """
-            } else if (status == "failure") {
-                emoji = "💥"
-                message = """
+                } else if (status == "failure") {
+                    emoji = "💥"
+                    message = """
 ${emoji} *💥 Build Failed*
 
 *📋 Job:* ${env.JOB_NAME}
@@ -352,9 +353,9 @@ ${getComponentStatuses()}
 *🔄 Last Commit:*
 ${getLastCommitInfo()}
 """
-            } else if (status == "unstable") {
-                emoji = "⚠️"
-                message = """
+                } else if (status == "unstable") {
+                    emoji = "⚠️"
+                    message = """
 ${emoji} *⚠️ Build Unstable*
 
 *📋 Job:* ${env.JOB_NAME}
@@ -380,9 +381,9 @@ ${getComponentStatuses()}
 *🔄 Last Commit:*
 ${getLastCommitInfo()}
 """
-            }
+                }
 
-            sh """
+                sh """
         curl -s -X POST \
         -H 'Content-Type: application/json' \
         -d '{
@@ -393,142 +394,142 @@ ${getLastCommitInfo()}
         }' \
         "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" > /dev/null
       """
-            echo "Telegram notification sent for ${status}"
-        }
-    } catch (Exception e) {
-        echo "⚠️ Failed to send Telegram notification: ${e.message}"
-    }
-}
-
-/* ========================= Build/Deploy helpers ========================= */
-
-def getComponentDetails() {
-    def details = ""
-    try {
-        def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').toList() : []
-        components.each { component ->
-            def componentDir = "components/${component}"
-            if (fileExists(componentDir)) {
-                def type = getComponentType(component)
-                details += "• ${component} - ${type}\n"
+                echo "Telegram notification sent for ${status}"
             }
+        } catch (Exception e) {
+            echo "⚠️ Failed to send Telegram notification: ${e.message}"
         }
-    } catch (Exception e) {
-        details = "• ${env.COMPONENTS_STRING ?: 'No components discovered'}\n"
     }
-    return details
-}
 
-def getComponentStatuses() {
-    def status = ""
-    try {
-        echo "DEBUG: BUILD_RESULTS = ${env.BUILD_RESULTS}"
-        echo "DEBUG: DEPLOY_RESULTS = ${env.DEPLOY_RESULTS}"
+    /* ========================= Build/Deploy helpers ========================= */
 
-        def buildResults = [:]
-        if (env.BUILD_RESULTS) {
-            env.BUILD_RESULTS.split(';').each { entry ->
-                def parts = entry.split('=', 2)
-                if (parts.size() == 2) {
-                    buildResults[parts[0]] = parts[1]
+    def getComponentDetails() {
+        def details = ""
+        try {
+            def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').toList() : []
+            components.each { component ->
+                def componentDir = "components/${component}"
+                if (fileExists(componentDir)) {
+                    def type = getComponentType(component)
+                    details += "• ${component} - ${type}\n"
                 }
             }
+        } catch (Exception e) {
+            details = "• ${env.COMPONENTS_STRING ?: 'No components discovered'}\n"
         }
+        return details
+    }
 
-        def deployResults = [:]
-        if (env.DEPLOY_RESULTS) {
-            env.DEPLOY_RESULTS.split(';').each { entry ->
-                def parts = entry.split('=', 2)
-                if (parts.size() == 2) {
-                    deployResults[parts[0]] = parts[1]
+    def getComponentStatuses() {
+        def status = ""
+        try {
+            echo "DEBUG: BUILD_RESULTS = ${env.BUILD_RESULTS}"
+            echo "DEBUG: DEPLOY_RESULTS = ${env.DEPLOY_RESULTS}"
+
+            def buildResults = [:]
+            if (env.BUILD_RESULTS) {
+                env.BUILD_RESULTS.split(';').each { entry ->
+                    def parts = entry.split('=', 2)
+                    if (parts.size() == 2) {
+                        buildResults[parts[0]] = parts[1]
+                    }
                 }
             }
-        }
 
-        def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').collect { it.trim() } : []
-        components.each { comp ->
-            def buildStatus = buildResults[comp] == 'success' ? '✅' : buildResults[comp] == 'failed' ? '❌' : '⏸️'
-            def deployStatus = deployResults[comp] == 'success' ? '✅' : deployResults[comp] == 'failed' ? '❌' : '⏸️'
-            status += "${comp}: ${buildStatus} build, ${deployStatus} deploy\n"
-        }
-    } catch (Exception e) {
-        echo "ERROR in getComponentStatuses: ${e.message}"
-        status = "Status unavailable: ${e.message}\n"
-    }
-    return status
-}
-
-def getIntegrationTestStatus() {
-    def status = env.INTEGRATION_TEST_STATUS ?: 'unknown'
-    return status == 'passed' ? '✅ Passed' : status == 'failed' ? '❌ Failed' : '⏸️ Not Run'
-}
-
-def getComponentType(componentName) {
-    def type = "Generic"
-    try {
-        dir("components/${componentName}") {
-            if (fileExists('docker-compose.yml'))      type = "Docker Compose"
-            else if (fileExists('package.json'))       type = "Node.js"
-            else if (fileExists('pom.xml'))            type = "Java/Maven"
-            else if (fileExists('Dockerfile'))         type = "Docker"
-        }
-    } catch (Exception e) { /* ignore */ }
-    return type
-}
-
-def getLastCommitInfo() {
-    try {
-        def changeLogSets = currentBuild.changeSets
-        if (changeLogSets && !changeLogSets.isEmpty()) {
-            def lastChangeSet = changeLogSets.last()
-            if (lastChangeSet && lastChangeSet.items) {
-                def lastItem = lastChangeSet.items.last()
-                // Apply JSON escaping to prevent payload breakage
-                def escapedAuthor = jsonEscape(lastItem.author ?: "")
-                def escapedMessage = jsonEscape(lastItem.msg ?: "")
-                return "`${escapedAuthor}`: `${escapedMessage}`"
+            def deployResults = [:]
+            if (env.DEPLOY_RESULTS) {
+                env.DEPLOY_RESULTS.split(';').each { entry ->
+                    def parts = entry.split('=', 2)
+                    if (parts.size() == 2) {
+                        deployResults[parts[0]] = parts[1]
+                    }
+                }
             }
-        }
-        return "No recent commits"
-    } catch (Exception e) {
-        return "Unable to fetch commit info"
-    }
-}
 
-/* ========================= FIXED COMPONENT DISCOVERY ========================= */
-
-def findComponents() {
-    def components = []
-    try {
-        if (fileExists('components')) {
-            // Use ONLY structure-based discovery - don't rely on Jenkinsfiles
-            components = discoverComponentsByStructure()
-            
-            // If no components found with structure, fall back to default list
-            if (components.isEmpty()) {
-                echo "No components discovered by structure, using default components"
-                components = ['traefik', 'db', 'fusionauth', 'backend', 'ai-agent', 'ai-model']
+            def components = env.COMPONENTS_STRING ? env.COMPONENTS_STRING.split(',').collect { it.trim() } : []
+            components.each { comp ->
+                def buildStatus = buildResults[comp] == 'success' ? '✅' : buildResults[comp] == 'failed' ? '❌' : '⏸️'
+                def deployStatus = deployResults[comp] == 'success' ? '✅' : deployResults[comp] == 'failed' ? '❌' : '⏸️'
+                status += "${comp}: ${buildStatus} build, ${deployStatus} deploy\n"
             }
-        } else {
-            echo "No components directory found, using default components"
+        } catch (Exception e) {
+            echo "ERROR in getComponentStatuses: ${e.message}"
+            status = "Status unavailable: ${e.message}\n"
+        }
+        return status
+    }
+
+    def getIntegrationTestStatus() {
+        def status = env.INTEGRATION_TEST_STATUS ?: 'unknown'
+        return status == 'passed' ? '✅ Passed' : status == 'failed' ? '❌ Failed' : '⏸️ Not Run'
+    }
+
+    def getComponentType(componentName) {
+        def type = "Generic"
+        try {
+            dir("components/${componentName}") {
+                if (fileExists('docker-compose.yml'))      type = "Docker Compose"
+                else if (fileExists('package.json'))       type = "Node.js"
+                else if (fileExists('pom.xml'))            type = "Java/Maven"
+                else if (fileExists('Dockerfile'))         type = "Docker"
+            }
+        } catch (Exception e) { /* ignore */ }
+        return type
+    }
+
+    def getLastCommitInfo() {
+        try {
+            def changeLogSets = currentBuild.changeSets
+            if (changeLogSets && !changeLogSets.isEmpty()) {
+                def lastChangeSet = changeLogSets.last()
+                if (lastChangeSet && lastChangeSet.items) {
+                    def lastItem = lastChangeSet.items.last()
+                    // Apply JSON escaping to prevent payload breakage
+                    def escapedAuthor = jsonEscape(lastItem.author ?: "")
+                    def escapedMessage = jsonEscape(lastItem.msg ?: "")
+                    return "`${escapedAuthor}`: `${escapedMessage}`"
+                }
+            }
+            return "No recent commits"
+        } catch (Exception e) {
+            return "Unable to fetch commit info"
+        }
+    }
+
+    /* ========================= FIXED COMPONENT DISCOVERY ========================= */
+
+    def findComponents() {
+        def components = []
+        try {
+            if (fileExists('components')) {
+                // Use ONLY structure-based discovery - don't rely on Jenkinsfiles
+                components = discoverComponentsByStructure()
+                
+                // If no components found with structure, fall back to default list
+                if (components.isEmpty()) {
+                    echo "No components discovered by structure, using default components"
+                    components = ['traefik', 'db', 'fusionauth', 'backend', 'ai-agent', 'ai-model']
+                }
+            } else {
+                echo "No components directory found, using default components"
+                components = ['traefik', 'db', 'fusionauth', 'backend', 'ai-agent']
+            }
+        } catch (Exception e) {
+            echo "Error discovering components: ${e.message}, using default components"
             components = ['traefik', 'db', 'fusionauth', 'backend', 'ai-agent']
         }
-    } catch (Exception e) {
-        echo "Error discovering components: ${e.message}, using default components"
-        components = ['traefik', 'db', 'fusionauth', 'backend', 'ai-agent']
+        
+        // Remove any null or empty values and normalize
+        components = components.findAll { it?.trim() }.collect { it.trim() }.unique()
+        
+        echo "Final discovered components: ${components}"
+        return components
     }
-    
-    // Remove any null or empty values and normalize
-    components = components.findAll { it?.trim() }.collect { it.trim() }.unique()
-    
-    echo "Final discovered components: ${components}"
-    return components
-}
 
-def discoverComponentsByStructure() {
-    def components = []
-    try {
-        def componentDirs = sh(script: '''
+    def discoverComponentsByStructure() {
+        def components = []
+        try {
+            def componentDirs = sh(script: '''
       #!/bin/bash
       if [ -d "components" ]; then
         find components -maxdepth 1 -mindepth 1 -type d | while read dir; do
@@ -550,62 +551,62 @@ def discoverComponentsByStructure() {
       fi
     ''', returnStdout: true).trim()
 
-        if (componentDirs) {
-            componentDirs.split('\n').each { n ->
-                if (n?.trim()) components << n.trim()
+            if (componentDirs) {
+                componentDirs.split('\n').each { n ->
+                    if (n?.trim()) components << n.trim()
+                }
             }
-        }
-        
-        echo "Structure-based discovery found: ${components}"
-    } catch (Exception e) {
-        echo "Error in structure discovery: ${e.message}"
-    }
-    return components
-}
-
-def buildComponent(componentName) {
-    echo "Starting build for component: ${componentName}"
-    if (!fileExists("components/${componentName}")) {
-        echo "⚠️ Missing directory components/${componentName}"
-        return
-    }
-
-    dir("components/${componentName}") {
-        if (fileExists('Jenkinsfile')) {
-            echo "Loading component-specific Jenkinsfile for ${componentName}"
-            def componentLib = load 'Jenkinsfile'
-            componentLib.build()  // Call the build method
-        } else {
-            echo "No Jenkinsfile found for ${componentName}, using auto-build"
-            autoBuildComponent(componentName)
-        }
-    }
-}
-
-/* ========================= FIXED AUTO-BUILD WITH ENV FILES ========================= */
-
-def autoBuildComponent(componentName) {
-    echo "Auto-building component: ${componentName}"
-
-    if (fileExists('docker-compose.yml')) {
-        // Try to use environment file if credential exists
-        def credentialId = "${componentName}.env"
-        def useEnvFile = false
-        
-        try {
-            // Check if credential exists by trying to use it
-            withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
-                useEnvFile = true
-            }
+            
+            echo "Structure-based discovery found: ${components}"
         } catch (Exception e) {
-            echo "⚠️ No credential found for ${credentialId}, proceeding without environment file"
-            useEnvFile = false
+            echo "Error in structure discovery: ${e.message}"
+        }
+        return components
+    }
+
+    def buildComponent(componentName) {
+        echo "Starting build for component: ${componentName}"
+        if (!fileExists("components/${componentName}")) {
+            echo "⚠️ Missing directory components/${componentName}"
+            return
         }
 
-        if (useEnvFile) {
-            echo "🔐 Using environment file for ${componentName}"
-            withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
-                sh """
+        dir("components/${componentName}") {
+            if (fileExists('Jenkinsfile')) {
+                echo "Loading component-specific Jenkinsfile for ${componentName}"
+                def componentLib = load 'Jenkinsfile'
+                componentLib.build()  // Call the build method
+            } else {
+                echo "No Jenkinsfile found for ${componentName}, using auto-build"
+                autoBuildComponent(componentName)
+            }
+        }
+    }
+
+    /* ========================= FIXED AUTO-BUILD WITH ENV FILES ========================= */
+
+    def autoBuildComponent(componentName) {
+        echo "Auto-building component: ${componentName}"
+
+        if (fileExists('docker-compose.yml')) {
+            // Try to use environment file if credential exists
+            def credentialId = "${componentName}.env"
+            def useEnvFile = false
+            
+            try {
+                // Check if credential exists by trying to use it
+                withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
+                    useEnvFile = true
+                }
+            } catch (Exception e) {
+                echo "⚠️ No credential found for ${credentialId}, proceeding without environment file"
+                useEnvFile = false
+            }
+
+            if (useEnvFile) {
+                echo "🔐 Using environment file for ${componentName}"
+                withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
+                    sh """
           cp "\$ENV_FILE" .env
           chmod 600 .env
           echo "Docker Compose component detected with environment file"
@@ -620,9 +621,9 @@ def autoBuildComponent(componentName) {
           docker compose --env-file .env down || true
           rm -f .env 2>/dev/null || true
         """
-            }
-        } else {
-            sh '''
+                }
+            } else {
+                sh '''
         echo "Docker Compose component detected (no environment file)"
         docker compose config || true
         docker compose pull --ignore-pull-failures || true
@@ -634,48 +635,48 @@ def autoBuildComponent(componentName) {
         docker compose ps || true
         docker compose down || true
       '''
-        }
-    } else if (fileExists('package.json')) {
-        sh '''
+            }
+        } else if (fileExists('package.json')) {
+            sh '''
       echo "Node.js component detected"
       npm install || true
       npm run build --if-present || true
     '''
-    } else if (fileExists('pom.xml')) {
-        sh '''
+        } else if (fileExists('pom.xml')) {
+            sh '''
       echo "Java/Maven component detected"
       mvn -q -e -B clean compile || true
     '''
-    } else if (fileExists('Dockerfile')) {
-        sh """
+        } else if (fileExists('Dockerfile')) {
+            sh """
       echo "Docker image build detected"
       docker build -t ${componentName}:${env.BUILD_TAG} . || true
     """
-    } else if (fileExists('build.gradle')) {
-        sh '''
+        } else if (fileExists('build.gradle')) {
+            sh '''
       echo "Gradle component detected"
       ./gradlew build --no-daemon || true
     '''
-    } else if (fileExists('go.mod')) {
-        sh '''
+        } else if (fileExists('go.mod')) {
+            sh '''
       echo "Go component detected"
       go build -o app . || true
     '''
-    } else if (fileExists('requirements.txt')) {
-        sh '''
+        } else if (fileExists('requirements.txt')) {
+            sh '''
       echo "Python component detected"
       pip install -r requirements.txt || true
     '''
-    } else {
-        echo "⚠️ No build system detected for ${componentName}"
+        } else {
+            echo "⚠️ No build system detected for ${componentName}"
+        }
     }
-}
 
-def runIntegrationTests() {
-    echo "Running integration tests"
-    def status = 'passed'
-    try {
-        sh '''
+    def runIntegrationTests() {
+        echo "Running integration tests"
+        def status = 'passed'
+        try {
+            sh '''
       echo "Testing integration: Traefik public access"
       if curl -s -f https://whoami.almahdi.cloud/ >/dev/null 2>&1; then
         echo "✅ Traefik public endpoint accessible"
@@ -716,52 +717,52 @@ def runIntegrationTests() {
         exit 1
       fi
     '''
-    } catch (Exception e) {
-        echo "❌ Integration tests failed: ${e.message}"
-        status = 'failed'
-    }
-    env.INTEGRATION_TEST_STATUS = status
-}
-
-def deployComponent(componentName) {
-    echo "Deploying component: ${componentName}"
-    if (!fileExists("components/${componentName}")) {
-        echo "⚠️ Component directory 'components/${componentName}' not found for deployment"
-        return
+        } catch (Exception e) {
+            echo "❌ Integration tests failed: ${e.message}"
+            status = 'failed'
+        }
+        env.INTEGRATION_TEST_STATUS = status
     }
 
-    dir("components/${componentName}") {
-        script {
-            if (fileExists('Jenkinsfile')) {
-                echo "Loading component-specific Jenkinsfile for ${componentName}"
-                def componentLib = load 'Jenkinsfile'
-                componentLib.deploy()  // Call the deploy method
-            } else {
-                echo "No Jenkinsfile found for ${componentName}, using auto-deploy"
-                autoDeployComponent(componentName)
+    def deployComponent(componentName) {
+        echo "Deploying component: ${componentName}"
+        if (!fileExists("components/${componentName}")) {
+            echo "⚠️ Component directory 'components/${componentName}' not found for deployment"
+            return
+        }
+
+        dir("components/${componentName}") {
+            script {
+                if (fileExists('Jenkinsfile')) {
+                    echo "Loading component-specific Jenkinsfile for ${componentName}"
+                    def componentLib = load 'Jenkinsfile'
+                    componentLib.deploy()  // Call the deploy method
+                } else {
+                    echo "No Jenkinsfile found for ${componentName}, using auto-deploy"
+                    autoDeployComponent(componentName)
+                }
             }
         }
     }
-}
 
-/* ========================= FIXED AUTO DEPLOYMENT ========================= */
+    /* ========================= FIXED AUTO DEPLOYMENT ========================= */
 
-def autoDeployComponent(componentName) {
-    echo "Auto-deploying component: ${componentName}"
-    
-    if (!fileExists('docker-compose.yml')) {
-        echo "⚠️ No docker-compose.yml found for ${componentName}, skipping deployment"
-        return
-    }
-
-    try {
-        // Dynamically resolve credential ID based on component name
-        def credentialId = "${componentName}.env"
+    def autoDeployComponent(componentName) {
+        echo "Auto-deploying component: ${componentName}"
         
-        echo "🔐 Using credential ID: ${credentialId} for ${componentName}"
-        
-        withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
-            sh """
+        if (!fileExists('docker-compose.yml')) {
+            echo "⚠️ No docker-compose.yml found for ${componentName}, skipping deployment"
+            return
+        }
+
+        try {
+            // Dynamically resolve credential ID based on component name
+            def credentialId = "${componentName}.env"
+            
+            echo "🔐 Using credential ID: ${credentialId} for ${componentName}"
+            
+            withCredentials([file(credentialsId: credentialId, variable: 'ENV_FILE')]) {
+                sh """
         cp "\$ENV_FILE" .env
         chmod 600 .env
         docker compose config
@@ -770,38 +771,38 @@ def autoDeployComponent(componentName) {
         docker compose --env-file .env up -d
         sleep 30
       """
-        }
+            }
 
-        // Check deployment status
-        sh """
+            // Check deployment status
+            sh """
       docker compose ps || true
       docker ps --filter "name=${componentName}" --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}" || true
     """
 
-        // Component-specific health checks
-        performComponentHealthCheck(componentName)
+            // Component-specific health checks
+            performComponentHealthCheck(componentName)
 
-        echo "✅ ${componentName} auto-deployment completed successfully"
-        
-    } catch (Exception e) {
-        echo "❌ Auto-deployment failed for ${componentName}: ${e.message}"
-        sh """
+            echo "✅ ${componentName} auto-deployment completed successfully"
+            
+        } catch (Exception e) {
+            echo "❌ Auto-deployment failed for ${componentName}: ${e.message}"
+            sh """
       echo "=== Debug Information for ${componentName} ==="
       docker compose ps 2>/dev/null || true
       echo "=== Recent Logs ==="
       docker compose logs --tail=100 2>/dev/null || true
     """
-        sh "rm -f .env 2>/dev/null || true"
-        // Don't re-throw to avoid failing entire pipeline
+            sh "rm -f .env 2>/dev/null || true"
+            // Don't re-throw to avoid failing entire pipeline
+        }
     }
-}
 
-def performComponentHealthCheck(componentName) {
-    echo "Performing health check for ${componentName}"
-    
-    switch(componentName) {
-        case 'traefik':
-            sh '''
+    def performComponentHealthCheck(componentName) {
+        echo "Performing health check for ${componentName}"
+        
+        switch(componentName) {
+            case 'traefik':
+                sh '''
         for i in 1 2 3; do
           if curl -s -f https://whoami.almahdi.cloud/ >/dev/null 2>&1; then
             echo "✅ Traefik public routing working - whoami.almahdi.cloud accessible"
@@ -816,10 +817,10 @@ def performComponentHealthCheck(componentName) {
           docker compose logs --tail=50 traefik || true
         fi
       '''
-            break
-            
-        case 'db':
-            sh '''
+                break
+                
+            case 'db':
+                sh '''
         for i in 1 2 3; do
           if docker compose ps db | grep -q "healthy"; then
             echo "✅ Database is healthy"
@@ -834,10 +835,10 @@ def performComponentHealthCheck(componentName) {
           docker compose logs --tail=50 db || true
         fi
       '''
-            break
-            
-        case 'fusionauth':
-            sh '''
+                break
+                
+            case 'fusionauth':
+                sh '''
         for i in 1 2 3; do
           if curl -s -f http://localhost:9011/ >/dev/null; then
             echo "✅ FusionAuth is accessible at http://localhost:9011"
@@ -852,10 +853,10 @@ def performComponentHealthCheck(componentName) {
           docker compose logs --tail=50 fusionauth || true
         fi
       '''
-            break
-            
-        case 'backend':
-            sh '''
+                break
+                
+            case 'backend':
+                sh '''
         for i in 1 2 3; do
           if curl -s -f http://localhost:3000/health >/dev/null 2>&1 || 
              curl -s -f http://localhost:3000 >/dev/null 2>&1; then
@@ -872,10 +873,10 @@ def performComponentHealthCheck(componentName) {
           docker compose logs --tail=50 nest-app || true
         fi
       '''
-            break
-            
-        case 'ai-agent':
-            sh '''
+                break
+                
+            case 'ai-agent':
+                sh '''
         for i in 1 2 3; do
           if curl -s -f http://localhost:8000/health >/dev/null 2>&1 ||
              curl -s -f http://localhost:8000 >/dev/null 2>&1; then
@@ -892,10 +893,10 @@ def performComponentHealthCheck(componentName) {
           docker compose logs --tail=50 langchain || true
         fi
       '''
-            break
+                break
 
-        case 'ai-model':
-            sh '''
+            case 'ai-model':
+                sh '''
         for i in 1 2 3; do
           if curl -s -f http://localhost:3001/health >/dev/null 2>&1 ||
              curl -s -f http://localhost:3001 >/dev/null 2>&1; then
@@ -912,66 +913,66 @@ def performComponentHealthCheck(componentName) {
           docker compose logs --tail=50 ai-model || true
         fi
       '''
-            break
+                break
 
-        default:
-            echo "⚠️ No specific health check configured for ${componentName}"
-            // Generic health check
-            sh '''
+            default:
+                echo "⚠️ No specific health check configured for ${componentName}"
+                // Generic health check
+                sh '''
         if docker compose ps | grep -q "Up"; then
           echo "✅ ${componentName} services are running"
         else
           echo "⚠️ Some ${componentName} services may not be running properly"
         fi
       '''
-            break
+                break
+        }
     }
-}
 
-// Helper function to extract regex groups without storing Matcher objects
-def runE2ETests() {
-    try {
-        // Create test results directory before running tests
-        sh '''
+    // Helper function to extract regex groups without storing Matcher objects
+    def runE2ETests() {
+        try {
+            // Create test results directory before running tests
+            sh '''
             mkdir -pv scripts/test-results
         '''
 
-        // Run tests and capture ALL raw output - script always exits 0
-        def testOutput = sh(script: '''
+            // Run tests and capture ALL raw output - script always exits 0
+            def testOutput = sh(script: '''
             cd scripts
             ./run-all-scenarios.sh 2>&1
         ''', returnStdout: true).trim()
 
-        // Dump complete raw output to console for debugging
-        echo "E2E Test Complete Raw Output:\n${testOutput}"
+            // Dump complete raw output to console for debugging
+            echo "E2E Test Complete Raw Output:\n${testOutput}"
 
-        // Always assume success since script exits 0 regardless of test results
-        env.E2E_TEST_STATUS = "✅ Tests Completed Successfully"
+            // Always assume success since script exits 0 regardless of test results
+            env.E2E_TEST_STATUS = "✅ Tests Completed Successfully"
 
-        // Store the ENTIRE raw output for Telegram
-        env.E2E_FULL_OUTPUT = testOutput
+            // Store the ENTIRE raw output for Telegram
+            env.E2E_FULL_OUTPUT = testOutput
 
-    } catch (Exception e) {
-        env.E2E_TEST_STATUS = "❌ Test Execution Error"
-        env.E2E_FULL_OUTPUT = "Exception: ${e.message}"
-        echo "E2E Test execution failed: ${e.message}"
+        } catch (Exception e) {
+            env.E2E_TEST_STATUS = "❌ Test Execution Error"
+            env.E2E_FULL_OUTPUT = "Exception: ${e.message}"
+            echo "E2E Test execution failed: ${e.message}"
+        }
     }
-}
 
-def getE2ETestStatus() {
-    def status = env.E2E_TEST_STATUS ?: '⏸️ Not Run'
-    def fullOutput = (env.E2E_FULL_OUTPUT ?: '').toString()
+    def getE2ETestStatus() {
+        def status = env.E2E_TEST_STATUS ?: '⏸️ Not Run'
+        def fullOutput = (env.E2E_FULL_OUTPUT ?: '').toString()
 
-    // Escape JSON-breaking characters using the shared function
-    def escapedOutput = jsonEscape(fullOutput)
+        // Escape JSON-breaking characters using the shared function
+        def escapedOutput = jsonEscape(fullOutput)
 
-    // Include raw output directly (Telegram handles up to ~4000 chars)
-    def truncatedOutput = escapedOutput.take(3500)
-    def suffix = escapedOutput.length() > 3500 ? '\n\n[Output truncated - check build logs for full details]' : ''
+        // Include raw output directly (Telegram handles up to ~4000 chars)
+        def truncatedOutput = escapedOutput.take(3500)
+        def suffix = escapedOutput.length() > 3500 ? '\n\n[Output truncated - check build logs for full details]' : ''
 
-    // Break down string interpolation into simpler steps
-    def header = "${status}\n\n📄 Complete Test Output:\n"
-    def content = "```\n${truncatedOutput}${suffix}\n```"
-    return header + content
-}
+        // Break down string interpolation into simpler steps
+        def header = "${status}\n\n📄 Complete Test Output:\n"
+        def content = "```\n${truncatedOutput}${suffix}\n```"
+        return header + content
+    }
 
