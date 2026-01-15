@@ -497,10 +497,15 @@ def getLastCommitInfo() {
             def lastChangeSet = changeLogSets.last()
             if (lastChangeSet && lastChangeSet.items) {
                 def lastItem = lastChangeSet.items.last()
-                // Apply JSON escaping to prevent payload breakage
-                def escapedAuthor = jsonEscape(lastItem.author ?: "")
-                def escapedMessage = jsonEscape(lastItem.msg ?: "")
+                def escapedAuthor = ""
+                def escapedMassage = ""
+                script {
+                    // Apply JSON escaping to prevent payload breakage
+                    escapedAuthor = jsonEscape(lastItem.author ?: "")
+                    escapedMessage = jsonEscape(lastItem.msg ?: "")
+                }
                 return "`${escapedAuthor}`: `${escapedMessage}`"
+                
             }
         }
         return "No recent commits"
@@ -975,10 +980,11 @@ def runE2ETests() {
 def getE2ETestStatus() {
     def status = env.E2E_TEST_STATUS ?: '⏸️ Not Run'
     def fullOutput = (env.E2E_FULL_OUTPUT ?: '').toString()
-
-    // Escape JSON-breaking characters using the shared function
-    def escapedOutput = jsonEscape(fullOutput)
-
+    def escapedOutput = ""
+    script {
+        // Escape JSON-breaking characters using the shared function
+        escapedOutput = jsonEscape(fullOutput)
+    }
     // Include raw output directly (Telegram handles up to ~4000 chars)
     def truncatedOutput = escapedOutput.take(3500)
     def suffix = escapedOutput.length() > 3500 ? '\n\n[Output truncated - check build logs for full details]' : ''
