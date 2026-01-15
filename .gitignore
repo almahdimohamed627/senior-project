@@ -6,8 +6,6 @@
 
 # SSL certificates
 certs/
-
-# Ignore the entire dynamic directory
 dynamic/
 
 # Dependencies
@@ -69,4 +67,3 @@ test-results/
 # Temporary files
 *.tmp
 *.temp
->>>>>>> 275c698 (edited github pages and added nessecary stuff in .gitignore)

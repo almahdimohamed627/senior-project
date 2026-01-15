@@ -1,7 +1,9 @@
-#+TITLE: AI-Powered Dental Care Management System
-#+AUTHOR: Senior Project Team
+#+TITLE: DentAI-Bridge: AI-Powered Dental Care Management System
+#+AUTHOR: Mohamed Almahdi, Mustafa Aboud, Amer Habanakeh, Rami Maghrabi, Ahmad Almnsi
 #+DATE: 2025
 #+OPTIONS: toc:3 num:t
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="dracula-theme.css" />
+#+HTML_HEAD: <script src="toc-toggle.js"></script>
 
 * 🏥 Project Overview
 
@@ -109,7 +111,7 @@ Welcome to the central hub for our AI-powered dental care management system. Thi
 
 **Documentation Resources**
 - [[../README.org][Main Project Documentation]] - Comprehensive setup and development guide
-- [[gantt_chart.html][Interactive Gantt Chart]] - Visual project timeline and progress tracking
+- [[file:gantt_chart.html][Interactive Gantt Chart]] - Visual project timeline and progress tracking
 - [[../components/backend/README.md][Backend API Docs]] - NestJS service documentation
 - [[../components/ai-agent/README.md][AI Agent Guide]] - Python AI service documentation
 
@@ -217,6 +219,6 @@ Welcome to the central hub for our AI-powered dental care management system. Thi
 
 *Internal Links:*
 [[../README.org][Main Documentation]]
-[[gantt_chart.html][Gantt Chart]]
+[[file:gantt_chart.html][Gantt Chart]]
 [[../components/backend/README.md][Backend Docs]]
 [[../components/ai-agent/README.md][AI Agent Docs]]

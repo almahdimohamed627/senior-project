@@ -1,0 +1,626 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2025-12-26 Fri 01:52 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DentAI-Bridge: AI-Powered Dental Care Management System</title>
+<meta name="author" content="Mohamed Almahdi, Mustafa Aboud, Amer Habanakeh, Rami Maghrabi, Ahmad Almnsi" />
+<meta name="generator" content="Org Mode" />
+<style type="text/css">
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { }
+</style>
+<link rel="stylesheet" type="text/css" href="dracula-theme.css" />
+<script src="toc-toggle.js"></script>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">DentAI-Bridge: AI-Powered Dental Care Management System</h1>
+<div id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orga9ec11f">1. 🏥 Project Overview</a></li>
+<li><a href="#org6f63e2c">2. 🎯 Core Objectives</a></li>
+<li><a href="#org87ce17c">3. 🏗️ Technical Architecture</a></li>
+<li><a href="#orgbd93bcf">4. 🚀 Technology Stack</a></li>
+<li><a href="#orgcd92f57">5. 📊 Project Metrics &amp; KPIs</a></li>
+<li><a href="#orgb8bf2b3">6. 📅 Development Timeline</a></li>
+<li><a href="#orge492b27">7. 🔗 Quick Navigation</a></li>
+<li><a href="#org666e6f9">8. 🎨 Feature Showcase</a></li>
+<li><a href="#org95fec8e">9. 📈 Project Impact</a></li>
+<li><a href="#org3aaabca">10. 🏆 Awards &amp; Recognition</a></li>
+<li><a href="#org49b78de">11. 🤝 Team &amp; Collaboration</a></li>
+<li><a href="#org0f0b474">12. 📞 Support &amp; Contact</a></li>
+<li><a href="#org225b41d">13. 🔮 Future Roadmap</a></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orga9ec11f" class="outline-2">
+<h2 id="orga9ec11f"><span class="section-number-2">1.</span> 🏥 Project Overview</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+Welcome to the central hub for our AI-powered dental care management system. This comprehensive project represents the culmination of our senior development experience, combining cutting-edge technologies with practical healthcare applications.
+</p>
+
+<p>
+<b><b>Project Vision:</b></b> To revolutionize dental care delivery through intelligent automation, enhanced patient experiences, and streamlined clinical workflows.
+</p>
+</div>
+</div>
+<div id="outline-container-org6f63e2c" class="outline-2">
+<h2 id="org6f63e2c"><span class="section-number-2">2.</span> 🎯 Core Objectives</h2>
+<div class="outline-text-2" id="text-2">
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-left" />
+
+<col  class="org-left" />
+</colgroup>
+<thead>
+<tr>
+<th scope="col" class="org-left">Objective</th>
+<th scope="col" class="org-left">Description</th>
+<th scope="col" class="org-left">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="org-left"><b><b>Intelligent Triage</b></b></td>
+<td class="org-left">AI-powered dental symptom assessment and triage</td>
+<td class="org-left">✅ Implemented</td>
+</tr>
+
+<tr>
+<td class="org-left"><b><b>Seamless Scheduling</b></b></td>
+<td class="org-left">Automated appointment management and reminders</td>
+<td class="org-left">✅ Implemented</td>
+</tr>
+
+<tr>
+<td class="org-left"><b><b>Secure Communication</b></b></td>
+<td class="org-left">Real-time chat between patients and providers</td>
+<td class="org-left">✅ Implemented</td>
+</tr>
+
+<tr>
+<td class="org-left"><b><b>Predictive Analytics</b></b></td>
+<td class="org-left">ML models for treatment outcome prediction</td>
+<td class="org-left">✅ Implemented</td>
+</tr>
+
+<tr>
+<td class="org-left"><b><b>Mobile-First Design</b></b></td>
+<td class="org-left">Responsive interface for all devices</td>
+<td class="org-left">✅ Implemented</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-org87ce17c" class="outline-2">
+<h2 id="org87ce17c"><span class="section-number-2">3.</span> 🏗️ Technical Architecture</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+<b><b>Microservices Design Pattern</b></b>
+</p>
+
+<pre class="example" id="org0ecd6a2">
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   API Gateway   │    │  Authentication │
+│   (React/Vue)   │◄──►│   (Traefik)     │◄──►│  (FusionAuth)   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │
+                ┌───────────────┼───────────────┐
+                │               │               │
+        ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+        │   Backend   │ │  AI Agent   │ │  AI Model   │
+        │  (NestJS)   │ │ (FastAPI)   │ │(TensorFlow) │
+        └─────────────┘ └─────────────┘ └─────────────┘
+                │               │               │
+                └───────────────┼───────────────┘
+                                │
+                    ┌─────────────────┐
+                    │   Database      │
+                    │  (PostgreSQL)   │
+                    └─────────────────┘
+</pre>
+</div>
+</div>
+<div id="outline-container-orgbd93bcf" class="outline-2">
+<h2 id="orgbd93bcf"><span class="section-number-2">4.</span> 🚀 Technology Stack</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+<b><b>Frontend &amp; API Layer</b></b>
+</p>
+<ul class="org-ul">
+<li><b><b>Framework:</b></b> React/Vue.js with TypeScript</li>
+<li><b><b>State Management:</b></b> Redux/Vuex</li>
+<li><b><b>UI Components:</b></b> Material-UI / Tailwind CSS</li>
+<li><b><b>API Gateway:</b></b> Traefik with SSL termination</li>
+</ul>
+
+<p>
+<b><b>Backend Services</b></b>
+</p>
+<ul class="org-ul">
+<li><b><b>Primary API:</b></b> NestJS (Node.js + TypeScript)</li>
+<li><b><b>ORM:</b></b> Drizzle with PostgreSQL</li>
+<li><b><b>Authentication:</b></b> FusionAuth OAuth2 + JWT</li>
+<li><b><b>Validation:</b></b> Class-validator with custom pipes</li>
+</ul>
+
+<p>
+<b><b>AI &amp; Machine Learning</b></b>
+</p>
+<ul class="org-ul">
+<li><b><b>AI Agent:</b></b> FastAPI + Python with RAG architecture</li>
+<li><b><b>ML Models:</b></b> TensorFlow/Keras for dental predictions</li>
+<li><b><b>Vector Database:</b></b> ChromaDB for semantic search</li>
+<li><b><b>LLM Integration:</b></b> LangChain with multiple providers</li>
+</ul>
+
+<p>
+<b><b>Infrastructure &amp; DevOps</b></b>
+</p>
+<ul class="org-ul">
+<li><b><b>Containerization:</b></b> Docker + Docker Compose</li>
+<li><b><b>CI/CD:</b></b> Jenkins with automated pipelines</li>
+<li><b><b>Monitoring:</b></b> Health checks + logging</li>
+<li><b><b>Security:</b></b> HTTPS, CORS, rate limiting</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgcd92f57" class="outline-2">
+<h2 id="orgcd92f57"><span class="section-number-2">5.</span> 📊 Project Metrics &amp; KPIs</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+<b><b>Development Statistics</b></b>
+</p>
+<ul class="org-ul">
+<li><b><b>Total Components:</b></b> 6 microservices</li>
+<li><b><b>Code Coverage:</b></b> Target 85%+</li>
+<li><b><b>API Endpoints:</b></b> 50+ REST endpoints</li>
+<li><b><b>Test Suites:</b></b> Unit, integration, E2E tests</li>
+<li><b><b>Deployment Time:</b></b> &lt;5 minutes</li>
+</ul>
+
+<p>
+<b><b>Performance Targets</b></b>
+</p>
+<ul class="org-ul">
+<li><b><b>Response Time:</b></b> &lt;200ms (95th percentile)</li>
+<li><b><b>Uptime:</b></b> 99.9% availability</li>
+<li><b><b>Concurrent Users:</b></b> 1000+ supported</li>
+<li><b><b>Data Processing:</b></b> Real-time AI inference</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgb8bf2b3" class="outline-2">
+<h2 id="orgb8bf2b3"><span class="section-number-2">6.</span> 📅 Development Timeline</h2>
+<div class="outline-text-2" id="text-6">
+<p>
+<b><b>Phase 1: Foundation (Weeks 1-2)</b></b>
+</p>
+<ul class="org-ul">
+<li class="on"><code>[X]</code> Project architecture design</li>
+<li class="on"><code>[X]</code> Development environment setup</li>
+<li class="on"><code>[X]</code> Database schema implementation</li>
+<li class="on"><code>[X]</code> Authentication system integration</li>
+</ul>
+
+<p>
+<b><b>Phase 2: Core Features (Weeks 3-4)</b></b>
+</p>
+<ul class="org-ul">
+<li class="on"><code>[X]</code> Backend API development</li>
+<li class="on"><code>[X]</code> Frontend interface creation</li>
+<li class="on"><code>[X]</code> AI agent implementation</li>
+<li class="on"><code>[X]</code> ML model training and deployment</li>
+</ul>
+
+<p>
+<b><b>Phase 3: Integration &amp; Testing (Weeks 5-6)</b></b>
+</p>
+<ul class="org-ul">
+<li class="on"><code>[X]</code> System integration testing</li>
+<li class="on"><code>[X]</code> Performance optimization</li>
+<li class="on"><code>[X]</code> Security hardening</li>
+<li class="on"><code>[X]</code> Production deployment</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orge492b27" class="outline-2">
+<h2 id="orge492b27"><span class="section-number-2">7.</span> 🔗 Quick Navigation</h2>
+<div class="outline-text-2" id="text-7">
+<p>
+<b><b>Documentation Resources</b></b>
+</p>
+<ul class="org-ul">
+<li><a href="../README.html">Main Project Documentation</a> - Comprehensive setup and development guide</li>
+<li><a href="gantt_chart.html">Interactive Gantt Chart</a> - Visual project timeline and progress tracking</li>
+<li><a href="../components/backend/README.md">Backend API Docs</a> - NestJS service documentation</li>
+<li><a href="../components/ai-agent/README.md">AI Agent Guide</a> - Python AI service documentation</li>
+</ul>
+
+<p>
+<b><b>Development Tools</b></b>
+</p>
+<ul class="org-ul">
+<li><b><b>API Playground:</b></b> <a href="https://api.localhost/docs">https://api.localhost/docs</a></li>
+<li><b><b>AI Agent Demo:</b></b> <a href="https://ai.localhost/docs">https://ai.localhost/docs</a></li>
+<li><b><b>Database Admin:</b></b> pgAdmin interface</li>
+<li><b><b>Auth Panel:</b></b> FusionAuth management console</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org666e6f9" class="outline-2">
+<h2 id="org666e6f9"><span class="section-number-2">8.</span> 🎨 Feature Showcase</h2>
+<div class="outline-text-2" id="text-8">
+<p>
+<b><b>🤖 AI-Powered Dental Triage</b></b>
+</p>
+<ul class="org-ul">
+<li>Symptom analysis using natural language processing</li>
+<li>Confidence scoring for recommendations</li>
+<li>Multi-language support (English/Arabic)</li>
+<li>Integration with medical knowledge bases</li>
+</ul>
+
+<p>
+<b><b>💬 Intelligent Chat System</b></b>
+</p>
+<ul class="org-ul">
+<li>Real-time patient-provider communication</li>
+<li>Automated response suggestions</li>
+<li>File sharing for medical images</li>
+<li>Message history and search</li>
+</ul>
+
+<p>
+<b><b>📅 Smart Scheduling</b></b>
+</p>
+<ul class="org-ul">
+<li>Automated appointment availability</li>
+<li>Conflict detection and resolution</li>
+<li>Reminder notifications</li>
+<li>Calendar integration</li>
+</ul>
+
+<p>
+<b><b>🔒 Enterprise Security</b></b>
+</p>
+<ul class="org-ul">
+<li>OAuth2 authentication with FusionAuth</li>
+<li>Role-based access control (RBAC)</li>
+<li>Encrypted data transmission</li>
+<li>Audit logging and compliance</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org95fec8e" class="outline-2">
+<h2 id="org95fec8e"><span class="section-number-2">9.</span> 📈 Project Impact</h2>
+<div class="outline-text-2" id="text-9">
+<p>
+<b><b>Healthcare Benefits</b></b>
+</p>
+<ul class="org-ul">
+<li>Improved patient access to dental care</li>
+<li>Reduced wait times for appointments</li>
+<li>Enhanced diagnostic accuracy</li>
+<li>Better patient education and engagement</li>
+</ul>
+
+<p>
+<b><b>Technical Achievements</b></b>
+</p>
+<ul class="org-ul">
+<li>Scalable microservices architecture</li>
+<li>Real-time AI inference capabilities</li>
+<li>Comprehensive security implementation</li>
+<li>Modern DevOps practices</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org3aaabca" class="outline-2">
+<h2 id="org3aaabca"><span class="section-number-2">10.</span> 🏆 Awards &amp; Recognition</h2>
+<div class="outline-text-2" id="text-10">
+<p>
+<b><b>Project Highlights</b></b>
+</p>
+<ul class="org-ul">
+<li><b><b>Innovation:</b></b> Integration of multiple AI technologies</li>
+<li><b><b>Scalability:</b></b> Cloud-ready architecture</li>
+<li><b><b>Security:</b></b> Enterprise-grade authentication</li>
+<li><b><b>User Experience:</b></b> Intuitive, responsive design</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org49b78de" class="outline-2">
+<h2 id="org49b78de"><span class="section-number-2">11.</span> 🤝 Team &amp; Collaboration</h2>
+<div class="outline-text-2" id="text-11">
+<p>
+<b><b>Development Team</b></b>
+</p>
+<ul class="org-ul">
+<li><b><b>Backend Development:</b></b> NestJS/TypeScript specialists</li>
+<li><b><b>AI/ML Engineering:</b></b> Python/TensorFlow experts</li>
+<li><b><b>Frontend Development:</b></b> React/Vue.js developers</li>
+<li><b><b>DevOps Engineering:</b></b> Docker/CI/CD specialists</li>
+</ul>
+
+<p>
+<b><b>Collaboration Tools</b></b>
+</p>
+<ul class="org-ul">
+<li><b><b>Version Control:</b></b> Git with feature branches</li>
+<li><b><b>Project Management:</b></b> GitHub Issues + Projects</li>
+<li><b><b>Communication:</b></b> Team chat + code reviews</li>
+<li><b><b>Documentation:</b></b> Comprehensive README files</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org0f0b474" class="outline-2">
+<h2 id="org0f0b474"><span class="section-number-2">12.</span> 📞 Support &amp; Contact</h2>
+<div class="outline-text-2" id="text-12">
+<p>
+<b><b>Getting Help</b></b>
+</p>
+<ul class="org-ul">
+<li>Create an issue in the repository</li>
+<li>Review the troubleshooting documentation</li>
+<li>Check the API documentation</li>
+<li>Contact the development team</li>
+</ul>
+
+<p>
+<b><b>Community Resources</b></b>
+</p>
+<ul class="org-ul">
+<li>GitHub Discussions for Q&amp;A</li>
+<li>Wiki for detailed guides</li>
+<li>Issue templates for bug reports</li>
+<li>Feature request process</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org225b41d" class="outline-2">
+<h2 id="org225b41d"><span class="section-number-2">13.</span> 🔮 Future Roadmap</h2>
+<div class="outline-text-2" id="text-13">
+<p>
+<b><b>Phase 2 Enhancements</b></b>
+</p>
+<ul class="org-ul">
+<li class="off"><code>[&#xa0;]</code> Mobile application development</li>
+<li class="off"><code>[&#xa0;]</code> Advanced ML model improvements</li>
+<li class="off"><code>[&#xa0;]</code> Telemedicine integration</li>
+<li class="off"><code>[&#xa0;]</code> Analytics dashboard expansion</li>
+</ul>
+
+<p>
+<b><b>Long-term Vision</b></b>
+</p>
+<ul class="org-ul">
+<li class="off"><code>[&#xa0;]</code> Multi-clinic support</li>
+<li class="off"><code>[&#xa0;]</code> Internationalization (i18n)</li>
+<li class="off"><code>[&#xa0;]</code> Advanced reporting features</li>
+<li class="off"><code>[&#xa0;]</code> Third-party integrations</li>
+</ul>
+
+<p>
+&#x2014;
+</p>
+
+<p>
+<b>Thank you for visiting our project documentation. For the most up-to-date information, please check our GitHub repository and regular updates.</b>
+</p>
+
+<p>
+&#x2014;
+</p>
+
+<p>
+<b>Internal Links:</b>
+<a href="../README.html">Main Documentation</a>
+<a href="gantt_chart.html">Gantt Chart</a>
+<a href="../components/backend/README.md">Backend Docs</a>
+<a href="../components/ai-agent/README.md">AI Agent Docs</a>
+</p>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="date">Date: 2025</p>
+<p class="author">Author: Mohamed Almahdi, Mustafa Aboud, Amer Habanakeh, Rami Maghrabi, Ahmad Almnsi</p>
+<p class="date">Created: 2025-12-26 Fri 01:52</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>
