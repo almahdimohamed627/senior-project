@@ -8,34 +8,7 @@ from .loader import load_raw_texts
 
 DEFAULT_DB_BASE_DIR = "chroma_db"
 DEFAULT_DATA_DIR = "data"
-EMBED_MODEL_NAME = "nomic-embed-text"
 HF_EMBED_MODEL = "intfloat/multilingual-e5-base"
-
-
-class SafeOllamaEmbeddings(OllamaEmbeddings):
-    """Work around intermittent embed_documents failures by calling embed per text batch."""
-
-    def embed_documents(self, texts):
-        if not self._client:
-            msg = (
-                "Ollama client is not initialized. "
-                "Please ensure Ollama is running and the model is loaded."
-            )
-            raise ValueError(msg)
-
-        embeddings = []
-        for text in texts:
-            resp = self._client.embed(
-                self.model,
-                [text],
-                options=self._default_params,
-                keep_alive=self.keep_alive,
-            )
-            embeddings.append(resp["embeddings"][0])
-        return embeddings
-
-    def embed_query(self, text: str):
-        return self.embed_documents([text])[0]
 
 
 class E5Embeddings(HuggingFaceEmbeddings):
@@ -48,43 +21,27 @@ class E5Embeddings(HuggingFaceEmbeddings):
         return super().embed_documents([f"passage: {t}" for t in texts])
 
 
-def _get_embed_backend_and_model():
-    backend = (os.getenv("DENTAL_EMBED_BACKEND") or "huggingface").lower()
-    model_name = os.getenv("HUGGINGFACE_EMBED_MODEL", HF_EMBED_MODEL)
-    return backend, model_name
-
-
 def _default_db_dir():
     """
-    Generate a stable Chroma persist directory based on backend + model
+    Generate a stable Chroma persist directory based on model
     to avoid dimension mismatches when switching embeddings.
     Example:
       chroma_db_huggingface__intfloat__multilingual-e5-base
     """
-    backend, model_name = _get_embed_backend_and_model()
+    model_name = os.getenv("HUGGINGFACE_EMBED_MODEL", HF_EMBED_MODEL)
     suffix = model_name.replace("/", "__")
     base = os.getenv("DENTAL_DB_BASE_DIR", DEFAULT_DB_BASE_DIR)
 
-    # IMPORTANT: match your existing naming seen in your screenshot
-    return f"{base}_{backend}__{suffix}"
+    # IMPORTANT: keep naming stable for existing DBs.
+    return f"{base}_huggingface__{suffix}"
 
 
 def get_embeddings():
     """
-    Select embeddings backend.
-    - DENTAL_EMBED_BACKEND=huggingface (default) uses sentence-transformers (E5 wrapper).
-    - DENTAL_EMBED_BACKEND=ollama uses local Ollama embeddings.
+    Return HuggingFace embeddings (E5 wrapper).
     """
-    backend, model_name = _get_embed_backend_and_model()
-
-    if backend == "huggingface":
-        return E5Embeddings(model_name=model_name)
-
-    if backend == "ollama":
-        base_url = os.getenv("OLLAMA_HOST") or "http://127.0.0.1:11434"
-        return SafeOllamaEmbeddings(model=EMBED_MODEL_NAME, base_url=base_url)
-
-    raise ValueError(f"Unsupported embedding backend: {backend}")
+    model_name = os.getenv("HUGGINGFACE_EMBED_MODEL", HF_EMBED_MODEL)
+    return E5Embeddings(model_name=model_name)
 
 
 def build_vectorstore(

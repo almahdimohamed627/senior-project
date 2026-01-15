@@ -1,4 +1,3 @@
-import os
 import sys
 
 from rag.vectorstore import get_or_create_vectorstore
@@ -12,7 +11,7 @@ def main():
     print("🦷 Dental RAG Assistant")
     print("-----------------------")
 
-    backend = os.getenv("DENTAL_LLM_BACKEND", "groq")
+    backend = "groq"
 
     try:
         vectordb = get_or_create_vectorstore()

@@ -70,7 +70,7 @@ class ChatResponse(BaseModel):
 # ---------- App setup ----------
 app = FastAPI(title="Dental RAG Assistant")
 
-backend = os.getenv("DENTAL_LLM_BACKEND", "groq")
+backend = "groq"
 vectordb = get_or_create_vectorstore()
 qa = create_qa_chain(vectordb, backend=backend)
 

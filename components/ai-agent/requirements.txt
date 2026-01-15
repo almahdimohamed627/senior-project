@@ -2,7 +2,6 @@ langchain
 langchain-community
 langchain-chroma
 langchain-text-splitters
-langchain-ollama
 langchain-huggingface
 sentence-transformers
 langchain-groq
@@ -12,4 +11,3 @@ fastapi
 uvicorn[standard]
 python-dotenv
 openpyxl
-
