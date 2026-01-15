@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, inArray, or ,desc} from 'drizzle-orm';
+import { and, eq, inArray, or ,desc,ne} from 'drizzle-orm';
 import { db } from 'src/db/client';
 import { ChatService } from 'src/modules/chat/chat.service';
 import { patientProfile, users } from 'src/db/schema/profiles.schema';
@@ -62,6 +62,7 @@ async getReceivedRequests(
       .from(requests)
       .where(eq(requests.receiverId, userId));
   }
+  
 
   const rows: PatientProfile[] = await Promise.all(
     userRequests.map(async (req) => {
@@ -285,8 +286,10 @@ async acceptOrReject(accepted: boolean, requestId: number) {
         .set({ status: 'accepted' })
         .where(eq(requests.id, requestId))
         .returning(); 
+        
+        await tx.delete(requests).where(and(ne(requests.id,requestId),eq(requests.senderId,updatedRequest.senderId)))
 
-      const conversation = await this.chatService.ensureConversationForRequest(
+      const conversation = await this.chatService.createConversation(
         updatedRequest.id,
         updatedRequest.senderId,
         updatedRequest.receiverId,

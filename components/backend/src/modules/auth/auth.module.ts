@@ -16,6 +16,7 @@ import { FusionAuthClientWrapper } from './fusion-auth.client'; // Import here
     ConfigModule.forRoot({ isGlobal: true }),
     HttpModule.register({ timeout: 5000 }),
     forwardRef(() => ProfileModule) // 2. غلف الموديول بـ forwardRef
+    
   ],
   controllers: [AuthController],
   providers: [AuthService, FusionAuthClientWrapper, JwtStrategy, JwtAuthGuard, RolesGuard, Reflector],

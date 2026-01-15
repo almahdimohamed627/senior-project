@@ -56,13 +56,13 @@ export const messages = pgTable('messages', {
 
 
 
-export const specialtyEnumE = pgEnum('specialtyA', [
+export const specialtyEnumE = pgEnum('specialtyE', [
   'Restorative',
   'Endodontics',
-  'Periodentics',
-  'Fixed_Prosthondontics',
-  'Removable_Prosthondontics',
-  'Pediatric_Dentistry',
+  'Periodontics',
+  'Fixed_prosthodontics',
+  'Removable_prosthodontics',
+  'Pediatric_dentistry',
 ]);
 export const specialtyEnumA = pgEnum('specialtyA', [
   'Restorative',

@@ -305,6 +305,8 @@ export class AuthService {
 
       this.logger.log(`Creating FusionAuth user for: ${dto.email}`);
       const urlCreate = `${this.baseUrl.replace(/\/$/, '')}/api/user`;
+      console.log(urlCreate)
+      console.log(createPayload)
       createdUserResp = await axios.post(urlCreate, createPayload, {
         headers: {
           'Content-Type': 'application/json',
@@ -312,6 +314,7 @@ export class AuthService {
         },
         timeout: 10000,
       });
+      console.log("resonse from fusion"+createdUserResp)
 
       fusionUserId = createdUserResp.data?.user?.id || createdUserResp.data?.id;
       if (!fusionUserId) {
@@ -320,11 +323,10 @@ export class AuthService {
       }
       this.logger.log(`✅ FusionAuth user created: ${fusionUserId}`);
 
-      // Determine tenantId
       const tenantIdFromResp = createdUserResp.data?.user?.tenantId;
       const tenantId = tenantIdFromResp || this.config.get<string>('FUSIONAUTH_TENANT_ID') || undefined;
+      console.log(tenantId)
 
-      // 2️⃣ Add registration to the application (link user -> application + role)
       const registrationUrl = `${this.baseUrl.replace(/\/$/, '')}/api/user/registration/${fusionUserId}`;
       const registrationPayload = {
         registration: {
@@ -384,7 +386,6 @@ export class AuthService {
       throw new InternalServerErrorException('Failed to create user or register in FusionAuth.');
     }
 
-    // 3️⃣ Prepare local profile data (no profilePhoto in DTO; set default avatar)
     const birthYearNum = dto.birthYear ? Number(dto.birthYear) : 0;
 
     const newDoctor = {
