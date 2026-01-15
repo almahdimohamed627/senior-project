@@ -42,133 +42,133 @@ pipeline {
                 }
             }
         }
-            stage('Discover Components') {
-                steps {
-                    script {
-                        def discovered = normalizeComponents(findComponents())
-                        env.DISCOVERED_COMPONENTS = discovered.join(',')
-                        echo "Discovered components: ${discovered}"
-                    }
-                }
-            }
-
-            stage('Resolve Order') {
-                steps {
-                    script {
-                        def depmap = deps()
-
-                        // الموجود فعليًا (مطَبَّع)
-                        def present = (env.DISCOVERED_COMPONENTS ?: '')
-                            .split(',')
-                            .findAll { it?.trim() }
-                            .collect { it.trim() }
-                            .unique()
-
-                        // الهدف من الباراميتر + متطلباته (مطَبَّع)
-                        def target = normalizeComponent(params.COMPONENT)
-                        def wanted = []
-                        if (target == 'all') {
-                            wanted = present
-                        } else {
-                            wanted = resolveWithPrereqs(target, depmap)
-                                .findAll { present.contains(it) }
-                        }
-
-                        if (wanted.isEmpty()) {
-                            error "No valid components to process."
-                        }
-
-                        // ترتيب (مع تجنّب استدعاءات محظورة)
-                        def ordered = topoOrder(wanted, depmap).findAll { present.contains(it) }
-                        env.COMPONENTS_STRING = ordered.join(',')
-                        echo "Ordered components: ${ordered}"
-                    }
-                }
-            }
-
-            stage('Build (layered waves)') {
-                steps {
-                    script {
-                        def components = (env.COMPONENTS_STRING ?: '')
-                            .split(',')
-                            .findAll { it?.trim() }
-                            .collect { it.trim() }
-
-                        def layers = layerize(components, deps())
-                        echo "Build layers: ${layers}"
-                        def buildResults = [:]
-                        runLayered(layers, 'build', buildResults)
-                        env.BUILD_RESULTS = buildResults.collect { k, v -> "$k=$v" }.join(';')
-                    }
-                }
-            }
-
-            stage('Deploy (layered waves)') {
-                steps {
-                    script {
-                        def components = (env.COMPONENTS_STRING ?: '')
-                            .split(',')
-                            .findAll { it?.trim() }
-                            .collect { it.trim() }
-
-                        def layers = layerize(components, deps())
-                        echo "Deploy layers: ${layers}"
-                        def deployResults = [:]
-                        runLayered(layers, 'deploy', deployResults)
-                        env.DEPLOY_RESULTS = deployResults.collect { k, v -> "$k=$v" }.join(';')
-                    }
-                }
-            }
-
-            stage('Integration Test') {
-                steps {
-                    script {
-                        // TODO: Implement comprehensive integration tests
-                        // covering service-to-service communication,
-                        // database connectivity, and cross-component validation
-                        env.INTEGRATION_TEST_STATUS = 'passed'
-                        echo "Integration tests: Basic health checks passed"
-                    }
-                }
-            }
-
-            stage('E2E Test') {
-                steps {
-                    script {
-                        timeout(time: 5, unit: 'MINUTES') {
-                            runE2ETests()
-                        }
-                    }
+        stage('Discover Components') {
+            steps {
+                script {
+                    def discovered = normalizeComponents(findComponents())
+                    env.DISCOVERED_COMPONENTS = discovered.join(',')
+                    echo "Discovered components: ${discovered}"
                 }
             }
         }
 
-        post {
-            // مهم: نفّذ الإشعارات أولاً ثم نظّف المساحة
-            success {
+        stage('Resolve Order') {
+            steps {
                 script {
-                    echo "✅ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
-                    sendTelegramNotification("success")
+                    def depmap = deps()
+
+                    // الموجود فعليًا (مطَبَّع)
+                    def present = (env.DISCOVERED_COMPONENTS ?: '')
+                        .split(',')
+                        .findAll { it?.trim() }
+                        .collect { it.trim() }
+                        .unique()
+
+                    // الهدف من الباراميتر + متطلباته (مطَبَّع)
+                    def target = normalizeComponent(params.COMPONENT)
+                    def wanted = []
+                    if (target == 'all') {
+                        wanted = present
+                    } else {
+                        wanted = resolveWithPrereqs(target, depmap)
+                            .findAll { present.contains(it) }
+                    }
+
+                    if (wanted.isEmpty()) {
+                        error "No valid components to process."
+                    }
+
+                    // ترتيب (مع تجنّب استدعاءات محظورة)
+                    def ordered = topoOrder(wanted, depmap).findAll { present.contains(it) }
+                    env.COMPONENTS_STRING = ordered.join(',')
+                    echo "Ordered components: ${ordered}"
                 }
             }
-            failure {
+        }
+
+        stage('Build (layered waves)') {
+            steps {
                 script {
-                    echo "❌ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
-                    sendTelegramNotification("failure")
+                    def components = (env.COMPONENTS_STRING ?: '')
+                        .split(',')
+                        .findAll { it?.trim() }
+                        .collect { it.trim() }
+
+                    def layers = layerize(components, deps())
+                    echo "Build layers: ${layers}"
+                    def buildResults = [:]
+                    runLayered(layers, 'build', buildResults)
+                    env.BUILD_RESULTS = buildResults.collect { k, v -> "$k=$v" }.join(';')
                 }
             }
-            unstable {
+        }
+
+        stage('Deploy (layered waves)') {
+            steps {
                 script {
-                    echo "⚠️ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
-                    sendTelegramNotification("unstable")
+                    def components = (env.COMPONENTS_STRING ?: '')
+                        .split(',')
+                        .findAll { it?.trim() }
+                        .collect { it.trim() }
+
+                    def layers = layerize(components, deps())
+                    echo "Deploy layers: ${layers}"
+                    def deployResults = [:]
+                    runLayered(layers, 'deploy', deployResults)
+                    env.DEPLOY_RESULTS = deployResults.collect { k, v -> "$k=$v" }.join(';')
                 }
             }
-            always {
-                script { currentBuild.description = "Components: ${env.COMPONENTS_STRING ?: env.DISCOVERED_COMPONENTS}" }
-                cleanWs()
+        }
+
+        stage('Integration Test') {
+            steps {
+                script {
+                    // TODO: Implement comprehensive integration tests
+                    // covering service-to-service communication,
+                    // database connectivity, and cross-component validation
+                    env.INTEGRATION_TEST_STATUS = 'passed'
+                    echo "Integration tests: Basic health checks passed"
+                }
+            }
+        }
+
+        stage('E2E Test') {
+            steps {
+                script {
+                    timeout(time: 5, unit: 'MINUTES') {
+                        runE2ETests()
+                    }
+                }
             }
         }
     }
+
+    post {
+        // مهم: نفّذ الإشعارات أولاً ثم نظّف المساحة
+        success {
+            script {
+                echo "✅ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+                sendTelegramNotification("success")
+            }
+        }
+        failure {
+            script {
+                echo "❌ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+                sendTelegramNotification("failure")
+            }
+        }
+        unstable {
+            script {
+                echo "⚠️ Build ${currentBuild.result}: ${env.JOB_NAME} ${env.BUILD_NUMBER}"
+                sendTelegramNotification("unstable")
+            }
+        }
+        always {
+            script { currentBuild.description = "Components: ${env.COMPONENTS_STRING ?: env.DISCOVERED_COMPONENTS}" }
+            cleanWs()
+        }
+    }
+}
 
 /* ========================= GLOBAL DEPENDENCIES ========================= */
 // الكل يعتمد على traefik
@@ -243,13 +243,16 @@ def runLayered(List layers, String op /* 'build' or 'deploy' */, Map results) {
 /* ========================= Dependency resolution (sandbox-safe) ========================= */
 
 // JSON escape function to prevent Telegram payload breakage from special characters
+import groovy.transform.NonCPS
+
+@NonCPS
 def myJsonEscape(String text) {
     if (!text) return ""
     return text.replaceAll('\\\\', '\\\\\\\\')  // Escape backslashes first
-               .replaceAll('"', '\\\\"')        // Escape double quotes
-               .replaceAll('\n', '\\\\n')       // Escape newlines
-               .replaceAll('\r', '\\\\r')       // Escape carriage returns
-               .replaceAll('\t', '\\\\t')       // Escape tabs
+        .replaceAll('"', '\\\\"')        // Escape double quotes
+        .replaceAll('\n', '\\\\n')       // Escape newlines
+        .replaceAll('\r', '\\\\r')       // Escape carriage returns
+        .replaceAll('\t', '\\\\t')       // Escape tabs
 }
 
 def resolveWithPrereqs(String target, Map depmap) {
