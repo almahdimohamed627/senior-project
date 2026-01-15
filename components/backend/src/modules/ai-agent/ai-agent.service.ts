@@ -71,13 +71,14 @@ export class AiAgentService {
     }
 
     let pdfFileName: string | null = null;
-    let qrFileName: string | null = null; 
+    let qrFileName: string | null = null; // متغير لحفظ اسم ملف الـ QR
 
 
 
+    // 2. إذا كانت النتيجة نهائية
     if (isFinal && speciality) {
 
-    
+      // تحديث الحالة أولاً
       await db
         .update(conversationAI)
         .set({
@@ -92,7 +93,7 @@ export class AiAgentService {
         pdfFileName = path.basename(fullPdfPath);
 
 
-        const fullQrPath = await this.generateAndSaveQRCode(conversationId);
+        const fullQrPath = await this.generateAndSaveQRCode(conversationId,fullPdfPath);
         qrFileName = path.basename(fullQrPath);
 
         await db
@@ -138,10 +139,10 @@ export class AiAgentService {
 
 
 
-  async generateAndSaveQRCode(conversationId: number): Promise<string> {
+  async generateAndSaveQRCode(conversationId: number,pdf:string): Promise<string> {
     try {
       // أ. تحديد مجلد الحفظ واسم ملف الـ QR
-      const uploadsDir = path.join(process.cwd(), 'uploads');
+      const uploadsDir = path.join( 'uploads');
       // تأكد من وجود المجلد (احتياطاً)
       if (!fs.existsSync(uploadsDir)) {
         fs.mkdirSync(uploadsDir, { recursive: true });
@@ -157,7 +158,7 @@ export class AiAgentService {
       const baseUrl = 'https://app.almahdi.cloud';
 
       // هذا هو الرابط الذي جربناه على بوستمان
-      const pdfDownloadUrl = `${baseUrl}/ai-agent/returnPdf/${conversationId}`;
+      const pdfDownloadUrl = `${baseUrl}/${pdf}`;
 
       console.log('Generating QR for URL:', pdfDownloadUrl);
 
