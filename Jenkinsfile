@@ -243,7 +243,7 @@ def runLayered(List layers, String op /* 'build' or 'deploy' */, Map results) {
 /* ========================= Dependency resolution (sandbox-safe) ========================= */
 
 // JSON escape function to prevent Telegram payload breakage from special characters
-def jsonEscape(String text) {
+def myJsonEscape(String text) {
     if (!text) return ""
     return text.replaceAll('\\\\', '\\\\\\\\')  // Escape backslashes first
                .replaceAll('"', '\\\\"')        // Escape double quotes
@@ -495,8 +495,8 @@ def getLastCommitInfo() {
             if (lastChangeSet && lastChangeSet.items) {
                 def lastItem = lastChangeSet.items.last()
                 // Apply JSON escaping to prevent payload breakage
-                def escapedAuthor = jsonEscape(lastItem.author ?: "")
-                def escapedMessage = jsonEscape(lastItem.msg ?: "")
+                def escapedAuthor = myJsonEscape(lastItem.author ?: "")
+                def escapedMessage = myJsonEscape(lastItem.msg ?: "")
                 return "`${escapedAuthor}`: `${escapedMessage}`"
             }
         }
@@ -974,7 +974,7 @@ def getE2ETestStatus() {
     def fullOutput = (env.E2E_FULL_OUTPUT ?: '').toString()
 
     // Escape JSON-breaking characters using the shared function
-    def escapedOutput = jsonEscape(fullOutput)
+    def escapedOutput = myJsonEscape(fullOutput)
 
     // Include raw output directly (Telegram handles up to ~4000 chars)
     def truncatedOutput = escapedOutput.take(3500)
