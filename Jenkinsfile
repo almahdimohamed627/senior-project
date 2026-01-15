@@ -495,22 +495,24 @@ def getLastCommitInfo() {
         def changeLogSets = currentBuild.changeSets
         if (changeLogSets && !changeLogSets.isEmpty()) {
             def lastChangeSet = changeLogSets.last()
-            if (lastChangeSet && lastChangeSet.items) {
+            // FIXED: Check if items exist AND is not empty
+            if (lastChangeSet && lastChangeSet.items && !lastChangeSet.items.isEmpty()) {
                 def lastItem = lastChangeSet.items.last()
                 def escapedAuthor = ""
-                def escapedMassage = ""
+                def escapedMessage = ""  // FIXED: Correct variable name
                 script {
                     // Apply JSON escaping to prevent payload breakage
                     escapedAuthor = jsonEscape(lastItem.author ?: "")
                     escapedMessage = jsonEscape(lastItem.msg ?: "")
                 }
                 return "`${escapedAuthor}`: `${escapedMessage}`"
-                
             }
         }
         return "No recent commits"
     } catch (Exception e) {
-        return "Unable to fetch commit info: ${e}"
+        // Optional: Add logging for debugging
+        echo "DEBUG: Error in getLastCommitInfo: ${e.message}"
+        return "Unable to fetch commit info"
     }
 }
 
