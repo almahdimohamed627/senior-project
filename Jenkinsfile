@@ -13,7 +13,7 @@ pipeline {
             defaultValue: true,
             description: 'Deploy after successful build'
         )
-    }
+}
 
     environment {
         // Jenkins built-in variables
