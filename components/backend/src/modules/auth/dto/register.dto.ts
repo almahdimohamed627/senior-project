@@ -32,8 +32,8 @@ password: string;
 
   @ApiProperty({ example: 'patient', enum: ['doctor', 'patient'], description: 'User role' })
   @IsNotEmpty()
-  @IsIn(['doctor', 'patient'])
-  role: 'doctor' | 'patient';
+  @IsIn(['doctor', 'patient','admin'])
+  role: 'doctor' | 'patient'|'admin';
 
   // -------------------------
   // حقول عامة (مش مكررة)

@@ -12,6 +12,7 @@ import { AiAgentModule } from './modules/ai-agent/ai-agent.module';
 import { LocationsModule } from './modules/locations/modules/locations/locations.module';
 
 import { NotificationModule } from './modules/notification/notification.module';
+import { AdmindashboardModule } from './modules/admindashboard/admindashboard.module';
 
 @Module({
   imports: [AuthModule, PostModule, ProfileModule,  CacheModule.register({
@@ -19,7 +20,7 @@ import { NotificationModule } from './modules/notification/notification.module';
       ttl: 60,    // القيمة الافتراضية لكل المفاتيح بالثواني
       max: 1000,  // حد أقصى لمفاتيح الذاكرة (اختياري)
 
-    }),  ConfigModule.forRoot({ isGlobal: true }), RequestModule, ChatModule, AiAgentModule, LocationsModule, NotificationModule
+    }),  ConfigModule.forRoot({ isGlobal: true }), RequestModule, ChatModule, AiAgentModule, LocationsModule, NotificationModule, AdmindashboardModule
     ],
   controllers: [AppController],
   providers: [AppService],
