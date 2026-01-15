@@ -34,7 +34,7 @@ FROM nginx:alpine
 RUN rm -rf /usr/share/nginx/html/*
 
 # Copy built files from build stage
-COPY --from=build /app/dist/YOUR_PROJECT_NAME/browser /usr/share/nginx/html
+COPY --from=build /app/dist/admin-dashboard/browser /usr/share/nginx/html
 
 # Copy custom nginx config (optional)
 # COPY nginx.conf /etc/nginx/nginx.conf
