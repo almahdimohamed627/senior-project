@@ -487,15 +487,15 @@ def getComponentType(componentName) {
 def getLastCommitInfo() {
     try {
         def changeLogSets = currentBuild.changeSets
-        if (changeLogSets && !changeLogSets.isEmpty()) {
+        if (changeLogSets && changeLogSets.size() > 0) {
             def lastChangeSet = changeLogSets.last()
-            // FIXED: Check if items exist AND is not empty
-            if (lastChangeSet && lastChangeSet.items && !lastChangeSet.items.isEmpty()) {
+            // FIX: Check array length instead of using .isEmpty()
+            if (lastChangeSet && lastChangeSet.items && lastChangeSet.items.size() > 0) {
                 def lastItem = lastChangeSet.items.last()
                 def escapedAuthor = ""
-                def escapedMessage = ""  // FIXED: Correct variable name
+                def escapedMessage = ""
                 script {
-                    // Apply JSON escaping to prevent payload breakage
+                    // Apply JSON escaping
                     escapedAuthor = jsonEscape(lastItem.author ?: "")
                     escapedMessage = jsonEscape(lastItem.msg ?: "")
                 }
@@ -504,7 +504,6 @@ def getLastCommitInfo() {
         }
         return "No recent commits"
     } catch (Exception e) {
-        // Optional: Add logging for debugging
         echo "DEBUG: Error in getLastCommitInfo: ${e.message}"
         return "Unable to fetch commit info"
     }
