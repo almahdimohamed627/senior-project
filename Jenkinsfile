@@ -963,13 +963,8 @@ def getE2ETestStatus() {
     def status = env.E2E_TEST_STATUS ?: '⏸️ Not Run'
     def fullOutput = (env.E2E_FULL_OUTPUT ?: '').toString()
 
-    // Escape JSON-breaking characters (quotes, backslashes, newlines) for Telegram API
-    def escapedOutput = fullOutput
-        .replaceAll('\\\\', '\\\\\\\\')  // Escape backslashes first
-        .replaceAll('"', '\\\\"')        // Escape double quotes
-        .replaceAll('\n', '\\\\n')       // Escape newlines
-        .replaceAll('\r', '\\\\r')       // Escape carriage returns
-        .replaceAll('\t', '\\\\t')       // Escape tabs
+    // Escape JSON-breaking characters using the shared function
+    def escapedOutput = jsonEscape(fullOutput)
 
     // Include raw output directly (Telegram handles up to ~4000 chars)
     def truncatedOutput = escapedOutput.take(3500)
@@ -979,4 +974,14 @@ def getE2ETestStatus() {
     def header = "${status}\n\n📄 Complete Test Output:\n"
     def content = "```\n${truncatedOutput}${suffix}\n```"
     return header + content
+}
+
+// JSON escape function to prevent Telegram payload breakage from special characters
+def jsonEscape(String text) {
+    if (!text) return ""
+    return text.replaceAll('\\\\', '\\\\\\\\')  // Escape backslashes first
+               .replaceAll('"', '\\\\"')        // Escape double quotes
+               .replaceAll('\n', '\\\\n')       // Escape newlines
+               .replaceAll('\r', '\\\\r')       // Escape carriage returns
+               .replaceAll('\t', '\\\\t')       // Escape tabs
 }
