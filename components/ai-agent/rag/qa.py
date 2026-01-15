@@ -9,7 +9,6 @@ import re
 from typing import List
 
 from langchain_core.documents import Document
-from langchain_ollama import OllamaLLM
 from langchain_groq import ChatGroq
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
@@ -160,34 +159,19 @@ CHILD_PHRASES = {
 }
 
 
-def get_llm(backend: str = "groq"):
-    """
-    Return the configured LLM client; groq is default backend.
-    Switch via env DENTAL_LLM_BACKEND=groq|ollama (defaults to groq).
-    """
-    backend = (backend or "groq").lower()
+def get_llm():
+    """Return the Groq LLM client (Groq-only backend)."""
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    if not api_key:
+        raise ValueError("GROQ_API_KEY is not set in environment")
 
-    if backend == "groq":
-        api_key = os.getenv("GROQ_API_KEY", "").strip()
-        if not api_key:
-            raise ValueError("GROQ_API_KEY is not set in environment")
+    model_name = os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
 
-        model_name = os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
-
-        return ChatGroq(
-            api_key=api_key,
-            model_name=model_name,
-            temperature=0.0,
-        )
-
-    if backend == "ollama":
-        ollama_model = os.getenv("OLLAMA_LLM_MODEL", "llama3.1")
-        return OllamaLLM(
-            model=ollama_model,
-            temperature=0.0,
-        )
-
-    raise ValueError(f"Unsupported LLM backend: {backend}")
+    return ChatGroq(
+        api_key=api_key,
+        model_name=model_name,
+        temperature=0.0,
+    )
 
 
 def is_probably_dental(text: str) -> bool:
@@ -251,7 +235,8 @@ def create_qa_chain(vectordb: Chroma, backend: str = "groq") -> RunnableLambda:
         search_kwargs={"k": rerank_candidates, "score_threshold": 0.4},
     )
 
-    llm = get_llm(backend=backend)
+    # backend param kept for compatibility; Groq is always used.
+    llm = get_llm()
     parser = StrOutputParser()
 
     rewrite_prompt = PromptTemplate(
