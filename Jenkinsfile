@@ -235,6 +235,7 @@ def runLayered(List layers, String op /* 'build' or 'deploy' */, Map results) {
                     }
                 }
             }
+            parallel par  // Execute the parallel steps
         }
     }
 }
