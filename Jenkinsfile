@@ -19,7 +19,7 @@ pipeline {
         BUILD_URL = "${env.BUILD_URL}"
         JOB_NAME = "${env.JOB_NAME}"
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
-        
+        GIT_COMMITINFO = ""
         // Custom variables
         GIT_BRANCH = 'development'  // Will be set in a stage
         DEPLOY_ENV = 'production'
@@ -31,6 +31,13 @@ pipeline {
             steps {
                 checkout scm
                 script {
+                    env.GIT_COMMITINFO = sh(
+                        script: '''
+        git log -1 --pretty=format:"%an||%s" 2>/dev/null || echo "No commits||Could not retrieve commit info"
+    ''',
+                        returnStdout: true
+                    ).trim()
+
                     echo "Building branch: ${env.GIT_BRANCH}"
                     echo "Build URL: ${env.BUILD_URL}"
                 }
@@ -487,12 +494,7 @@ def getComponentType(componentName) {
 def getLastCommitInfo() {
     try {
         // Execute git command on the agent
-        def commitInfo = sh(
-            script: '''
-                git log -1 --pretty=format:"%an||%s" 2>/dev/null || echo "No commits||Could not retrieve commit info"
-            ''',
-            returnStdout: true
-        ).trim()
+        def commitInfo = env.GIT_COMMITINFO ?: "Unknown||No commit message"
         
         // Parse the output (author||message)
         def parts = commitInfo.split("\\|\\|", 2)
