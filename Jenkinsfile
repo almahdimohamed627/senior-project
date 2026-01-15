@@ -486,23 +486,29 @@ def getComponentType(componentName) {
 
 def getLastCommitInfo() {
     try {
-        def changeLogSets = currentBuild.changeSets
-        if (changeLogSets && changeLogSets.size() > 0) {
-            def lastChangeSet = changeLogSets.last()
-            // FIX: Check array length instead of using .isEmpty()
-            if (lastChangeSet && lastChangeSet.items && lastChangeSet.items.size() > 0) {
-                def lastItem = lastChangeSet.items.last()
-                def escapedAuthor = ""
-                def escapedMessage = ""
-                script {
-                    // Apply JSON escaping
-                    escapedAuthor = jsonEscape(lastItem.author ?: "")
-                    escapedMessage = jsonEscape(lastItem.msg ?: "")
-                }
-                return "`${escapedAuthor}`: `${escapedMessage}`"
-            }
+        // Execute git command on the agent
+        def commitInfo = sh(
+            script: '''
+                git log -1 --pretty=format:"%an||%s" 2>/dev/null || echo "No commits||Could not retrieve commit info"
+            ''',
+            returnStdout: true
+        ).trim()
+        
+        // Parse the output (author||message)
+        def parts = commitInfo.split("\\|\\|", 2)
+        def author = parts[0] ?: ""
+        def message = parts.size() > 1 ? parts[1] : ""
+        
+        // Escape for Telegram
+        def escapedAuthor = ""
+        def escapedMessage = ""
+        script {
+            escapedAuthor = jsonEscape(author)
+            escapedMessage = jsonEscape(message)
         }
-        return "No recent commits"
+        
+        return "`${escapedAuthor}`: `${escapedMessage}`"
+        
     } catch (Exception e) {
         echo "DEBUG: Error in getLastCommitInfo: ${e.message}"
         return "Unable to fetch commit info"
