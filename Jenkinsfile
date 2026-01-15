@@ -28,21 +28,7 @@ pipeline {
 
     stages {
         stage('Checkout SCM') {
-            steps {
-                checkout scm
-                script {
-                    // Capture branch early before any cleanup
-                    env.GIT_BRANCH = sh(
-                        script: 'git rev-parse --abbrev-ref HEAD',
-                        returnStdout: true
-                    ).trim()
-                    
-                    echo "Building branch: ${env.GIT_BRANCH}"
-                    echo "Build URL: ${env.BUILD_URL}"
-                }
-            }
-        }
-        stage('Discover Components') {
+            e('Discover Components') {
             steps {
                 script {
                     def discovered = normalizeComponents(findComponents())
@@ -243,7 +229,7 @@ def runLayered(List layers, String op /* 'build' or 'deploy' */, Map results) {
 /* ========================= Dependency resolution (sandbox-safe) ========================= */
 
 // JSON escape function to prevent Telegram payload breakage from special characters
-import groovy.transform.NonCPS
+import com.cloudbees.groovy.cps.NonCPS
 
 @NonCPS
 def jsonEscape(String text) {
