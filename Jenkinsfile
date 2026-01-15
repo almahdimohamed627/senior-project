@@ -246,7 +246,7 @@ def runLayered(List layers, String op /* 'build' or 'deploy' */, Map results) {
 import groovy.transform.NonCPS
 
 @NonCPS
-def myJsonEscape(String text) {
+def jsonEscape(String text) {
     if (!text) return ""
     return text.replaceAll('\\\\', '\\\\\\\\')  // Escape backslashes first
         .replaceAll('"', '\\\\"')        // Escape double quotes
@@ -498,8 +498,8 @@ def getLastCommitInfo() {
             if (lastChangeSet && lastChangeSet.items) {
                 def lastItem = lastChangeSet.items.last()
                 // Apply JSON escaping to prevent payload breakage
-                def escapedAuthor = myJsonEscape(lastItem.author ?: "")
-                def escapedMessage = myJsonEscape(lastItem.msg ?: "")
+                def escapedAuthor = jsonEscape(lastItem.author ?: "")
+                def escapedMessage = jsonEscape(lastItem.msg ?: "")
                 return "`${escapedAuthor}`: `${escapedMessage}`"
             }
         }
@@ -977,7 +977,7 @@ def getE2ETestStatus() {
     def fullOutput = (env.E2E_FULL_OUTPUT ?: '').toString()
 
     // Escape JSON-breaking characters using the shared function
-    def escapedOutput = myJsonEscape(fullOutput)
+    def escapedOutput = jsonEscape(fullOutput)
 
     // Include raw output directly (Telegram handles up to ~4000 chars)
     def truncatedOutput = escapedOutput.take(3500)
