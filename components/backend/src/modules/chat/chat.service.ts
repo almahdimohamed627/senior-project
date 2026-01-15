@@ -20,7 +20,7 @@ async getUserConversations(userId: string) {
     .where(eq(isDoctor ? conversations.doctorId : conversations.patientId, userId))
     .leftJoin(users, eq(users.fusionAuthId, isDoctor ? conversations.patientId : conversations.doctorId))
     .leftJoin(messages, eq(messages.conversationId, conversations.id)).
-    leftJoin(conversationAI,and(eq(conversationAI.userId,conversations.patientId),eq(conversationAI.status,'completed')))
+    leftJoin(conversationAI,and(eq(conversationAI.userId,conversations.patientId),eq(conversationAI.status,'specified')))
     .orderBy(desc(messages.createdAt)); 
 
 
@@ -94,7 +94,7 @@ async getUserConversations(userId: string) {
 
     return conv;
   }
-  async ensureConversationForRequest(
+  async createConversation(
   requestId: number,
   senderId: string,
   receiverId: string,

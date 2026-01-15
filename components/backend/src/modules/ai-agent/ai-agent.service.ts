@@ -71,14 +71,13 @@ export class AiAgentService {
     }
 
     let pdfFileName: string | null = null;
-    let qrFileName: string | null = null; // متغير لحفظ اسم ملف الـ QR
+    let qrFileName: string | null = null; 
 
 
 
-    // 2. إذا كانت النتيجة نهائية
     if (isFinal && speciality) {
 
-      // تحديث الحالة أولاً
+    
       await db
         .update(conversationAI)
         .set({
@@ -196,7 +195,7 @@ async  ensureCase(patientId:string):Promise<boolean>{
       let diagnoses=await db.select().from(conversationAI).where(and(eq(conversationAI.userId,patientId)
       ,or(eq(conversationAI.status,"in_progress"),eq(conversationAI.status,"specified"))))
       console.log(diagnoses.length)
-   if(diagnoses.length===1){
+   if(diagnoses.length>0){
        return false
    }
 

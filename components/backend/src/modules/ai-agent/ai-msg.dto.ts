@@ -4,10 +4,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export enum DentistSpecialty {
   Restorative = 'Restorative',
   Endodontics = 'Endodontics',
-  Periodentics = 'Periodentics',
-  Fixed_Prosthondontics = 'Fixed_Prosthondontics',
-  Removable_Prosthondontics = 'Removable_Prosthondontics',
-  Pediatric_Dentistry = 'Pediatric_Dentistry',
+  Periodentics = 'Periodontics',
+  Fixed_Prosthondontics = 'Fixed_prosthodontics',
+  Removable_Prosthondontics = 'Removable_prosthodontics',
+  Pediatric_Dentistry = 'Pediatric_dentistry',
 }
 
 export class AiMessage {
