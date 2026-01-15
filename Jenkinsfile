@@ -510,7 +510,7 @@ def getLastCommitInfo() {
         }
         return "No recent commits"
     } catch (Exception e) {
-        return "Unable to fetch commit info"
+        return "Unable to fetch commit info: ${e}"
     }
 }
 
@@ -986,8 +986,8 @@ def getE2ETestStatus() {
         escapedOutput = jsonEscape(fullOutput)
     }
     // Include raw output directly (Telegram handles up to ~4000 chars)
-    def truncatedOutput = escapedOutput.take(3500)
-    def suffix = escapedOutput.length() > 3500 ? '\n\n[Output truncated - check build logs for full details]' : ''
+    def truncatedOutput = escapedOutput.take(5000)
+    def suffix = escapedOutput.length() > 5000 ? '\n\n[Output truncated - check build logs for full details]' : ''
 
     // Break down string interpolation into simpler steps
     def header = "${status}\n\n📄 Complete Test Output:\n"
