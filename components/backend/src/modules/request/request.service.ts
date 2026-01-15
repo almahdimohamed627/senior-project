@@ -86,7 +86,6 @@ async getReceivedRequests(
       const [latestDiagnosis] = await db
         .select()
         .from(conversationAI)
-
         .where(eq(conversationAI.userId, req.senderId))
         .orderBy(desc(conversationAI.createdAt)) 
         .limit(1); 
