@@ -7,6 +7,7 @@ import {schema, users} from 'src/db/schema/schema';
 import { and, eq, sql } from 'drizzle-orm'; // ✅ أهم import!
 import { unlink } from 'fs/promises';
 import { join } from 'path';
+import { log } from 'console';
 @Injectable()
 export class PostService {
   private readonly logger = new Logger(PostService.name);
@@ -17,9 +18,12 @@ export class PostService {
    * @param uploadedPaths array of strings like 'uploads/posts/<filename>'
    */
   async createPost(dto: CreatePostDto & { authorId: string }, uploadedPaths: string[] = []) {
-    // Prepare photos JSON
-    const photosJson = uploadedPaths.length > 0 ? JSON.stringify(uploadedPaths) : JSON.stringify([]);
+        console.log(dto)
+        console.log(uploadedPaths)
 
+
+    const photosJson = uploadedPaths.length > 0 ? JSON.stringify(uploadedPaths) : JSON.stringify([]);
+    console.log(photosJson)
     try {
       const inserted = await db.insert(posts).values({
         title: dto.title,
@@ -28,18 +32,16 @@ export class PostService {
         photos: photosJson,
         createdAt: new Date(),
         updatedAt: new Date(),
-      }).returning();
-
-      // return single created row (drizzle may return array)
+      }).returning().catch((err) => console.log(err)
+      );
+      console.log(inserted)
       if (Array.isArray(inserted)) return inserted[0];
       return inserted;
     } catch (err: any) {
       this.logger.error('DB insert failed for post', err?.message || err);
 
-      // Rollback: delete uploaded files to avoid orphan files
       await Promise.all(uploadedPaths.map(async (p) => {
         try {
-          // Normalize path, ensure it is inside uploads/posts
           const normalized = p.replace(/\\/g, '/');
           const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
           if (!trimmed.startsWith('uploads/posts/')) {
@@ -140,8 +142,8 @@ async findOneByUserId(id: string) {
   if(!user[0]){
     throw new NotFoundException(`there is no user`)
   }
-  const result = await db.select().from(posts).where(eq(posts.userId, id));
-  if (!result.length) throw new NotFoundException(`there is no post for this user`);
+  const result = await db.select().from(posts).where(and(eq(posts.userId, id),eq(posts.keyStatus,'published')));
+  
   return result;
 }
 

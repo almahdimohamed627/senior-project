@@ -1,8 +1,8 @@
 //chat.service.ts
 import { Injectable } from '@nestjs/common';
-import { desc, eq, or } from 'drizzle-orm';
+import { desc, eq, or ,and} from 'drizzle-orm';
 import { db } from 'src/db/client';
-import { conversations, messages } from 'src/db/schema/chat.schema';
+import { conversationAI, conversations, messages } from 'src/db/schema/chat.schema';
 import { doctorProfile, patientProfile, users } from 'src/db/schema/profiles.schema';
 
 @Injectable()
@@ -19,20 +19,24 @@ async getUserConversations(userId: string) {
     .from(conversations)
     .where(eq(isDoctor ? conversations.doctorId : conversations.patientId, userId))
     .leftJoin(users, eq(users.fusionAuthId, isDoctor ? conversations.patientId : conversations.doctorId))
-    .leftJoin(messages, eq(messages.conversationId, conversations.id))
+    .leftJoin(messages, eq(messages.conversationId, conversations.id)).
+    leftJoin(conversationAI,and(eq(conversationAI.userId,conversations.patientId),eq(conversationAI.status,'completed')))
     .orderBy(desc(messages.createdAt)); 
+
 
   // 3. نفلتر النتائج لأخذ أحدث رسالة فقط لكل محادثة
   const uniqueConversations = new Map();
   const infoKey = isDoctor ? 'patientInfo' : 'doctorInfo';
 
   for (const item of rawData) {
+    console.log(item)
     const convId = item.conversations.id;
     // لأننا رتبنا البيانات، أول مرة بتظهر فيها المحادثة بتكون مع أحدث رسالة
     if (!uniqueConversations.has(convId)) {
       uniqueConversations.set(convId, {
         conversation: item.conversations,
         [infoKey]: item.users,
+        conversationAi:isDoctor?item.conversation_ai:null,
         lastMessage: item.messages // هذه هي آخر رسالة
       });
     }

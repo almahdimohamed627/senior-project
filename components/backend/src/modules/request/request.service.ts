@@ -42,7 +42,7 @@ export class RequestService {
 
 async getReceivedRequests(
   userId: string,
-  status?: 'accepted' | 'rejected' | 'pending' | null,
+  status?: 'accepted' | 'rejected' | 'pending' |'completed'| null,
 ) {
   let userRequests;
 
@@ -108,7 +108,8 @@ async getReceivedRequests(
 
           email: patient.email,
           phoneNumber: patient.phoneNumber,
-          specialty: latestDiagnosis?.specialityE ?? null, 
+          specialty: latestDiagnosis?.specialityE ?? null,
+          diagnosisPhoto: latestDiagnosis?.image_path ?? null,
           city: patient.city,
           profilePhoto: patient.profilePhoto,
         }

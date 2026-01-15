@@ -110,5 +110,26 @@ async saveMsg(@Body() saveMsgDto:AiMessage){
     });
   }
 
-    
+  @Post("completeDiagnosis")
+  async completeDiagnosis(@Body('conversationId')conversationId:number,@Body('requestId')requestId:number){
+    let status= await this.aiAgentSercice.completeDiagnosis(conversationId,requestId)
+    if(status){
+       return {msg:'status changes'}
+    }
+    else{
+    return {msg:'can not changed because the backend is very super hero'}
+    }
+     
+  }
+@Get('diagnosesForPatient')
+async returnDiagnoses(@Query('patientId')patientId:string){
+  return await this.aiAgentSercice.returnDiagnosesForPatient(patientId)
+}
+
+@Get('checkUserDiagnosis')
+async ensureCase(@Query('patientId')patientId:string){
+ let key= await this.aiAgentSercice.ensureCase(patientId)
+ return{key}
+}
+
 }
