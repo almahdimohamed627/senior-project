@@ -31,7 +31,6 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    
                     echo "Building branch: ${env.GIT_BRANCH}"
                     echo "Build URL: ${env.BUILD_URL}"
                 }
@@ -507,7 +506,7 @@ def getLastCommitInfo() {
     } catch (Exception e) {
         // Optional: Add logging for debugging
         echo "DEBUG: Error in getLastCommitInfo: ${e.message}"
-        return "Unable to fetch commit info${e.message}"
+        return "Unable to fetch commit info"
     }
 }
 
