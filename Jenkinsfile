@@ -21,7 +21,7 @@ pipeline {
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
         
         // Custom variables
-        GIT_BRANCH = ''  // Will be set in a stage
+        GIT_BRANCH = 'development'  // Will be set in a stage
         DEPLOY_ENV = 'production'
         NOTIFICATION_ENABLED = true
     }
@@ -31,12 +31,6 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    // Capture branch early before any cleanup
-                    env.GIT_BRANCH = sh(
-                        script: 'git rev-parse --abbrev-ref HEAD',
-                        returnStdout: true
-                    ).trim()
-                    
                     echo "Building branch: ${env.GIT_BRANCH}"
                     echo "Build URL: ${env.BUILD_URL}"
                 }
