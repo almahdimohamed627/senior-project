@@ -6,7 +6,7 @@ pipeline {
             name: 'COMPONENT',
             choices: ['all', 'traefik', 'db', 'fusionauth', 'backend', 'ai-agent', 'ai-model', 'admin-dashboard'],
             description: 'Select component to build/deploy (its prerequisites will be included automatically)',
-            defaultValue: 'admin-dashboard'  // Change this to your preferred default
+            defaultValue: 'admin-dashboard'  // ✅ Correct parameter name (one word)
         )
         booleanParam(
             name: 'DEPLOY',
