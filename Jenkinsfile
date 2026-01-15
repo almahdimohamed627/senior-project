@@ -4,16 +4,15 @@ pipeline {
     parameters {
         choice(
             name: 'COMPONENT',
-            choices: ['all', 'traefik', 'db', 'fusionauth', 'backend', 'ai-agent', 'ai-model', 'admin-dashboard'],
+            choices: ['admin-dashboard', 'all', 'traefik', 'db', 'fusionauth', 'backend', 'ai-agent', 'ai-model'],
             description: 'Select component to build/deploy (its prerequisites will be included automatically)',
-            defaultValue: 'admin-dashboard'  // ✅ Correct parameter name (one word)
         )
         booleanParam(
             name: 'DEPLOY',
             defaultValue: true,
             description: 'Deploy after successful build'
         )
-}
+    }
 
     environment {
         // Jenkins built-in variables
