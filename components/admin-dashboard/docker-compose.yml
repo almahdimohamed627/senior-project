@@ -1,0 +1,9 @@
+services:
+  angular-app:
+    build: .
+    container_name: angular-app
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
