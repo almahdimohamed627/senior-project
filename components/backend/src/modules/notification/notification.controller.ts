@@ -1,12 +1,18 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { db } from 'src/db/client';
+import { users } from 'src/db/schema/profiles.schema';
+import { eq } from 'drizzle-orm';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/role.guard';
 
 @ApiTags('Notification')
 @ApiBearerAuth()
-@Controller('notification')
+@Controller('notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
@@ -20,6 +26,27 @@ export class NotificationController {
   @ApiOperation({ summary: 'Get all notifications' })
   findAll() {
   }
+
+
+@Post('fcm-token')
+@ApiOperation({ summary: 'Update FCM Token' })
+@ApiBearerAuth()
+@ApiBody({ schema: { type: 'object', properties: { token: { type: 'string' } } } })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+async updateFcmToken(
+  @CurrentUser() user: any, 
+  @Body('token') token: string
+) {
+  console.log(token)
+  console.log("hi")
+  console.log(user)
+  await db
+    .update(users)
+    .set({ fcmToken: token })
+    .where(eq(users.fusionAuthId, user.sub));
+    
+  return { msg: 'Token updated successfully' };
+}
 
   @Get(':id')
   @ApiOperation({ summary: 'Get notification by ID' })
