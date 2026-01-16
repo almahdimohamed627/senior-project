@@ -44,4 +44,9 @@ acceptOrReject(
   remove(@Param('id') id: string) {
     return this.admindashboardService.remove(+id);
   }
+
+  @Get('diagnosis')
+async returnAllDiagnosis(){
+return this.admindashboardService.returnDiagnosis()
+}
 }
