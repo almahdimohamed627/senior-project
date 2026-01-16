@@ -2,6 +2,8 @@
 FROM node:24-alpine AS build
 
 # Install NVM (if absolutely necessary)
+RUN apk add --no-cache bash wget
+
 ENV NVM_DIR /usr/local/nvm
 RUN mkdir -p $NVM_DIR && \
 wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash \
