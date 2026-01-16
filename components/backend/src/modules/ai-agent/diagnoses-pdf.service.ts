@@ -108,21 +108,19 @@ export class DiagnosesPdfService {
       
       executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium-browser',
       args: [
-        '--no-sandbox', // ضروري للسيرفرات (Root user/Docker)
+        '--no-sandbox', 
         '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage', // حل لمشاكل الذاكرة في Docker
+        '--disable-dev-shm-usage', 
         '--disable-gpu'
       ],
     });
 
     const page = await browser.newPage();
     
-    // انتظار تحميل المحتوى بالكامل
     await page.setContent(html, { waitUntil: 'networkidle0' });
 
     const pdfFileName = `diagnosis_${conversationId}.pdf`;
     
-    // التأكد من أن مجلد uploads موجود
     const uploadsDir = path.join( 'uploads');
     if (!fs.existsSync(uploadsDir)){
         fs.mkdirSync(uploadsDir);

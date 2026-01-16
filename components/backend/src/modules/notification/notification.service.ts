@@ -40,6 +40,11 @@ async sendRawPush(token: string, title: string, body: string, data?: any) {
     }
   }
 
+  async saveToken(fcmToken:string){
+    
+
+  }
+
   async sendAndSave(
     userId: string, // لمين (ID من الداتابيز)
     title: string,
@@ -67,11 +72,10 @@ async sendRawPush(token: string, title: string, body: string, data?: any) {
     const token = userResult[0]?.fcmToken;
 
     if (token) {
-      // نرسل الإشعار للموبايل، ونضع الـ type والـ metadata داخله أيضاً
       const fcmData = {
         type: type,
         ...Object.keys(metadata || {}).reduce((acc, key) => {
-            acc[key] = String(metadata[key]); // فايربيز بيقبل Strings بس بالـ data
+            acc[key] = String(metadata[key]); 
             return acc;
         }, {})
       };

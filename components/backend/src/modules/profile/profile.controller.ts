@@ -253,6 +253,7 @@ async createAvailabilities(
     return await this.profileService.updateAvailability(doctorId, Number(availabilityId), items);
   }
 //fcm token
+
 @Patch('fcm-token')
 @ApiOperation({ summary: 'Update FCM Token' })
 @ApiBearerAuth()
