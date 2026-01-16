@@ -31,18 +31,24 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    env.GIT_COMMITINFO = sh(
-                        script: '''
-        git log -1 --pretty=format:"%an||%s" 2>/dev/null || echo "No commits||Could not retrieve commit info"
-    ''',
+                    // Store the commit info in a regular variable first for debugging
+                    def rawCommitInfo = sh(
+                        script: 'git log -1 --pretty=format:"%an||%s"',
                         returnStdout: true
                     ).trim()
-
+                    
+                    // CRITICAL: Print the raw value to verify capture
+                    echo "DEBUG RAW COMMIT INFO: '${rawCommitInfo}'"
+                    
+                    // Store in environment variable for later use
+                    env.GIT_COMMITINFO = rawCommitInfo
+                    
                     echo "Building branch: ${env.GIT_BRANCH}"
                     echo "Build URL: ${env.BUILD_URL}"
                 }
             }
         }
+
         stage('Discover Components') {
             steps {
                 script {
