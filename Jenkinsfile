@@ -493,28 +493,17 @@ def getComponentType(componentName) {
 }
 
 def getLastCommitInfo() {
-    try {
-        // Execute git command on the agent
+    script {
         def commitInfo = env.GIT_COMMITINFO ?: "Unknown||No commit message"
-        
-        // Parse the output (author||message)
         def parts = commitInfo.split("\\|\\|", 2)
         def author = parts[0] ?: ""
         def message = parts.size() > 1 ? parts[1] : ""
         
-        // Escape for Telegram
-        def escapedAuthor = ""
-        def escapedMessage = ""
-        script {
-            escapedAuthor = jsonEscape(author)
-            escapedMessage = jsonEscape(message)
-        }
+        // Use your ORIGINAL function, just call it correctly:
+        def escapedAuthor = jsonEscape(author)
+        def escapedMessage = jsonEscape(message)
         
         return "`${escapedAuthor}`: `${escapedMessage}`"
-        
-    } catch (Exception e) {
-        echo "DEBUG: Error in getLastCommitInfo: ${e.message}"
-        return "Unable to fetch commit info"
     }
 }
 
