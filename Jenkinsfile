@@ -500,12 +500,20 @@ def getComponentType(componentName) {
 
 def getLastCommitInfo() {
     script {
-        def commitInfo = env.GIT_COMMITINFO ?: "Unknown||No commit message"
-        def parts = commitInfo.split("\\|\\|", 2)
-        def author = parts[0] ?: ""
-        def message = parts.size() > 1 ? parts[1] : ""
+        // Fetch the commit info directly from the current workspace
+        // This avoids any scoping issues with the env variable set in the stage.
+        def commitInfo = sh(
+            script: 'git log -1 --pretty=format:"%an||%s" 2>/dev/null || echo "Unknown||No commit message"',
+            returnStdout: true
+        ).trim()
         
-        // Use your ORIGINAL function, just call it correctly:
+        echo "DEBUG in Post Block: '${commitInfo}'"
+        
+        def parts = commitInfo.split("\\|\\|", 2)
+        def author = parts[0] ?: "Unknown"
+        def message = parts.size() > 1 ? parts[1] : "No commit message"
+        
+        // Use your jsonEscape function
         def escapedAuthor = jsonEscape(author)
         def escapedMessage = jsonEscape(message)
         
