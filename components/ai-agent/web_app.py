@@ -9,6 +9,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+try:
+    from pydantic import ConfigDict
+except ImportError:
+    ConfigDict = None
 from dotenv import load_dotenv
 
 from rag.vectorstore import get_or_create_vectorstore
@@ -22,17 +26,16 @@ sys.stderr.reconfigure(encoding="utf-8")
 
 
 # ---------- Schemas ----------
-class ImageAIResult(BaseModel):
-    prediction: str = Field(..., description="calculus|caries|hypodontia")
-    confidence: Optional[float] = Field(None, description="0..1")
-    status: Optional[str] = Field(None, description="disease_detected|no_disease|...")
-
-
 class ChatRequest(BaseModel):
     message: str = Field(..., description="User message")
     age: Optional[int] = Field(None, description="Patient age")
     session_id: Optional[str] = Field(None, description="Session identifier")
-    image_ai: Optional[ImageAIResult] = Field(None, description="Optional image-model result")
+
+    if ConfigDict is not None:
+        model_config = ConfigDict(extra="ignore")
+    else:
+        class Config:
+            extra = "ignore"
 
 
 class EmergencyInfo(BaseModel):
@@ -139,12 +142,6 @@ def _is_explain_request(text: str) -> bool:
 
 
 def _dental_like(text: str, session: Dict) -> bool:
-    # إذا عندنا image_ai مرض مكتشف → اعتبر المحادثة سنية حتى لو المستخدم كتب "اشرح الحالة"
-    img = session.get("image_ai") or {}
-    status = (img.get("status") or "").lower()
-    if status in {"disease_detected", "detected", "positive"}:
-        return True
-
     # استخدم منطق QA للكشف أولاً
     if is_probably_dental(text):
         return True
@@ -277,59 +274,6 @@ def followup_questions_for(state: str) -> List[str]:
     return []
 
 
-def image_ai_hint(session: Dict) -> Optional[str]:
-    img = session.get("image_ai")
-    if not img:
-        return None
-
-    pred = (img.get("prediction") or "").strip().lower()
-    conf = img.get("confidence")
-    status = (img.get("status") or "").strip().lower()
-
-    if status and status not in {"disease_detected", "detected", "positive"}:
-        return f"نتيجة نموذج الصورة: status={status}."
-
-    conf_txt = ""
-    if isinstance(conf, (int, float)):
-        conf_txt = f" (ثقة تقريباً {float(conf):.2f})"
-
-    if pred == "caries":
-        return f"نموذج الصورة رجّح تسوّس (caries){conf_txt}."
-    if pred == "calculus":
-        return f"نموذج الصورة رجّح جير/ترسّبات (calculus){conf_txt}."
-    if pred == "hypodontia":
-        return f"نموذج الصورة رجّح نقص/فقد أسنان (hypodontia){conf_txt}."
-    return f"نتيجة نموذج الصورة: prediction={pred}{conf_txt}."
-
-
-def explain_from_image_ai(session: Dict) -> Optional[str]:
-    img = session.get("image_ai") or {}
-    pred = (img.get("prediction") or "").strip().lower()
-    if not pred:
-        return None
-
-    base = image_ai_hint(session) or "وصلتني نتيجة نموذج الصورة."
-    if pred == "calculus":
-        return (
-            f"{base}\n"
-            "الـ calculus غالباً يعني ترسّبات/جير حول الأسنان واللثة، وهاد يرتبط كثيراً بالتهاب اللثة ونزف ورائحة.\n"
-            "التوجيه الأولي غالباً: **لثوية** (تنظيف + تقييم لثة)."
-        )
-    if pred == "caries":
-        return (
-            f"{base}\n"
-            "الـ caries يعني تسوّس. التوجيه الأولي غالباً: **ترميمية** (حشوة) "
-            "وإذا الألم طويل/ليلي ممكن نحتاج **لبية**."
-        )
-    if pred == "hypodontia":
-        return (
-            f"{base}\n"
-            "الـ hypodontia يعني نقص/غياب أسنان. التوجيه الأولي غالباً: **تعويضات** "
-            "(ثابتة/متحركة حسب الحالة) ومع العمر ممكن يكون **أسنان أطفال** إذا المريض صغير."
-        )
-    return f"{base}"
-
-
 # ---------- Routes ----------
 @app.get("/", response_class=HTMLResponse)
 async def root() -> HTMLResponse:
@@ -351,10 +295,6 @@ async def chat(request: ChatRequest) -> ChatResponse:
     text = (request.message or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="message is required")
-
-    # store image_ai if provided
-    if request.image_ai is not None:
-        session["image_ai"] = request.image_ai.model_dump()
 
     # record user message
     session.setdefault("history", [])
@@ -390,9 +330,9 @@ async def chat(request: ChatRequest) -> ChatResponse:
             sources=[],
         )
 
-    # إذا المستخدم قال "اشرح الحالة..." وفي عنا image_ai أو جواب سابق → جاوب بشرح سريع + أسئلة
+    # إذا المستخدم قال "اشرح الحالة..." وفي عنا جواب سابق → جاوب بشرح سريع + أسئلة
     if _is_explain_request(text):
-        expl = explain_from_image_ai(session) or session.get("last_answer")
+        expl = session.get("last_answer")
         if expl:
             state = "need_followup"
             answer = f"{expl}\n\nاحكيلي كمان شوي لنثبت الاتجاه."
@@ -431,13 +371,6 @@ async def chat(request: ChatRequest) -> ChatResponse:
     # ---- Case continuity ----
     case_parts: List[str] = session.get("case_parts") or []
     last_state = session.get("last_state")
-
-    # ثبت hint تبع الصورة مرة وحدة داخل السياق
-    img_hint = image_ai_hint(session)
-    if img_hint:
-        marker = f"[ImageAI] {img_hint}"
-        if marker not in case_parts:
-            case_parts.insert(0, marker)
 
     if _dental_like(text, session):
         case_parts.append(text)

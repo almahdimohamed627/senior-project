@@ -5,10 +5,12 @@ from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from .loader import load_raw_texts
+from .bm25_store import save_docs_jsonl
 
 DEFAULT_DB_BASE_DIR = "chroma_db"
 DEFAULT_DATA_DIR = "data"
 HF_EMBED_MODEL = "intfloat/multilingual-e5-base"
+BM25_DOCS_FILENAME = "bm25_docs.jsonl"
 
 
 class E5Embeddings(HuggingFaceEmbeddings):
@@ -65,16 +67,25 @@ def build_vectorstore(
             [content],
             metadatas=[{"source": path}],
         )
+        for idx, doc in enumerate(docs_for_file):
+            doc.metadata = doc.metadata or {}
+            doc.metadata["source"] = path
+            doc.metadata["chunk_id"] = f"{path}::chunk-{idx}"
         documents.extend(docs_for_file)
 
     embeddings = get_embeddings()
     os.makedirs(db_dir, exist_ok=True)
+
+    bm25_docs_path = os.path.join(db_dir, BM25_DOCS_FILENAME)
+    if not os.path.isfile(bm25_docs_path):
+        save_docs_jsonl(documents, bm25_docs_path)
 
     vectordb = Chroma.from_documents(
         documents=documents,
         embedding=embeddings,
         persist_directory=db_dir,
     )
+    vectordb.bm25_docs_path = bm25_docs_path
     return vectordb
 
 
@@ -100,6 +111,7 @@ def load_vectorstore(
         embedding_function=embeddings,
         persist_directory=db_dir,
     )
+    vectordb.bm25_docs_path = os.path.join(db_dir, BM25_DOCS_FILENAME)
     return vectordb
 
 

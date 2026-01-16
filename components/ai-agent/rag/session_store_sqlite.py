@@ -15,7 +15,6 @@ def new_session_payload() -> Dict[str, Any]:
         "last_state": None,
         "last_triage": None,
         "last_answer": None,
-        "image_ai": None,   # dict
         "last_case_text": None,
         "last_is_emergency": False,
         "last_emergency": None,
