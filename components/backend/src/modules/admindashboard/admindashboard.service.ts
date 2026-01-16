@@ -6,6 +6,10 @@ import { db } from 'src/db/client';
 import { eq } from 'drizzle-orm';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
+import { conversationAI } from 'src/db/schema/chat.schema';
+import { doctorProfile, users } from 'src/db/schema/profiles.schema';
+import { requests } from 'src/db/schema/request.schema';
+import { alias } from 'drizzle-orm/pg-core';
 
 @Injectable()
 export class AdmindashboardService {
@@ -71,4 +75,35 @@ async blockUser(userId: string, isActive: boolean) {
   remove(id: number) {
     return `This action removes a #${id} admindashboard`;
   }
+
+async returnDiagnosis() {
+  // 1. ننشئ نسخة وهمية من جدول المستخدمين خاصة بالدكتور
+  const doctorUsers = alias(users, 'doctor_users');
+
+  return await db.select({
+    // بيانات التشخيص
+    diagnosisId: conversationAI.id,
+    status: conversationAI.status,
+    createdAt: conversationAI.createdAt,
+
+    // بيانات المريض (من جدول users الأصلي)
+    patientFirstName: users.firstName,
+    patientLastName: users.lastName,
+    patientEmail: users.email,
+    patientPhone: users.phoneNumber,
+
+    // بيانات الدكتور (من الجدول المستعار doctorUsers)
+    doctorFirstName: doctorUsers.firstName,
+    doctorLastName: doctorUsers.lastName,
+    doctorEmail: doctorUsers.email,
+  })
+  .from(conversationAI)
+  
+  // 2. ربط المريض: نربط conversationAI.userId مع جدول users الأساسي
+  .innerJoin(users, eq(users.fusionAuthId, conversationAI.userId))
+  
+  // 3. ربط الدكتور: نربط conversationAI.doctorId مع جدول doctorUsers المستعار
+  // ملاحظة: نستخدم fusionAuthId لأن doctorId في جدول المحادثة هو نفسه fusionAuthId
+  .leftJoin(doctorUsers, eq(doctorUsers.fusionAuthId, conversationAI.doctorId));
+}
 }

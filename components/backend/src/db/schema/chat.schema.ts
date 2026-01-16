@@ -79,9 +79,9 @@ export const conversationAI = pgTable('conversation_ai', {
 
   userId: varchar('user_id', { length: 255 })
     .notNull()
-    .references(() => users.fusionAuthId),
+    .references(() => users.fusionAuthId,{onDelete:"cascade"}),
 
-
+  doctorId:varchar('doctorId').references(()=>doctorProfile.fusionAuthId,{onDelete:'cascade'}),
   specialityE: specialtyEnumE('specialityE'),
   specialityA: specialtyEnumA('specialityA'),
   image_path:text('image_path'),
