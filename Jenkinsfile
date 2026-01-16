@@ -4,7 +4,7 @@ pipeline {
     parameters {
         choice(
             name: 'COMPONENT',
-            choices: ['admin-dashboard', 'all', 'traefik', 'db', 'fusionauth', 'backend', 'ai-agent', 'ai-model'],
+            choices: ['all', 'traefik', 'db', 'fusionauth', 'backend', 'ai-agent', 'ai-model', 'admin-dashboard'],
             description: 'Select component to build/deploy (its prerequisites will be included automatically)',
         )
         booleanParam(
@@ -181,7 +181,8 @@ def deps() {
         'fusionauth'  : ['db', 'traefik'],
         'backend': ['db', 'traefik'],
         'ai-agent'    : ['traefik'],
-        'ai-model'    : ['traefik']
+        'ai-model'    : ['traefik'],
+        'admin-dashboard' : ['traefik']
     ]
 }
 
