@@ -11,7 +11,7 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.angular-app.rule=Host(https://dashboard.app.almahdi.cloud)"
+      - "traefik.http.routers.angular-app.rule=Host(`dashboard.app.almahdi.cloud`)"
       - "traefik.http.routers.angular-app.entrypoints=websecure"
       - "traefik.http.routers.angular-app.tls=true"
       - "traefik.http.routers.angular-app.tls.certresolver=le"
