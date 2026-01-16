@@ -500,24 +500,43 @@ def getComponentType(componentName) {
 
 def getLastCommitInfo() {
     script {
-        // Fetch the commit info directly from the current workspace
-        // This avoids any scoping issues with the env variable set in the stage.
-        def commitInfo = sh(
-            script: 'git log -1 --pretty=format:"%an||%s" 2>/dev/null || echo "Unknown||No commit message"',
-            returnStdout: true
-        ).trim()
-        
-        echo "DEBUG in Post Block: '${commitInfo}'"
-        
-        def parts = commitInfo.split("\\|\\|", 2)
-        def author = parts[0] ?: "Unknown"
-        def message = parts.size() > 1 ? parts[1] : "No commit message"
-        
-        // Use your jsonEscape function
-        def escapedAuthor = jsonEscape(author)
-        def escapedMessage = jsonEscape(message)
-        
-        return "`${escapedAuthor}`: `${escapedMessage}`"
+        try {
+            // Access the build's change sets
+            def changeLogSets = currentBuild.changeSets
+            def commitEntries = []
+
+            if (changeLogSets && !changeLogSets.isEmpty()) {
+                // 1. Collect ALL commit items from all change sets in this build
+                def allCommits = []
+                changeLogSets.each { changeLogSet ->
+                    if (changeLogSet && changeLogSet.items) {
+                        allCommits.addAll(changeLogSet.items)
+                    }
+                }
+
+                // 2. Take the last 3 commits (most recent) from the collected list
+                def recentCommits = allCommits.takeRight(3)
+
+                // 3. Format each commit
+                recentCommits.eachWithIndex { commit, index ->
+                    def author = commit.author?.displayName ?: "Unknown"
+                    def message = commit.msg ?: "No commit message"
+                    
+                    // Use your existing jsonEscape function
+                    def escapedAuthor = jsonEscape(author.toString())
+                    def escapedMessage = jsonEscape(message.toString())
+                    
+                    commitEntries << "${index + 1}. `${escapedAuthor}`: `${escapedMessage}`"
+                }
+
+                // 4. Join with Markdown line break for Telegram
+                return commitEntries.isEmpty() ? "No commits in this build" : commitEntries.join("\\n")
+            }
+            return "No commit information available (changeSets was empty)"
+        } catch (Exception e) {
+            echo "WARNING in getLastCommitInfo: ${e.message}"
+            return "Unable to fetch commit info"
+        }
     }
 }
 
