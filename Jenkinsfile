@@ -343,7 +343,7 @@ ${getComponentStatuses()}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 
-*🔄 Last Commit:*
+*🔄 Recent Commits:*
 ${getLastCommitInfo()}
 """
             } else if (status == "failure") {
@@ -371,7 +371,7 @@ ${getComponentStatuses()}
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 *📝 Console Log:* [View Log](${env.BUILD_URL}console)
 
-*🔄 Last Commit:*
+*🔄 Recent Commits:*
 ${getLastCommitInfo()}
 """
             } else if (status == "unstable") {
@@ -399,7 +399,7 @@ ${getComponentStatuses()}
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 *📝 Console Log:* [View Log](${env.BUILD_URL}console)
 
-*🔄 Last Commit:*
+*🔄 Recent Commits:*
 ${getLastCommitInfo()}
 """
             }
