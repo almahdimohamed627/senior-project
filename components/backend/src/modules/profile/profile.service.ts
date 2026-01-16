@@ -72,7 +72,7 @@ private config: ConfigService,
 
 
 
-async findAll(page:number=1,limit:number=10) {
+async findAll(page:number,limit:number) {
    
  const offset = (page - 1) * limit;
 
@@ -451,9 +451,7 @@ async findAll(page:number=1,limit:number=10) {
       Authorization: this.apiKey,
     };
     console.log(this.apiKey);
-    const tenantId =
-      this.config.get<string>('FUSIONAUTH_TENANT_ID') ||
-      '5ba05e07-b2d6-4f53-f424-a986bd483e4d';
+    const tenantId =this.config.get<string>('FUSIONAUTH_TENANT_ID') ||'';
     if (tenantId) {
       headers['X-FusionAuth-TenantId'] = tenantId;
     }

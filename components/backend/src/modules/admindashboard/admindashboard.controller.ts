@@ -12,14 +12,22 @@ export class AdmindashboardController {
     return this.admindashboardService.create(createAdmindashboardDto);
   }
 
-@Get("accept-or-reject-post/:postId/:key") // 1. نحدد المتغيرات في الرابط
+@Get("accept-or-reject-post/:postId/:key") 
 acceptOrReject(
-  @Param('postId', ParseIntPipe) postId: number, // 2. نستخدم Param مع Pipe للتحويل لرقم
-  @Param('key', ParseBoolPipe) key: boolean      // 3. نستخدم Param مع Pipe للتحويل لـ boolean
+  @Param('postId', ParseIntPipe) postId: number, 
+  @Param('key', ParseBoolPipe) key: boolean      
 ) {
   return this.admindashboardService.acceptOrReject(postId, key);
 }
 
+
+  @Patch('block-user/:userId') 
+  async blockUser(
+    @Body('is_active') is_active: boolean, 
+    @Param('userId') userId: string
+  ) {
+    return await this.admindashboardService.blockUser(userId, is_active);
+  }
 
 
   @Get(':id')
