@@ -5,6 +5,7 @@ langchain-text-splitters
 langchain-huggingface
 sentence-transformers
 langchain-groq
+rank-bm25
 tavily-python
 chromadb
 fastapi

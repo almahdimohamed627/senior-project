@@ -23,7 +23,6 @@ def new_session_payload() -> Dict[str, Any]:
         "last_triage": None,
         "case_parts": [],
         "last_case_text": None,
-        "image_ai": None,  # آخر نتيجة مودل الصورة
     }
 
 
