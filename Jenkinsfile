@@ -4,8 +4,8 @@ pipeline {
     parameters {
         choice(
             name: 'COMPONENT',
-            choices: ['all', 'traefik', 'db', 'fusionauth', 'backend', 'ai-agent', 'ai-model'],
-            description: 'Select component to build/deploy (its prerequisites will be included automatically)'
+            choices: ['all', 'traefik', 'db', 'fusionauth', 'backend', 'ai-agent', 'ai-model', 'admin-dashboard'],
+            description: 'Select component to build/deploy (its prerequisites will be included automatically)',
         )
         booleanParam(
             name: 'DEPLOY',
@@ -19,7 +19,7 @@ pipeline {
         BUILD_URL = "${env.BUILD_URL}"
         JOB_NAME = "${env.JOB_NAME}"
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
-        
+        GIT_COMMITINFO = ""
         // Custom variables
         GIT_BRANCH = 'development'  // Will be set in a stage
         DEPLOY_ENV = 'production'
@@ -31,11 +31,24 @@ pipeline {
             steps {
                 checkout scm
                 script {
+                    // Store the commit info in a regular variable first for debugging
+                    def rawCommitInfo = sh(
+                        script: 'git log -1 --pretty=format:"%an||%s"',
+                        returnStdout: true
+                    ).trim()
+                    
+                    // CRITICAL: Print the raw value to verify capture
+                    echo "DEBUG RAW COMMIT INFO: '${rawCommitInfo}'"
+                    
+                    // Store in environment variable for later use
+                    env.GIT_COMMITINFO = rawCommitInfo
+                    
                     echo "Building branch: ${env.GIT_BRANCH}"
                     echo "Build URL: ${env.BUILD_URL}"
                 }
             }
         }
+
         stage('Discover Components') {
             steps {
                 script {
@@ -174,7 +187,8 @@ def deps() {
         'fusionauth'  : ['db', 'traefik'],
         'backend': ['db', 'traefik'],
         'ai-agent'    : ['traefik'],
-        'ai-model'    : ['traefik']
+        'ai-model'    : ['traefik'],
+        'admin-dashboard' : ['traefik']
     ]
 }
 
@@ -329,7 +343,7 @@ ${getComponentStatuses()}
 
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 
-*🔄 Last Commit:*
+*🔄 Recent Commits:*
 ${getLastCommitInfo()}
 """
             } else if (status == "failure") {
@@ -357,7 +371,7 @@ ${getComponentStatuses()}
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 *📝 Console Log:* [View Log](${env.BUILD_URL}console)
 
-*🔄 Last Commit:*
+*🔄 Recent Commits:*
 ${getLastCommitInfo()}
 """
             } else if (status == "unstable") {
@@ -385,7 +399,7 @@ ${getComponentStatuses()}
 *🔗 Build URL:* [View Build](${env.BUILD_URL})
 *📝 Console Log:* [View Log](${env.BUILD_URL}console)
 
-*🔄 Last Commit:*
+*🔄 Recent Commits:*
 ${getLastCommitInfo()}
 """
             }
@@ -485,33 +499,44 @@ def getComponentType(componentName) {
 }
 
 def getLastCommitInfo() {
-    try {
-        // Execute git command on the agent
-        def commitInfo = sh(
-            script: '''
-                git log -1 --pretty=format:"%an||%s" 2>/dev/null || echo "No commits||Could not retrieve commit info"
-            ''',
-            returnStdout: true
-        ).trim()
-        
-        // Parse the output (author||message)
-        def parts = commitInfo.split("\\|\\|", 2)
-        def author = parts[0] ?: ""
-        def message = parts.size() > 1 ? parts[1] : ""
-        
-        // Escape for Telegram
-        def escapedAuthor = ""
-        def escapedMessage = ""
-        script {
-            escapedAuthor = jsonEscape(author)
-            escapedMessage = jsonEscape(message)
+    script {
+        try {
+            // Access the build's change sets
+            def changeLogSets = currentBuild.changeSets
+            def commitEntries = []
+
+            if (changeLogSets && !changeLogSets.isEmpty()) {
+                // 1. Collect ALL commit items from all change sets in this build
+                def allCommits = []
+                changeLogSets.each { changeLogSet ->
+                    if (changeLogSet && changeLogSet.items) {
+                        allCommits.addAll(changeLogSet.items)
+                    }
+                }
+
+                // 2. Take the last 3 commits (most recent) from the collected list
+                def recentCommits = allCommits.takeRight(3)
+
+                // 3. Format each commit
+                recentCommits.eachWithIndex { commit, index ->
+                    def author = commit.author?.displayName ?: "Unknown"
+                    def message = commit.msg ?: "No commit message"
+                    
+                    // Use your existing jsonEscape function
+                    def escapedAuthor = jsonEscape(author.toString())
+                    def escapedMessage = jsonEscape(message.toString())
+                    
+                    commitEntries << "${index + 1}. `${escapedAuthor}`: `${escapedMessage}`"
+                }
+
+                // 4. Join with Markdown line break for Telegram
+                return commitEntries.isEmpty() ? "No commits in this build" : commitEntries.join("\\n")
+            }
+            return "No commit information available (changeSets was empty)"
+        } catch (Exception e) {
+            echo "WARNING in getLastCommitInfo: ${e.message}"
+            return "Unable to fetch commit info"
         }
-        
-        return "`${escapedAuthor}`: `${escapedMessage}`"
-        
-    } catch (Exception e) {
-        echo "DEBUG: Error in getLastCommitInfo: ${e.message}"
-        return "Unable to fetch commit info"
     }
 }
 

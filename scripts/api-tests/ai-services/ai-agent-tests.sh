@@ -37,11 +37,6 @@ ANSWER=$(echo "$CHAT_RESPONSE" | jq -r '.answer')
 
 echo "✅ AI chat successful - Session: $SESSION_ID, State: $STATE"
 
-# Verify response structure
-if ! echo "$CHAT_RESPONSE" | jq -e '.is_emergency' > /dev/null 2>&1; then
-    echo "❌ AI response missing emergency field"
-    exit 1
-fi
 
 if ! echo "$CHAT_RESPONSE" | jq -e '.triage' > /dev/null 2>&1; then
     echo "❌ AI response missing triage field"

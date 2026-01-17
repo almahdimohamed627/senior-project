@@ -15,6 +15,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda
 from langchain_chroma import Chroma
 
+from .bm25_store import build_bm25_retriever
+from .hybrid_retriever import HybridRRFRetriever
 from .reranker import rerank
 from .web_search import tavily_search_documents
 
@@ -230,9 +232,19 @@ def create_qa_chain(vectordb: Chroma, backend: str = "groq") -> RunnableLambda:
         "yes",
     }
 
-    retriever = vectordb.as_retriever(
+    dense_retriever = vectordb.as_retriever(
         search_type="similarity_score_threshold",
-        search_kwargs={"k": rerank_candidates, "score_threshold": 0.4},
+        search_kwargs={"k": 20, "score_threshold": 0.4},
+    )
+    bm25_docs_path = getattr(vectordb, "bm25_docs_path", None)
+    if not bm25_docs_path:
+        raise ValueError("bm25_docs.jsonl path is missing on vectorstore")
+    bm25_retriever = build_bm25_retriever(bm25_docs_path, k=20)
+    retriever = HybridRRFRetriever(
+        dense_retriever=dense_retriever,
+        bm25_retriever=bm25_retriever,
+        rrf_k=60,
+        out_k=8,
     )
 
     # backend param kept for compatibility; Groq is always used.

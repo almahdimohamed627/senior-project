@@ -4,7 +4,6 @@ from typing import List, Optional
 
 from langchain_core.documents import Document
 
-# Arabic char range + Latin letters
 _AR_CHARS = re.compile(r"[\u0600-\u06FF]")
 _LAT_CHARS = re.compile(r"[A-Za-z]")
 
@@ -67,20 +66,17 @@ def tavily_search_documents(query: str) -> List[Document]:
     try:
         from tavily import TavilyClient
     except Exception:
-        # Tavily not installed -> treat as disabled
         return []
 
     max_results = int(os.getenv("DENTAL_WEB_MAX_RESULTS", "5"))
     search_depth = os.getenv("DENTAL_WEB_SEARCH_DEPTH", "basic")
 
-    # Strict Arabic filtering enabled by default
     arabic_only = (os.getenv("DENTAL_WEB_ARABIC_ONLY", "true") or "true").lower() in {
         "1",
         "true",
         "yes",
     }
 
-    # Optional URL-hint filter (extra strict)
     url_hint = (os.getenv("DENTAL_WEB_ARABIC_URL_HINT", "false") or "false").lower() in {
         "1",
         "true",
@@ -91,7 +87,6 @@ def tavily_search_documents(query: str) -> List[Document]:
 
     client = TavilyClient(api_key=api_key)
 
-    # Pass include_domains if provided
     try:
         if allowed_domains:
             res = client.search(
@@ -107,7 +102,6 @@ def tavily_search_documents(query: str) -> List[Document]:
                 search_depth=search_depth,
             )
     except Exception:
-        # Network/auth/etc -> fail closed
         return []
 
     docs: List[Document] = []
