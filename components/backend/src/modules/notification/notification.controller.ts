@@ -9,6 +9,7 @@ import { users } from 'src/db/schema/profiles.schema';
 import { eq } from 'drizzle-orm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/role.guard';
+import { error } from 'console';
 
 @ApiTags('Notification')
 @ApiBearerAuth()
@@ -40,12 +41,14 @@ async updateFcmToken(
   console.log(token)
   console.log("hi")
   console.log(user)
-  await db
-    .update(users)
-    .set({ fcmToken: token })
-    .where(eq(users.fusionAuthId, user.sub));
-    
+ await this.notificationService.saveToken(token,user).catch((err)=>{'canot apdate fcm token'})  
+
   return { msg: 'Token updated successfully' };
+}
+
+@Get('notifications/:userId')
+async returnNotifications(@Param('userId')userId:string){
+ return await this.notificationService.returnNotifications(userId)
 }
 
   @Get(':id')
