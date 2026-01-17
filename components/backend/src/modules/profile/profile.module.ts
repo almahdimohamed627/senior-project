@@ -8,7 +8,7 @@ import { AuthModule } from 'src/modules/auth/auth.module';
 
 @Module({
   imports: [
-    forwardRef(() => AuthModule) // 2. غلف الموديول بـ forwardRef
+    forwardRef(() => AuthModule) 
   ], 
   controllers: [ProfileController],
   providers: [

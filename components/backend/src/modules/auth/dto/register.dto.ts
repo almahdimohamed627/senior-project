@@ -1,4 +1,3 @@
-// src/auth/dto/register.dto.ts
 import {
   IsString,
   IsIn,
@@ -35,10 +34,7 @@ password: string;
   @IsIn(['doctor', 'patient','admin'])
   role: 'doctor' | 'patient'|'admin';
 
-  // -------------------------
-  // حقول عامة (مش مكررة)
-  // -------------------------
-  // profilePhoto ممكن تكون اختيارية للجميع
+ 
 
   @ApiPropertyOptional({ example: 'male', description: 'Gender' })
   @IsNotEmpty() @IsString() gender?: string;
@@ -65,9 +61,7 @@ password: string;
     @IsUrl()
     @IsOptional()
     profilePhoto?: string;
-  // -------------------------
-  // حقول خاصة بالطبيب (validated only if role === 'doctor')
-  // -------------------------
+
   @ApiPropertyOptional({ example: 'Medical University', description: 'University name (Doctors only)' })
   @ValidateIf(o => o.role === 'doctor')
   @IsString()

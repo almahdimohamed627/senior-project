@@ -4,12 +4,10 @@ import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { db } from 'src/db/client';
-import { users } from 'src/db/schema/profiles.schema';
-import { eq } from 'drizzle-orm';
+
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/role.guard';
-import { error } from 'console';
+
 
 @ApiTags('Notification')
 @ApiBearerAuth()
