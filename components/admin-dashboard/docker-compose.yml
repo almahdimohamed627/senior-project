@@ -1,0 +1,23 @@
+services:
+  angular-app:
+    build: .
+    container_name: angular-app
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.angular-app.rule=Host(`dashboard.app.almahdi.cloud`)"
+      - "traefik.http.routers.angular-app.entrypoints=websecure"
+      - "traefik.http.routers.angular-app.tls=true"
+      - "traefik.http.routers.angular-app.tls.certresolver=le"
+      - "traefik.http.services.angular-app.loadbalancer.server.port=80"
+
+networks:
+  proxy:
+    external: true
+    name: proxy
