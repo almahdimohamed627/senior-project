@@ -42,20 +42,20 @@ const UPLOADS_FOLDER = 'uploads';
 
 
 
-function fileFilter(req: any, file: Express.Multer.File, cb: Function) {
-  if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
-    return cb(new BadRequestException('Unsupported file type. Only jpg/jpeg/png allowed.'), false);
-  }
-  cb(null, true);
-}
+// function fileFilter(req: any, file: Express.Multer.File, cb: Function) {
+//   if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
+//     return cb(new BadRequestException('Unsupported file type. Only jpg/jpeg/png allowed.'), false);
+//   }
+//   cb(null, true);
+// }
 
-function editFileName(req: any, file: Express.Multer.File, callback: Function) {
-  const name = file.originalname.replace(/\.[^/.]+$/, '').replace(/\s+/g, '-').toLowerCase();
-  const fileExtName = extname(file.originalname).toLowerCase();
-  const timestamp = Date.now();
-  const finalName = `${name}-${timestamp}${fileExtName}`;
-  callback(null, finalName);
-}
+// function editFileName(req: any, file: Express.Multer.File, callback: Function) {
+//   const name = file.originalname.replace(/\.[^/.]+$/, '').replace(/\s+/g, '-').toLowerCase();
+//   const fileExtName = extname(file.originalname).toLowerCase();
+//   const timestamp = Date.now();
+//   const finalName = `${name}-${timestamp}${fileExtName}`;
+//   callback(null, finalName);
+// }
 
 @ApiTags('Profile')
 @ApiBearerAuth()
@@ -207,14 +207,7 @@ async deleteProfile(@Param('id') id:string){
     return await this.profileService.getAvailabilities(doctorId);
   }
 
-// @Post(':id/availabilities')
-// @HttpCode(HttpStatus.OK)
-// async upsertAvailabilities(
-//   @Param('id') doctorId: string, // هذا fusionAuthId
-//   @Body(new ValidationPipe({ whitelist: true })) body: UpsertAvailabilitiesDto,
-// ) {
-//   return this.profileService.upsertAvailabilities(doctorId, body.items || []);
-// }
+
 
 @Post(':id/availabilities')
 @ApiOperation({ summary: 'Create/Upsert availabilities' })
@@ -252,23 +245,8 @@ async createAvailabilities(
   ) {
     return await this.profileService.updateAvailability(doctorId, Number(availabilityId), items);
   }
-//fcm token
 
-@Patch('fcm-token')
-@ApiOperation({ summary: 'Update FCM Token' })
-@ApiBearerAuth()
-@ApiBody({ schema: { type: 'object', properties: { token: { type: 'string' } } } })
-async updateFcmToken(
-  @CurrentUser() user: any, 
-  @Body('token') token: string
-) {
-  await db
-    .update(users)
-    .set({ fcmToken: token })
-    .where(eq(users.fusionAuthId, user.fusionAuthId));
-    
-  return { msg: 'Token updated successfully' };
-}
+
 
 
 }

@@ -22,7 +22,6 @@ export class RequestController {
 
 
 
-  // قبول أو رفض طلب
   @Post('accept-or-reject')
   @ApiOperation({ summary: 'Accept or reject a request' })
   @ApiBody({ schema: { type: 'object', properties: { accepted: { type: 'boolean' }, requestId: { type: 'number' } } } })

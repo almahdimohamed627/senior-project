@@ -5,7 +5,7 @@ import jwksRsa from 'jwks-rsa';
 import { ConfigService } from '@nestjs/config';
 
 export type JwtUser = {
-  userId?: string; // alias for sub
+  userId?: string; 
   sub?: string;
   email?: string;
   name?: string;

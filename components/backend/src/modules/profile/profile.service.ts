@@ -30,25 +30,7 @@ type PublicProfile = {
   university?: string | null;
   profilePhoto?: string | null;
 };
-type publicDoctorProfile={
- 
-  fusionAuthId: string;
-  firstName: string | null;
-  lastName: string | null;
-  email: string | null;
-  city: number | null;
-  gender:string|null;
-  specialty: string | null;
-  univercity: string | null;
-  profilePhoto?: string | null;
-}
-type UpdateArgs = {
-  id: string;                       
-  type: 'doctor' | 'patient';
-  dto: UpdateProfileDto;
-  storedPath?: string;
-  fusionAuthId: string;             
-};
+
 
 @Injectable()
 export class ProfileService {
@@ -153,9 +135,7 @@ async findAll(page:number,limit:number) {
   };
 }
   async findOne(id: string) {
-    // id هنا هو fusionAuthId
 
-    // 0) جلب السجل الأساسي من جدول users (لأنه يحتوي city, profilePhoto, ...الخ)
     const userRows = await db
       .select()
       .from(users)
@@ -167,7 +147,6 @@ async findAll(page:number,limit:number) {
       throw new NotFoundException('User not found');
     }
 
-    // 1) جلب السجل المحلي (نبحث في doctorProfiles أولاً)
     const doctorRows = await db
       .select()
       .from(doctorProfile)
@@ -181,7 +160,7 @@ async findAll(page:number,limit:number) {
       local = doctorRows[0];
       foundIn = 'doctor';
     } else {
-      // try patient
+      
       const patients = await db
         .select()
         .from(patientProfile)
@@ -197,7 +176,6 @@ async findAll(page:number,limit:number) {
       throw new NotFoundException('Profile not found');
     }
 
-    // 2) جلب بيانات FusionAuth
     let fusionUserRaw: any = null;
     try {
       fusionUserRaw = await this.fusionClient.getUser(id);
@@ -218,14 +196,12 @@ async findAll(page:number,limit:number) {
     const emailFromFusion =
       (fusionUserRaw && (fusionUserRaw.email ?? fusionUserRaw['email'])) ?? null;
 
-    // 3) جلب المواعيد المرتبطة
     const availRows = await db
       .select()
       .from(appointments)
       .where(eq(appointments.doctorId, id))
       .orderBy(appointments.dayOfWeek, appointments.startTime);
 
-    // تحويل الرقم إلى اسم اليوم
     const availabilities = availRows.map((r) => ({
       id: r.id,
       dayOfWeek: r.dayOfWeek,
@@ -294,7 +270,6 @@ async findAll(page:number,limit:number) {
     storedPath?: string;
     fusionAuthId: string;
   }) {
-    // أولاً نتأكد أن الـ user موجود في جدول users
     const userRows = await db
       .select()
       .from(users)
@@ -303,7 +278,6 @@ async findAll(page:number,limit:number) {
     const baseUser = userRows[0];
     if (!baseUser) throw new NotFoundException('user not found');
 
-    // ثم نتأكد أن الـ profile الخاص بالدور موجود
     if (type === 'doctor') {
       const d = await db
         .select()
@@ -320,7 +294,6 @@ async findAll(page:number,limit:number) {
       if (!p[0]) throw new NotFoundException('patient profile not found');
     }
 
-    // تغييرات FusionAuth؟
     const hasFusionChanges =
       dto.firstName !== undefined ||
       dto.lastName !== undefined ||
@@ -336,13 +309,11 @@ async findAll(page:number,limit:number) {
       });
     }
 
-    // تحديث محلي (صورة وأي حقول عامة في جدول users)
     const userUpdates: Record<string, any> = { updatedAt: new Date() };
 
-    if (dto.profilePhoto) userUpdates.profilePhoto = dto.profilePhoto; // رابط
-    if (storedPath) userUpdates.profilePhoto = storedPath; // ملف
+    if (dto.profilePhoto) userUpdates.profilePhoto = dto.profilePhoto; 
+    if (storedPath) userUpdates.profilePhoto = storedPath; 
 
-    // لو حابب تسمح بتعديل city / gender مثلاً
     if (dto.city !== undefined) userUpdates.city = dto.city;
     if (dto.gender !== undefined) userUpdates.gender = dto.gender;
     if(dto.firstName!==undefined) userUpdates.firstName=dto.firstName
@@ -358,7 +329,6 @@ async findAll(page:number,limit:number) {
         .where(eq(users.fusionAuthId, fusionAuthId));
     }
 
-    // نرجع النسخة المحدثة من users + بروفايل الدور
     const freshUserRows = await db
       .select()
       .from(users)
@@ -408,9 +378,7 @@ async findAll(page:number,limit:number) {
   }
 
   async remove(id: string) {
-    // id = fusionAuth userId
 
-    // 1) جب المستخدم من FusionAuth
     let fusionUser: any;
     try {
       fusionUser = await this.authService.getUserById(id);
@@ -422,15 +390,12 @@ async findAll(page:number,limit:number) {
       throw new NotFoundException('User not found in FusionAuth');
     }
 
-    // 2) استخرج الدور (doctor / patient)
     let role: string | undefined;
 
-    // لو كنت مخزّن role في data.role مستقبلاً
     if (fusionUser.data && fusionUser.data.role) {
       role = String(fusionUser.data.role);
     }
 
-    // أو من registrations[].roles
     if (!role && Array.isArray(fusionUser.registrations)) {
       for (const reg of fusionUser.registrations) {
         if (Array.isArray(reg.roles) && reg.roles.length > 0) {
@@ -444,7 +409,6 @@ async findAll(page:number,limit:number) {
       throw new BadRequestException('Cannot determine user role (doctor / patient)');
     }
 
-    // 3) احذف المستخدم من FusionAuth (hard delete)
     const deleteUrl = `${this.baseUrl}/api/user/${id}?hardDelete=true`;
     console.log(deleteUrl);
     const headers: Record<string, string> = {
@@ -469,9 +433,7 @@ async findAll(page:number,limit:number) {
       throw new InternalServerErrorException('Failed to delete user from FusionAuth');
     }
 
-    // 4) احذف المستخدم من الداتا بيز المحلية
-    // بسبب ON DELETE CASCADE على doctor_profiles و patient_profiles
-    // حذف السطر من users سيحذف البروفايل المرتبط تلقائياً
+
     await db
       .delete(schema.users)
       .where(eq(schema.users.fusionAuthId, id));
@@ -484,7 +446,6 @@ async findAll(page:number,limit:number) {
       return { message: 'patient deleted' };
     }
 
-    // لو لقيت دور غريب
     return {
       message:
         'User deleted from FusionAuth and local DB, but role was: ' +
@@ -492,9 +453,7 @@ async findAll(page:number,limit:number) {
     };
   }
 
-  // ---------------------------
-  // Availabilities logic
-  // ---------------------------
+
 
   async getAvailabilities(doctorId: string) {
     const rows = await db
@@ -511,40 +470,6 @@ async findAll(page:number,limit:number) {
     }));
   }
 
-  async upsertAvailabilities(
-    fusionAuthId: string,
-    items: { dayOfWeek: number; startTime: string; endTime: string }[],
-  ) {
-    await db.transaction(async (tx) => {
-      const doctors = await tx
-        .select()
-        .from(doctorProfile)
-        .where(eq(doctorProfile.fusionAuthId, fusionAuthId))
-        .limit(1);
-
-      if (!doctors || doctors.length === 0) {
-        throw new NotFoundException('Doctor not found');
-      }
-
-      const doctor = doctors[0];
-      const doctorPk = doctor.fusionAuthId; 
-
-      await tx.delete(appointments).where(eq(appointments.doctorId, doctorPk));
-
-      if (items.length > 0) {
-        const rows = items.map((i) => ({
-          doctorId: doctorPk, 
-          dayOfWeek: i.dayOfWeek,
-          startTime: i.startTime,
-          endTime: i.endTime,
-        }));
-
-        await tx.insert(appointments).values(rows);
-      }
-    });
-
-    return { items};
-  }
 
   async deleteAvailability(doctorId: string, availabilityId: number) {
    
@@ -593,72 +518,11 @@ async findAll(page:number,limit:number) {
     };
   }
 
-  // ---------------------------
-  // Profile photo update logic
-  // ---------------------------
-  /**
-   * Update profile photo for a user identified by fusionAuthId.
-   * - finds profile in doctors or patients
-   * - deletes previous file if it was in uploads/ and not default logo
-   * - updates DB and returns the new profilePhoto (string)
-   */
-  // async updateProfilePhoto(fusionAuthId: string, newPath: string): Promise<string> {
-  //   if (!newPath || typeof newPath !== 'string') {
-  //     throw new BadRequestException('Invalid newPath');
-  //   }
-  //   // Ensure path looks like 'uploads/...' (no leading slash) or '/uploads/...'
-  //   const normalized = newPath.replace(/\\/g, '/');
-  //   const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
-  //   if (!trimmed.startsWith('uploads/')) {
-  //     throw new BadRequestException('Invalid upload path');
-  //   }
-
-  //   // Try update doctor first
-  //   const doctorRows = await db.select().from(doctorProfile).where(eq(doctorProfile.fusionAuthId, fusionAuthId)).limit(1);
-  //   if (doctorRows && doctorRows.length > 0) {
-  //     const prev = doctorRows[0].profilePhoto || null;
-  //     // Update DB
-  //     await db.update(doctorProfile).set({ profilePhoto: trimmed }).where(eq(doctorProfile.fusionAuthId, fusionAuthId));
-  //     // remove previous file if safe and not default
-  //     await this.safeDeleteOldFile(prev);
-  //     return `/${trimmed}`; // return with leading slash to match existing API convention
-  //   }
-
-  //   // Else try patient
-  //   const patientRows = await db.select().from(patientProfile).where(eq(patientProfile.fusionAuthId, fusionAuthId)).limit(1);
-  //   if (patientRows && patientRows.length > 0) {
-  //     const prev = patientRows[0].profilePhoto || null;
-  //     await db.update(patientProfile).set({ profilePhoto: trimmed }).where(eq(patientProfile.fusionAuthId, fusionAuthId));
-  //     await this.safeDeleteOldFile(prev);
-  //     return `/${trimmed}`;
-  //   }
-
-  //   throw new NotFoundException('Profile not found');
-  // }
-
-  // safe delete only inside uploads and not the default logo
-  // private async safeDeleteOldFile(maybePath?: string | null) {
-  //   if (!maybePath) return;
-  //   try {
-  //     const normalized = maybePath.replace(/\\/g, '/');
-  //     const trimmed = normalized.startsWith('/') ? normalized.slice(1) : normalized;
-  //     if (!trimmed.startsWith('uploads/')) return;
-  //     if (trimmed === 'uploads/logo.png') return; // do not delete default
-  //     const fullPath = join(process.cwd(), trimmed);
-  //     await unlink(fullPath).catch(() => null);
-  //     this.logger.log(`Deleted old profile photo: ${fullPath}`);
-  //   } catch (e) {
-  //     this.logger.warn('Failed to delete old profile photo', e?.message || e);
-  //   }
-  // }
-
-  // Helper: return day name from number
   private dayNameFromNumber(n: number): string {
-    // Accept common representations: 0..6 (Sun..Sat) or 1..7 (Mon..Sun)
     const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     if (typeof n !== 'number' || Number.isNaN(n)) return String(n);
     if (n >= 0 && n <= 6) return names[n];
-    if (n >= 1 && n <= 7) return names[n - 1]; // treat 1->Monday
+    if (n >= 1 && n <= 7) return names[n - 1]; 
     return `Day ${n}`;
   }
 
