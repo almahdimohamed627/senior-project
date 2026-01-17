@@ -1,0 +1,302 @@
+#+TITLE: DentAI-Bridge: AI-Powered Dental Care Management System
+#+AUTHOR: Mohamed Almahdi, Mustafa Aboud, Amer Habanakeh, Rami Maghrabi, Ahmad Almnsi
+#+DATE: 2025
+#+OPTIONS: toc:2 num:t
+
+* 🦷 Overview
+
+A comprehensive, microservices-based dental care management system that integrates AI-powered triage, intelligent appointment scheduling, and secure patient management. This project demonstrates modern software architecture with cutting-edge technologies including NestJS, FastAPI, machine learning models, and sophisticated RAG (Retrieval-Augmented Generation) systems.
+
+* 🏗️ Architecture
+
+**Microservices Architecture** with the following components:
+
+| Component     | Technology          | Purpose               |
+|---------------+---------------------+-----------------------|
+| [[Backend][backend-link]]  | NestJS + TypeScript | Core API services     |
+| [[AI Agent][ai-agent-link]] | FastAPI + Python    | Dental triage and RAG |
+| [[AI Model][ai-model-link]] | Python + TensorFlow | ML model serving      |
+| [[Database][db-link]]       | PostgreSQL          | Data persistence      |
+| [[Authentication][auth-link]]     | FusionAuth          | OAuth2/JWT auth       |
+| [[Traefik][traefik-link]]  | Reverse Proxy       | Load balancing & SSL  |
+
+* 🚀 Quick Start
+
+**Prerequisites:**
+- Docker & Docker Compose
+- Node.js 18+
+- Python 3.9+
+- PostgreSQL client (optional)
+
+**Installation:**
+
+#+BEGIN_SRC bash
+# Clone the repository
+git clone <repository-url>
+cd DentAI-Bridge
+
+# Start all services
+docker-compose up -d
+
+# Verify services are running
+curl http://localhost:3000/health
+#+END_SRC
+
+**Access Points:**
+- API Gateway: https://api.localhost
+- AI Agent: https://ai.localhost  
+- Frontend: https://localhost
+- Auth Panel: https://auth.localhost
+
+* 📁 Project Structure
+
+#+BEGIN_SRC
+DentAI-Bridge/
+├── components/
+│   ├── backend/          # NestJS API services
+│   ├── ai-agent/         # Python AI triage system
+│   ├── ai-model/         # ML model serving
+│   ├── db/              # PostgreSQL configuration
+│   ├── fusionauth/      # Authentication service
+│   └── traefik/         # Reverse proxy & SSL
+├── docs/                # Documentation
+├── Jenkinsfile          # CI/CD pipeline
+└── docker-compose.yml   # Service orchestration
+#+END_SRC
+
+* 🔧 Development Setup
+
+**Backend Development:**
+
+#+BEGIN_SRC bash
+cd components/backend
+npm install
+npm run start:dev
+#+END_SRC
+
+**AI Agent Development:**
+
+#+BEGIN_SRC bash
+cd components/ai-agent
+pip install -r requirements.txt
+python app.py
+#+END_SRC
+
+**Database Management:**
+
+#+BEGIN_SRC bash
+cd components/backend
+npm run db:generate      # Generate migrations
+npm run db:migrate       # Run migrations
+npm run db:seed          # Seed data
+#+END_SRC
+
+* 🧪 Testing
+
+**Backend Tests:**
+#+BEGIN_SRC bash
+cd components/backend
+npm run test             # Unit tests
+npm run test:e2e         # End-to-end tests
+npm run test:cov         # Coverage report
+#+END_SRC
+
+**AI Agent Tests:**
+#+BEGIN_SRC bash
+cd components/ai-agent
+pytest                   # Python tests
+#+END_SRC
+
+* 🔒 Security Features
+
+- **OAuth2 Authentication** via FusionAuth
+- **JWT Token Management** with refresh tokens
+- **Role-Based Access Control** (RBAC)
+- **API Rate Limiting** and request validation
+- **HTTPS/SSL** termination via Traefik
+- **CORS Configuration** for cross-origin requests
+- **Input Validation** using class-validator and Pydantic
+
+* 🤖 AI Components
+
+**Dental Triage System:**
+- RAG-based symptom analysis
+- Medical knowledge integration
+- Multi-language support (Arabic/English)
+- Confidence scoring and recommendations
+
+**ML Model Services:**
+- TensorFlow model serving
+- Real-time predictions
+- Model versioning and A/B testing
+- Performance monitoring
+
+* 📊 Database Schema
+
+**Core Entities:**
+- Users & Profiles
+- Appointments & Scheduling
+- Chat & Communication
+- Posts & Content
+- Cities & Locations
+- Sessions & Authentication
+
+**Schema Management:**
+- Drizzle ORM with TypeScript
+- Automated migrations
+- Seeding and test data
+- Performance indexing
+
+* 🔄 CI/CD Pipeline
+
+**Jenkins Pipeline Features:**
+- Automated component discovery
+- Dependency resolution
+- Layered Docker builds
+- Health check validation
+- Telegram notifications
+- Rollback capabilities
+
+**Pipeline Stages:**
+1. Code Analysis & Linting
+2. Security Scanning
+3. Build & Test
+4. Container Registry Push
+5. Deployment & Health Checks
+
+* 📈 Monitoring & Logging
+
+**Application Monitoring:**
+- Health check endpoints
+- Performance metrics
+- Error tracking and alerting
+- Request/response logging
+
+**Infrastructure Monitoring:**
+- Docker container health
+- Database performance
+- SSL certificate management
+- Resource utilization
+
+* 🔐 Configuration Management
+
+**Environment Variables:**
+- Database connections
+- API keys and secrets
+- Service URLs and ports
+- SSL certificate paths
+
+**Security Best Practices:**
+- No hardcoded credentials
+- Environment-specific configs
+- Secret rotation policies
+- Access control lists
+
+* 🚀 Deployment
+
+**Production Deployment:**
+#+BEGIN_SRC bash
+# Production environment
+docker-compose -f docker-compose.prod.yml up -d
+
+# Health verification
+curl https://api.localhost/health
+#+END_SRC
+
+**Scaling Services:**
+#+BEGIN_SRC bash
+# Scale backend services
+docker-compose up -d --scale backend=3
+
+# Scale AI services
+docker-compose up -d --scale ai-agent=2
+#+END_SRC
+
+* 🐛 Troubleshooting
+
+**Common Issues:**
+
+1. **Database Connection Failed**
+   - Check PostgreSQL container status
+   - Verify connection strings
+   - Review network configuration
+
+2. **Authentication Errors**
+   - Validate FusionAuth configuration
+   - Check JWT token expiration
+   - Review OAuth2 client settings
+
+3. **AI Service Unavailable**
+   - Verify Python dependencies
+   - Check model file paths
+   - Review GPU/CPU resource allocation
+
+**Debug Commands:**
+#+BEGIN_SRC bash
+# Container logs
+docker-compose logs [service-name]
+
+# Database connection test
+npm run db:test
+
+# Service health check
+curl http://localhost:3000/health
+#+END_SRC
+
+* 📚 API Documentation
+
+**Backend API:**
+- OpenAPI/Swagger: https://api.localhost/docs
+- Authentication: Bearer JWT tokens
+- Rate limiting: 100 requests/minute
+
+**AI Agent API:**
+- FastAPI docs: https://ai.localhost/docs
+- WebSocket support for real-time chat
+- File upload for medical images
+
+* 🤝 Contributing
+
+**Development Workflow:**
+1. Fork the repository
+2. Create feature branch
+3. Implement changes with tests
+4. Submit pull request
+5. Code review and merge
+
+**Code Standards:**
+- TypeScript strict mode
+- ESLint + Prettier formatting
+- Python Black + isort
+- Conventional commit messages
+
+* 📄 License
+
+This project is licensed under the MIT License - see the [[LICENSE][license-link]] file for details.
+
+* 🙏 Acknowledgments
+
+- **FusionAuth** for authentication infrastructure
+- **Traefik** for reverse proxy capabilities
+- **NestJS** for the backend framework
+- **FastAPI** for Python API services
+- **TensorFlow** for machine learning models
+
+* 📞 Support
+
+For technical support or questions:
+- Create an issue in the repository
+- Contact the development team
+- Review the troubleshooting section
+
+---
+
+*Internal Links:*
+
+[[backend-link:file:components/backend/README.md]]
+[[ai-agent-link:file:components/ai-agent/README.md]]
+[[ai-model-link:file:components/ai-model/README.md]]
+[[db-link:file:components/db/README.md]]
+[[auth-link:file:components/fusionauth/README.md]]
+[[traefik-link:file:components/traefik/README.md]]
+[[license-link:file:LICENSE]]

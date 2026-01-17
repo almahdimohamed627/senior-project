@@ -1,0 +1,13 @@
+<div class="mt-6">
+    <app-table 
+        [data]="posts() || []" 
+        [columns]="columns" 
+        [actions]="actions" 
+        [loading]="loading()" 
+        [rowsPerPage]="10"
+        [rowsPerPageOptions]="[10, 15]" 
+        [searchConfig]="searchConfig" 
+        [filtersConfig]="filtersConfig"
+        emptyMessage="No Posts available">
+    </app-table>
+</div>

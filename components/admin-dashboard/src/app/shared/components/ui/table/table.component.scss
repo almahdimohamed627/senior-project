@@ -1,0 +1,15 @@
+:host {
+  display: block;
+}
+
+:host ::ng-deep .p-dropdown {
+  box-shadow: none !important;
+}
+
+:host ::ng-deep .p-paginator .p-paginator-pages .p-paginator-page {
+  border-radius: 12px !important;
+}
+
+:host ::ng-deep .p-chip {
+  border-radius: 9999px !important;
+}

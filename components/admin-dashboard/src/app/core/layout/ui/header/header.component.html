@@ -1,0 +1,84 @@
+<header class="w-full sticky top-0 z-50
+            backdrop-blur-2xl
+            bg-[rgba(6,8,20,0.55)]
+            border-b border-white/10
+            shadow-[0_10px_60px_rgba(0,0,0,0.45)]
+            transition-all duration-300">
+    <!-- Glow line -->
+    <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#FBD98F]/70 to-transparent">
+    </div>
+
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-20 max-sm:h-16">
+
+            <!-- Logo -->
+            <div class="flex items-center gap-3 sm:gap-4 group cursor-pointer">
+                <div class="relative">
+                    <!-- Glass behind logo -->
+                    <div class="absolute inset-0 rounded-2xl blur-xl opacity-70
+                    bg-gradient-to-r from-[#FBD98F]/25 via-cyan-400/10 to-fuchsia-400/10">
+                    </div>
+
+                    <div class="relative rounded-2xl px-3 py-2 border border-white/10 bg-white/5">
+                        <img src="/images/main-logo.png" alt="Logo"
+                            class="h-14 sm:h-16 w-auto object-contain drop-shadow-md" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex items-center gap-1 lg:gap-2">
+                @for (item of items(); track $index) {
+                <button class="group nav-item relative flex flex-col items-center justify-center gap-1
+                    px-4 py-2 rounded-2xl transition-all duration-300
+                    hover:bg-white/10 active:scale-95" [routerLink]="item.route" routerLinkActive="active"
+                    [routerLinkActiveOptions]="{exact: true}">
+                    <div class="relative">
+                        <div class="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300
+                        bg-gradient-to-br from-[#FBD98F]/20 via-cyan-400/10 to-fuchsia-400/10">
+                        </div>
+
+                        <!-- ICON -->
+                        <img [src]="item.icon" class="relative h-6 w-6 sm:h-9 sm:w-9
+                        transition-transform duration-300
+                        group-hover:scale-110" [alt]="item.title" />
+                    </div>
+
+                    <span class="text-xs sm:text-sm font-semibold tracking-wide
+                        text-[#F5F5F5]/80 group-hover:text-[#F5F5F5] transition-colors duration-300">
+                        {{item.title}}
+                    </span>
+
+                    <!-- Active underline -->
+                    <div class="active-line absolute bottom-0 left-1/2 -translate-x-1/2
+                        w-0 h-[2px] rounded-full
+                        bg-gradient-to-r from-[#FBD98F] via-cyan-300 to-fuchsia-300
+                        group-hover:w-3/4 transition-all duration-300"></div>
+                </button>
+                }
+            </nav>
+
+            <!-- Profile -->
+            <div class="flex flex-col items-center group">
+                <button (click)="toggleMenu($event, menu)" class="relative p-2 rounded-2xl transition-all duration-30">
+                    <div class="absolute rounded-2xl transition-opacity duration-300">
+                    </div>
+
+                    <img [src]="tokenService.currentUser()?.image ? baseUrl + tokenService.currentUser().image : '/images/profile.png'"
+                        class="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full
+                        ring-2 ring-white/10 group-hover:ring-[#FBD98F]/40
+                        transition-all duration-300 group-hover:scale-110" alt="Profile" />
+                </button>
+
+                <p-menu #menu [model]="menuItems" [popup]="true"
+                    styleClass="!mt-2 !shadow-2xl !border !border-white/10 !rounded-2xl"></p-menu>
+
+                <span
+                    class="text-xs sm:text-sm font-semibold text-[#F5F5F5]/70 group-hover:text-[#F5F5F5] transition-colors duration-300">
+                    {{tokenService.currentUser()?.firstName + ' ' + tokenService.currentUser()?.lastName}}
+                </span>
+            </div>
+
+        </div>
+    </div>
+</header>

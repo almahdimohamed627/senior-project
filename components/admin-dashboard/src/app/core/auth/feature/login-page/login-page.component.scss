@@ -1,0 +1,104 @@
+:host {
+  display: block;
+}
+
+/* Aurora animated background */
+.aurora-bg {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.28), transparent 55%),
+    radial-gradient(circle at 80% 30%, rgba(168, 85, 247, 0.26), transparent 55%),
+    radial-gradient(circle at 60% 80%, rgba(236, 72, 153, 0.22), transparent 55%),
+    radial-gradient(circle at 45% 55%, rgba(59, 130, 246, 0.18), transparent 55%);
+  animation: auroraShift 10s ease-in-out infinite alternate;
+  filter: blur(2px);
+}
+
+@keyframes auroraShift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate3d(-10px, 10px, 0) scale(1.03);
+    opacity: 1;
+  }
+}
+
+/* Subtle futuristic grid */
+.grid-overlay {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.10) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.10) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(circle at 50% 50%, rgba(0,0,0,1), rgba(0,0,0,0.15));
+}
+
+/* Scanline animation */
+.scanline {
+  position: absolute;
+  left: -20%;
+  top: -10%;
+  width: 140%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  opacity: 0.25;
+  animation: scanMove 3.8s ease-in-out infinite;
+}
+
+@keyframes scanMove {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(520px); }
+  100% { transform: translateY(0); }
+}
+
+/* Floating icon keyframes (used by Tailwind animate-[float_..]) */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0.0001deg); }
+  50% { transform: translateY(-10px) rotate(0.0001deg); }
+}
+
+/* Small shimmering bar animation */
+.shimmer-bar {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-60%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.35),
+    transparent
+  );
+  animation: shimmer 1.8s ease-in-out infinite;
+  opacity: 0.55;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-60%); }
+  100% { transform: translateX(140%); }
+}
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  backdrop-filter: blur(10px);
+}
+
+/* Optional: PrimeNG small tweaks */
+:host ::ng-deep .p-password .p-icon {
+  color: rgba(255, 255, 255, 0.55) !important;
+}

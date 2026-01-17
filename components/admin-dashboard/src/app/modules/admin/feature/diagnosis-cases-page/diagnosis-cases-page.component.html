@@ -1,0 +1,25 @@
+<div class="mt-6">
+    <app-table [data]="diagnosis() || []" [columns]="columns" [actions]="actions" [loading]="loading()"
+        [rowsPerPage]="10" [rowsPerPageOptions]="[10, 15]" [searchConfig]="searchConfig" [filtersConfig]="filtersConfig"
+        emptyMessage="No Diagnosis Cases available">
+    </app-table>
+</div>
+
+<!-- ✅ QR Modal -->
+<p-dialog [header]="selectedQrTitle()" [modal]="true" [dismissableMask]="true" [closable]="true"
+    [style]="{ width: '420px' }" [visible]="qrDialogVisible()" (visibleChange)="qrDialogVisible.set($event)"
+    (onHide)="closeQrModal()">
+    <div class="flex flex-col items-center gap-3">
+        <div class="text-center text-sm text-slate-600">
+            Scan this QR code using your camera.
+        </div>
+
+        <div class="w-full flex justify-center">
+            <img *ngIf="selectedQrUrl()" [src]="selectedQrUrl()!" alt="Diagnosis QR Code"
+                style="width: 260px; height: 260px; object-fit: contain; border-radius: 12px; border: 1px solid #e5e7eb; padding: 12px;" />
+        </div>
+
+        <button pButton type="button" class="p-button-secondary" icon="pi pi-times" label="Close"
+            (click)="closeQrModal()"></button>
+    </div>
+</p-dialog>
