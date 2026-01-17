@@ -2,9 +2,9 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import * as path from 'path';
 import { db } from 'src/db/client';
-import { notifications } from 'src/db/schema/notification.schema';
+import { notifications as nots  } from 'src/db/schema/notification.schema';
 import { users } from 'src/db/schema/profiles.schema';
-import { eq } from 'drizzle-orm';
+import { eq ,desc} from 'drizzle-orm';
 
 @Injectable()
 export class NotificationService implements OnModuleInit {
@@ -40,21 +40,23 @@ async sendRawPush(token: string, title: string, body: string, data?: any) {
     }
   }
 
-  async saveToken(fcmToken:string){
-    
-
+  async saveToken(fcmToken:string,user){
+      await db
+        .update(users)
+        .set({ fcmToken: fcmToken })
+        .where(eq(users.fusionAuthId, user.sub));
+   
   }
 
   async sendAndSave(
-    userId: string, // لمين (ID من الداتابيز)
+    userId: string, 
     title: string,
     body: string,
-    type: string,   // نوع الإشعار
-    metadata?: any  // بيانات إضافية (مثل رقم الطلب)
+    type: string,   
+    metadata?: any  
   ) {
     
-    // أ. الحفظ في قاعدة البيانات
-    await db.insert(notifications).values({
+    await db.insert(nots).values({
       userId: userId,
       title: title,
       body: body,
@@ -63,7 +65,6 @@ async sendRawPush(token: string, title: string, body: string, data?: any) {
       metadata: metadata
     });
 
-    // ب. جلب التوكن وإرسال الـ Push
     const userResult = await db
       .select({ fcmToken: users.fcmToken })
       .from(users)
@@ -84,40 +85,16 @@ async sendRawPush(token: string, title: string, body: string, data?: any) {
     }
   }
 
-  /**
-   * دالة لإرسال إشعار لجهاز واحد
-   * @param token الـ FCM Token الخاص بجهاز المستخدم
-   * @param title عنوان الإشعار
-   * @param body نص الإشعار
-   * @param data بيانات إضافية (اختياري) مثل رقم الطلب
-   */
-  async sendPushNotification(token: string, title: string, body: string, data?: any) {
-    try {
-      const message = {
-        notification: {
-          title: title,
-          body: body,
-        },
-        data: data || {}, // البيانات الإضافية لازم تكون String Key-Value
-        token: token,
-        android: {
-          priority: 'high' as const, // لضمان وصول الإشعار بسرعة
-        },
-        apns: { // إعدادات للايفون
-          payload: {
-            aps: {
-              sound: 'default',
-            },
-          },
-        },
-      };
 
-      const response = await admin.messaging().send(message);
-      console.log('Successfully sent message:', response);
-      return { success: true, messageId: response };
-    } catch (error) {
-      console.error('Error sending message:', error);
-      return { success: false, error: error };
-    }
-  }
+async returnNotifications(userId: string) {
+  let notifications = await db
+    .select()
+    .from(nots) 
+    .where(eq(nots.userId, userId))
+    .orderBy(desc(nots.createdAt)); 
+
+  return notifications;
+}
+
+
 }

@@ -7,46 +7,19 @@ import { UpdateAdmindashboardDto } from './dto/update-admindashboard.dto';
 export class AdmindashboardController {
   constructor(private readonly admindashboardService: AdmindashboardService) {}
 
-  @Post()
-  create(@Body() createAdmindashboardDto: CreateAdmindashboardDto) {
-    return this.admindashboardService.create(createAdmindashboardDto);
+  // ... (Create, Accept, Block) ...
+
+  // ✅ الحل: ضع هذا المسار هنا (قبل الـ :id)
+  @Get('diagnoses') 
+  async returnAllDiagnosis() {
+    return await this.admindashboardService.returnDiagnosis();
   }
-
-@Get("accept-or-reject-post/:postId/:key") 
-acceptOrReject(
-  @Param('postId', ParseIntPipe) postId: number, 
-  @Param('key', ParseBoolPipe) key: boolean      
-) {
-  return this.admindashboardService.acceptOrReject(postId, key);
-}
-
-
-  @Patch('block-user/:userId') 
+@Patch('block-user/:userId')
   async blockUser(
-    @Body('is_active') is_active: boolean, 
-    @Param('userId') userId: string
+    @Param('userId') userId: string,
+    @Body('is_active') is_active: boolean // يفضل استخدام ParseBoolPipe لو كنت تبعتها كـ string
   ) {
-    return await this.admindashboardService.blockUser(userId, is_active);
+    return await this.admindashboardService.toggleUserStatus(userId, is_active);
   }
 
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.admindashboardService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAdmindashboardDto: UpdateAdmindashboardDto) {
-    return this.admindashboardService.update(+id, updateAdmindashboardDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.admindashboardService.remove(+id);
-  }
-
-  @Get('diagnosis')
-async returnAllDiagnosis(){
-return this.admindashboardService.returnDiagnosis()
-}
 }
