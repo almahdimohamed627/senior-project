@@ -5,6 +5,12 @@
   "compilerOptions": {
     "outDir": "./dist/out-tsc",
     "strict": true,
+    "baseUrl": "src",
+    "paths": {
+      "@core/*":["app/core/*"],
+      "@modules/*":["app/modules/*"],
+      "@shared/*":["app/shared/*"]
+    },
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
