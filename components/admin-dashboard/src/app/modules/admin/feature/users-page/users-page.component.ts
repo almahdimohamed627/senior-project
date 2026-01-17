@@ -75,14 +75,20 @@ export class UsersPageComponent {
         type: 'toggle',
         toggleField: 'is_active',
         onToggle: (is_active: any, row: any) => {
-          this.adminService.changeAccountStatus(row.id, is_active).subscribe({
+          const msg = this.toast.loading('Wait while change status of user account')
+          console.log(is_active);
+          console.log(row);
+          
+          this.adminService.changeAccountStatus(row.fusionAuthId, is_active).subscribe({
             next: () => {
               this.toast.success(`User ${is_active ? 'activated' : 'deactivated'}`);
               row.isActive = is_active;
+              msg.close()
             },
             error: () => {
               this.toast.error('Failed to update status');
               row.isActive = !is_active;
+              msg.close()
             },
           });
         },
