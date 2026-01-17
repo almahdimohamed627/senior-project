@@ -56,9 +56,6 @@ def build() {
                         echo "Building ai-agent services..."
                         # Build the specific service image directly, ensuring no-cache
                         docker build --no-cache --pull -t ai-agent-app .
-
-                        echo "running python ingest.py"
-                         docker run ai-agent-app python ingest.py
                     '''
                 } else {
                     echo "⚠️ No build configuration found - skipping build"
@@ -143,6 +140,9 @@ def deploy() {
                 docker compose --env-file .env down --remove-orphans 2>/dev/null || true
                 docker compose --env-file .env pull --ignore-pull-failures 2>/dev/null || true
                 docker compose --env-file .env up -d
+
+                        echo "running python ingest.py"
+                         docker run ai-agent-app python ingest.py
                 sleep 60
             """
         }
