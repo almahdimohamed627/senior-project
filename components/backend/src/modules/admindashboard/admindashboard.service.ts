@@ -60,8 +60,12 @@ export class AdmindashboardService {
       if (shouldBeActive) {
         console.log(`Reactivating user: ${userId}`);
         await axios.put(url, { user: { active: true } }, { headers });
+
+        await db.update(users).set({isActive:true}).where(eq(users.fusionAuthId,userId))
       } else {
         console.log(`Soft Deleting (Blocking) user: ${userId}`);
+                await db.update(users).set({isActive:false}).where(eq(users.fusionAuthId,userId))
+
         await axios.delete(url, { headers });
       }
 

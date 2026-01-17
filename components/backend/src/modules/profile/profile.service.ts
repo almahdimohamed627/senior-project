@@ -70,7 +70,8 @@ async findAll(page:number,limit:number) {
   profilePhoto:users.profilePhoto,
   birthYear:users.birthYear,
   phoneNumber:users.phoneNumber,
-  role:users.role
+  role:users.role,
+  is_active:users.isActive
   }).from(users).leftJoin(doctorProfile,eq(users.fusionAuthId,doctorProfile.fusionAuthId))
   .leftJoin(patientProfile,eq(users.fusionAuthId,patientProfile.fusionAuthId)).leftJoin(cities,eq(users.city,cities.id)).
   limit(limit).offset(offset)
