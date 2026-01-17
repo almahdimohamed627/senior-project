@@ -1,6 +1,7 @@
 // src/db/schema/profiles.ts
 import { pgTable, serial, varchar, text, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core';
 import { cities } from './cities.schema';
+import { boolean } from 'drizzle-orm/pg-core';
 export const role = pgEnum('role', ['admin', 'doctor', 'patient']);
 
 export const users=pgTable('users',{
@@ -16,6 +17,7 @@ export const users=pgTable('users',{
   phoneNumber: varchar('phone_number', { length: 20 }).notNull(),
   role:role('role'),
   fcmToken: varchar('fcm_token', { length: 255 }),
+  isActive: boolean('isActive').default(true),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })

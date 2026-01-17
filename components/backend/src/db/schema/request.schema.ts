@@ -1,7 +1,7 @@
 import { pgTable, serial, varchar, text, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core';
 import { doctorProfile, patientProfile, users } from './profiles.schema';
 
-export const requeststatus = pgEnum('status', ['pending', 'accepted', 'rejected','completed']);
+export const requeststatus = pgEnum('status', ['pending', 'accepted', 'rejected','completed','delivered']);
 export const requests = pgTable('requests', {
   id: serial('id').primaryKey(),
 

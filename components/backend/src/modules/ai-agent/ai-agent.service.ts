@@ -151,34 +151,28 @@ export class AiAgentService {
       const qrFileName = `qr_code_${conversationId}.png`;
       const qrFilePath = path.join(uploadsDir, qrFileName);
 
-      // ب. تجهيز الرابط الذي سيتم تخزينه داخل الـ QR
-      // ملاحظة مهمة جداً: هذا الرابط يجب أن يكون عاماً (Public URL) لكي يتمكن الدكتور من فتحه من جواله
-      // يجب أن تجلب الدومين الأساسي من متغيرات البيئة (.env)
-      // مثال في ملف .env: API_BASE_URL=https://api.mydentalapp.com
+
       const baseUrl = 'https://app.almahdi.cloud';
 
-      // هذا هو الرابط الذي جربناه على بوستمان
       const pdfDownloadUrl = `${baseUrl}/${pdf}`;
 
       console.log('Generating QR for URL:', pdfDownloadUrl);
 
-      // ج. توليد الـ QR Code كـ ملف (Buffer) وحفظه مباشرة في المسار المحدد
-      // نستخدم خيارات لضبط الجودة والألوان
+
       await QRCode.toFile(qrFilePath, pdfDownloadUrl, {
-        errorCorrectionLevel: 'H', // أعلى مستوى لتصحيح الأخطاء (يتحمل تشوهات عند المسح)
+        errorCorrectionLevel: 'H', 
         type: 'png',
-        width: 400, // حجم الصورة (بكسل)
-        margin: 2,  // الهوامش البيضاء حول الكود
+        width: 400, 
+        margin: 2, 
         color: {
-          dark: '#000000',  // لون النقاط (أسود)
-          light: '#ffffff'  // لون الخلفية (أبيض)
+          dark: '#000000',  
+          light: '#ffffff'  
         }
       });
 
       console.log(`QR Code saved successfully at: ${qrFilePath}`);
 
-      // د. إرجاع مسار الصورة المحفوظة
-      // يمكنك هنا تحديث الداتابيز لحفظ هذا المسار في حقل جديد مثلاً qr_code_path
+  
       return qrFilePath;
 
     } catch (error) {
@@ -203,5 +197,7 @@ async  ensureCase(patientId:string):Promise<boolean>{
        return true
 
 }
+
+
  
 }

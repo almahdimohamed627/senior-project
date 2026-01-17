@@ -4,7 +4,7 @@ import { UpdatePostDto } from './dto/update-post.dto';
 import { likes, posts } from 'src/db/schema/posts.schema';
 import { db } from 'src/db/client';
 import {schema, users} from 'src/db/schema/schema';
-import { and, eq, sql } from 'drizzle-orm'; // ✅ أهم import!
+import { and, eq, sql } from 'drizzle-orm'; 
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { log } from 'console';
@@ -61,7 +61,6 @@ export class PostService {
   }
 async  addLikeOrDelete(userId: string, postId: number) {
   return await db.transaction(async (tx) => {
-    // 1) شوف إذا في لايك سابق
     const existing = await tx
       .select({ id: likes.id })
       .from(likes)
@@ -75,7 +74,6 @@ async  addLikeOrDelete(userId: string, postId: number) {
     const alreadyLiked = existing.length > 0;
 
     if (alreadyLiked) {
-      // 🧹 إلغاء لايك
       await tx
         .delete(likes)
         .where(
@@ -94,7 +92,6 @@ async  addLikeOrDelete(userId: string, postId: number) {
 
       return "like deleted";
     } else {
-      // ✚ إضافة لايك
       await tx.insert(likes).values({
         postId,
         likedPy: userId,
@@ -113,19 +110,17 @@ async  addLikeOrDelete(userId: string, postId: number) {
 }
 
    async findAll() {
-    // صح: استعمل from(posts)
     const rows = await db.select().from(posts);
 
-    // تحوّل حقل photos (المخزّن كـ JSON string) إلى مصفوفة قبل الإرجاع
     const normalized = rows.map(r => ({
       id: r.id,
       title: r.title,
       content: r.content,
-      userId: r.userId,   // أو authorId حسب سكيمتك
+      userId: r.userId,   
       numberOfLikes:r.numberOfLikes,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
-      photos: r.photos ? this.tryParsePhotos(r.photos) : [], // helper أدناه
+      photos: r.photos ? this.tryParsePhotos(r.photos) : [], 
     }));
 
     return rows;

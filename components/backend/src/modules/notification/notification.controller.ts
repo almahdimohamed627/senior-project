@@ -1,12 +1,17 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/role.guard';
+
 
 @ApiTags('Notification')
 @ApiBearerAuth()
-@Controller('notification')
+@Controller('notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
@@ -20,6 +25,29 @@ export class NotificationController {
   @ApiOperation({ summary: 'Get all notifications' })
   findAll() {
   }
+
+
+@Post('fcm-token')
+@ApiOperation({ summary: 'Update FCM Token' })
+@ApiBearerAuth()
+@ApiBody({ schema: { type: 'object', properties: { token: { type: 'string' } } } })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+async updateFcmToken(
+  @CurrentUser() user: any, 
+  @Body('token') token: string
+) {
+  console.log(token)
+  console.log("hi")
+  console.log(user)
+ await this.notificationService.saveToken(token,user).catch((err)=>{'canot apdate fcm token'})  
+
+  return { msg: 'Token updated successfully' };
+}
+
+@Get('notifications/:userId')
+async returnNotifications(@Param('userId')userId:string){
+ return await this.notificationService.returnNotifications(userId)
+}
 
   @Get(':id')
   @ApiOperation({ summary: 'Get notification by ID' })
