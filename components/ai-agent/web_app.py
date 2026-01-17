@@ -69,6 +69,8 @@ class ChatResponse(BaseModel):
     follow_up: FollowUpInfo
     sources: List[SourceInfo]
 
+EMPTY_EMERGENCY = EmergencyInfo(red_flags=[], advice=None)
+
 
 # ---------- App setup ----------
 app = FastAPI(title="Dental RAG Assistant")
@@ -309,7 +311,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             state="need_age",
             answer="تمام. قبل ما نكمل، قديش عمرك؟",
             is_emergency=False,
-            emergency=None,
+            emergency=EMPTY_EMERGENCY,
             triage=TriageInfo(specialty=None, is_final=False, confidence=None),
             follow_up=FollowUpInfo(questions=followup_questions_for("need_age")),
             sources=[],
@@ -324,7 +326,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             state="need_followup",
             answer="أهلاً! احكيلي شو المشكلة السنية اللي عندك؟",
             is_emergency=False,
-            emergency=None,
+            emergency=EMPTY_EMERGENCY,
             triage=TriageInfo(specialty=None, is_final=False, confidence=None),
             follow_up=FollowUpInfo(questions=followup_questions_for("need_followup")),
             sources=[],
@@ -345,7 +347,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 state=state,
                 answer=answer,
                 is_emergency=False,
-                emergency=None,
+                emergency=EMPTY_EMERGENCY,
                 triage=TriageInfo(specialty=None, is_final=False, confidence=None),
                 follow_up=FollowUpInfo(questions=followup_questions_for(state)),
                 sources=[],
@@ -362,7 +364,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             state=state,
             answer=answer,
             is_emergency=False,
-            emergency=None,
+            emergency=EMPTY_EMERGENCY,
             triage=TriageInfo(specialty=None, is_final=False, confidence=None),
             follow_up=FollowUpInfo(questions=followup_questions_for(state)),
             sources=[],
@@ -401,7 +403,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             state=state,
             answer=answer,
             is_emergency=False,
-            emergency=None,
+            emergency=EMPTY_EMERGENCY,
             triage=TriageInfo(specialty=None, is_final=False, confidence=None),
             follow_up=FollowUpInfo(questions=followup_questions_for(state)),
             sources=[],
@@ -433,7 +435,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     # emergency من وصف المستخدم فقط (مو من أسئلة المودل)
     em_user = detect_emergency_user(merged_text)
     is_emergency = bool(em_user.red_flags)
-    emergency_obj = em_user if is_emergency else None
+    emergency_obj = em_user if is_emergency else EMPTY_EMERGENCY
 
     triage = TriageInfo(
         specialty=specialty if state == "triaged" else None,
