@@ -1,0 +1,94 @@
+.download-art {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  isolation: isolate;
+
+  img {
+    animation: floatTooth 6s ease-in-out infinite;
+    filter: drop-shadow(0 22px 30px rgba(0, 0, 0, 0.08));
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    width: 520px;
+    height: 520px;
+    left: 140px;
+    bottom: 90px;
+    border-radius: 999px;
+    z-index: -1;
+
+    background: radial-gradient(
+      circle,
+      rgba(56, 189, 248, 0.22) 0%,
+      rgba(103, 232, 249, 0.12) 38%,
+      rgba(255, 255, 255, 0) 72%
+    );
+
+    filter: blur(18px);
+    animation: glowPulse 5.2s ease-in-out infinite;
+  }
+}
+
+.download-sparkle {
+  animation: sparklePulse 2.8s ease-in-out infinite;
+  transform-origin: center;
+  opacity: 0.9;
+}
+
+.download-sparkle.delay-200 {
+  animation-delay: 500ms;
+}
+
+@keyframes floatTooth {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(0.2deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+}
+
+@keyframes glowPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+}
+
+@keyframes sparklePulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .download-art img,
+  .download-art::before,
+  .download-sparkle {
+    animation: none !important;
+  }
+}

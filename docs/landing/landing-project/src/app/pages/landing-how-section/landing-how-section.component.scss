@@ -1,0 +1,35 @@
+/* ✅ Only animations here */
+
+.how-float {
+  animation: howFloat 4.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.how-card:nth-child(2) .how-float,
+.how-card:nth-child(2).how-float {
+  animation-delay: 180ms;
+}
+
+.how-card:nth-child(3) .how-float,
+.how-card:nth-child(3).how-float {
+  animation-delay: 420ms;
+}
+
+@keyframes howFloat {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+/* ✅ Respect user motion settings */
+@media (prefers-reduced-motion: reduce) {
+  .how-float {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,25 @@
+.contact-title {
+animation: fadeUp 650ms ease-out both;
+}
+
+.contact-btn {
+animation: fadeUp 750ms ease-out both;
+}
+
+@keyframes fadeUp {
+0% {
+    opacity: 0;
+    transform: translateY(14px);
+}
+100% {
+    opacity: 1;
+    transform: translateY(0);
+}
+}
+
+@media (prefers-reduced-motion: reduce) {
+.contact-title,
+.contact-btn {
+    animation: none !important;
+}
+}
