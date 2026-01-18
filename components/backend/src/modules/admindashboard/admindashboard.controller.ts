@@ -7,9 +7,7 @@ import { UpdateAdmindashboardDto } from './dto/update-admindashboard.dto';
 export class AdmindashboardController {
   constructor(private readonly admindashboardService: AdmindashboardService) {}
 
-  // ... (Create, Accept, Block) ...
 
-  // ✅ الحل: ضع هذا المسار هنا (قبل الـ :id)
   @Get('diagnoses') 
   async returnAllDiagnosis() {
     return await this.admindashboardService.returnDiagnosis();
@@ -17,9 +15,16 @@ export class AdmindashboardController {
 @Patch('block-user/:userId')
   async blockUser(
     @Param('userId') userId: string,
-    @Body('is_active') is_active: boolean // يفضل استخدام ParseBoolPipe لو كنت تبعتها كـ string
+    @Body('is_active') is_active: boolean 
   ) {
     return await this.admindashboardService.toggleUserStatus(userId, is_active);
   }
+
+  @Get('accept-or-reject-post/:postId/:key')
+  async acceptOrReject(@Param('postId',ParseIntPipe)postId:number,@Param('key',ParseBoolPipe)key:boolean){
+    return await this.admindashboardService.acceptOrReject(postId,key)
+  }
+
+  
 
 }

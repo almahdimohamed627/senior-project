@@ -26,6 +26,8 @@ export class NotificationService implements OnModuleInit {
     }
   }
 async sendRawPush(token: string, title: string, body: string, data?: any) {
+  console.log('=====================')
+  console.log(data)
     try {
       const message = {
         notification: { title, body },

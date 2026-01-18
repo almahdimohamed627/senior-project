@@ -29,12 +29,12 @@ export class AdmindashboardService {
     this.tenantId = this.config.get<string>('FUSIONAUTH_TENANT_ID') || '';
     this.clientId = this.config.get<string>('FUSIONAUTH_CLIENT_ID') || '';
   }
-  create(createAdmindashboardDto: CreateAdmindashboardDto) {
-    return 'This action adds a new admindashboard';
-  }
+
 
   async acceptOrReject(postId: number, key: boolean) {
-    if (key) {
+    
+    console.log(key)
+    if (key==true) {
       await db.update(posts).set({ keyStatus: 'published' }).where(eq(posts.id, postId))
       return { msg: "post published" }
     }
@@ -60,11 +60,10 @@ export class AdmindashboardService {
       if (shouldBeActive) {
         console.log(`Reactivating user: ${userId}`);
         await axios.put(url, { user: { active: true } }, { headers });
-
         await db.update(users).set({isActive:true}).where(eq(users.fusionAuthId,userId))
       } else {
         console.log(`Soft Deleting (Blocking) user: ${userId}`);
-                await db.update(users).set({isActive:false}).where(eq(users.fusionAuthId,userId))
+         await db.update(users).set({isActive:false}).where(eq(users.fusionAuthId,userId))
 
         await axios.delete(url, { headers });
       }
